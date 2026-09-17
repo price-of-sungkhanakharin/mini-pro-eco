@@ -26,9 +26,9 @@ COPY pyproject.toml /app/
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir .
 
-# Install ML, PyTorch, and NLP dependencies for GPU Training Worker
-RUN pip install --no-cache-dir \
-    torch \
+# Install ML, PyTorch (CPU-optimized), and NLP dependencies for Training Worker
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir \
     transformers \
     datasets \
     accelerate \

@@ -13,16 +13,53 @@ An end-to-end modern AI platform combining a high-performance FastAPI backend mi
 
 ---
 
+## ⚡ Background Service Management (ระบบสั่งการรัน/หยุดเบื้องหลัง)
+
+จัดการเปิด, ปิด, รีสตาร์ท หรือดูสถานะของทุก Services ในระบบแบบเบื้องหลัง (Background Daemon) ได้ง่ายๆ ด้วยคำสั่งเดียวผ่านสคริปต์ `./scripts/manage` (หรือ `./manage`):
+
+```bash
+# 🚀 เริ่มต้นทำงานทุก Service พร้อมกันในเบื้องหลัง (Docker Containers + Frontend)
+./scripts/manage start all
+
+# 📊 ตรวจสอบสถานะการทำงานของทุก Service
+./scripts/manage status
+
+# ⏹️ สั่งหยุดการทำงานของทุก Service
+./scripts/manage stop all
+
+# 🔄 รีสตาร์ททุก Service ทั้งระบบ
+./scripts/manage restart all
+```
+
+### 📌 คำสั่งควบคุมแยกตาม Service:
+
+| Service ที่ต้องการจัดการ | คำสั่ง Start (รันเบื้องหลัง) | คำสั่ง Stop (หยุด) | คำสั่ง Restart | ดู Log สด |
+| :--- | :--- | :--- | :--- | :--- |
+| **ทั้งหมด (All Services)** | `./scripts/manage start all` | `./scripts/manage stop all` | `./scripts/manage restart all` | `./scripts/manage logs all` |
+| **Frontend UI (React/Vite)** | `./scripts/manage start frontend` | `./scripts/manage stop frontend` | `./scripts/manage restart frontend` | `./scripts/manage logs frontend` |
+| **FastAPI Backend Gateway** | `./scripts/manage start backend` | `./scripts/manage stop backend` | `./scripts/manage restart backend` | `./scripts/manage logs backend` |
+| **Trainer Worker (ARQ)** | `./scripts/manage start trainer` | `./scripts/manage stop trainer` | `./scripts/manage restart trainer` | `./scripts/manage logs trainer` |
+| **Infrastructure รวม (DB/Redis/MinIO/Label-Studio)** | `./scripts/manage start infra` | `./scripts/manage stop infra` | `./scripts/manage restart infra` | - |
+| **PostgreSQL 17** | `./scripts/manage start db` | `./scripts/manage stop db` | `./scripts/manage restart db` | `./scripts/manage logs db` |
+| **Redis Cache/Queue** | `./scripts/manage start redis` | `./scripts/manage stop redis` | `./scripts/manage restart redis` | `./scripts/manage logs redis` |
+| **MinIO Object Storage** | `./scripts/manage start minio` | `./scripts/manage stop minio` | `./scripts/manage restart minio` | `./scripts/manage logs minio` |
+| **Label Studio Annotation** | `./scripts/manage start label-studio` | `./scripts/manage stop label-studio` | `./scripts/manage restart label-studio` | `./scripts/manage logs label-studio` |
+
+> 💡 **Tip:** สามารถเรียกผ่าน Shortcut สั้นๆ จาก Root Directory ได้เช่นกัน เช่น `./manage status` หรือ `./manage restart all`
+
+---
+
 ## (Table of Contents)
 
-1. [Quick Start & Setup Guide](#1-quick-start--setup-guide)
+1. [Background Service Management](#-background-service-management-ระบบสั่งการรันหยุดเบื้องหลัง)
+2. [Quick Start & Setup Guide](#1-quick-start--setup-guide)
    - [Prerequisites](#prerequisites)
    - [Step 1: Environment Setup](#step-1-environment-setup)
    - [Step 2: Start Backing Services](#step-2-start-backing-services)
    - [Step 3: Run FastAPI Backend Server](#step-3-run-fastapi-backend-server)
    - [Step 4: Run React Frontend Application](#step-4-run-react-frontend-application)
    - [System Access Endpoints & Web Interfaces](#system-access-endpoints--web-interfaces)
-2. [API Specification Table](#api-specification-table)
+3. [API Specification Table](#api-specification-table)
 3. [System Architecture & Component Diagrams](#2-system-architecture--component-diagrams)
    - [2.1 High-Level Architecture Diagram](#21-high-level-architecture-diagram)
    - [2.2 System Data Flow & Sequence Diagram](#22-system-data-flow--sequence-diagram)

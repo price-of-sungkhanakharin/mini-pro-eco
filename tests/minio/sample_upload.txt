@@ -1,0 +1,1 @@
+Sample profile data for MinIO upload/download test.

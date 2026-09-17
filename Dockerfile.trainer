@@ -1,0 +1,44 @@
+# ==============================================================================
+# Dockerfile.trainer - Asynchronous GPU Trainer Worker Container Manifest
+# Project: AI Ecosystem (aieco)
+# ==============================================================================
+
+FROM python:3.10-slim
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    DEBIAN_FRONTEND=noninteractive
+
+WORKDIR /app
+
+# Install system runtime & build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    git \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy pyproject.toml and install base dependencies
+COPY pyproject.toml /app/
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir .
+
+# Install ML, PyTorch, and NLP dependencies for GPU Training Worker
+RUN pip install --no-cache-dir \
+    torch \
+    transformers \
+    datasets \
+    accelerate \
+    arq \
+    minio \
+    pydantic-settings
+
+# Copy application source code and configuration
+COPY backend/ /app/backend/
+COPY .env.sample /app/.env.sample
+
+# Start ARQ background worker for model training jobs
+CMD ["arq", "backend.app.services.worker_settings.WorkerSettings"]

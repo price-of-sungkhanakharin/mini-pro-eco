@@ -1,0 +1,1 @@
+{"timestamp": "2026-07-26T11:45:00.376859+00:00", "system_name": "SampleSystem", "log_level": "INFO", "location": "sample.py:1", "operation": "sample_operation", "status": "SUCCESS", "message": "This is a sample log line."}

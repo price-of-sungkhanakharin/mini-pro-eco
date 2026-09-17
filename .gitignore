@@ -1,0 +1,53 @@
+# Virtual Environment & Python Artifacts
+.venv/
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Agent Workspaces & Multi-Agent Orchestration Files
+agent_folder/
+.hermesagent/
+.claude/
+.gemini/
+.agents/
+AGENTS.md
+CLAUDE.md
+task_queue/
+.gitnexus/
+.gitnexus
+
+# Assignment Submissions & Document Files
+*.docx
+*.doc
+*.pptx
+*.pdf
+*Assignment*.docx
+*WTN-A06*.docx
+671011*.docx
+
+# OpenAPI Exports & API Snapshot Spreadsheets (Assignment Artifacts)
+*.xlsx
+*.xls
+*.csv
+openapi.json
+openapi_snapshot.*
+api_list_snapshot.*
+
+# Assets & Media
+assets/
+
+# Logs & Test Output
+*.log
+logs/*.log
+!logs/*.sample
+sandbox/minio/downloaded_*
+datasets/
+models/*.pt
+models/*.bin
+models/*.safetensors
+
+# Project Task Notes
+task-graph.md
+architecture.md
+skill-instructions.md

@@ -1,0 +1,90 @@
+<mxfile host="65bd71144e">
+    <diagram id="training-worker-architecture" name="Training Worker Pipeline Architecture">
+        <mxGraphModel dx="1422" dy="790" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="800" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                
+                <!-- Title Header -->
+                <mxCell id="title_banner" value="AI Ecosystem: Scheduled Training Worker &amp; Dataset Pipeline Architecture" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#003366;" parent="1" vertex="1">
+                    <mxGeometry x="250" y="20" width="700" height="40" as="geometry"/>
+                </mxCell>
+                
+                <!-- Client / User Actor -->
+                <mxCell id="client_actor" value="Client / User&#xa;(Client Request)" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontColor=#1E293B;fontSize=13;fontStyle=1;strokeColor=#475569;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="260" width="50" height="75" as="geometry"/>
+                </mxCell>
+                
+                <!-- FastAPI Server Node -->
+                <mxCell id="fastapi_server" value="&lt;b&gt;FastAPI&lt;/b&gt;&#xa;(Central API Gateway)&#xa;&lt;font style=&quot;font-size: 11px;&quot;&gt;POST /api/v1/training/start&lt;/font&gt;" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#e1e5f0;strokeColor=#666699;fontColor=#1E293B;fontSize=13;fontStyle=0;" parent="1" vertex="1">
+                    <mxGeometry x="220" y="250" width="180" height="95" as="geometry"/>
+                </mxCell>
+                
+                <!-- Redis Node -->
+                <mxCell id="redis_broker" value="&lt;b&gt;Redis&lt;/b&gt;&#xa;(Queue Broker)&#xa;&lt;font style=&quot;font-size: 11px;&quot;&gt;Queue: arq:queue&lt;/font&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#f8cecc;strokeColor=#b85450;fontColor=#1E293B;fontSize=13;fontStyle=0;" parent="1" vertex="1">
+                    <mxGeometry x="490" y="110" width="140" height="90" as="geometry"/>
+                </mxCell>
+                
+                <!-- Trainer Worker Node -->
+                <mxCell id="trainer_worker" value="&lt;b&gt;Trainer Worker&lt;/b&gt;&#xa;(PyTorch / HuggingFace)&#xa;&lt;font style=&quot;font-size: 11px;&quot;&gt;Token Classification Engine&lt;/font&gt;" style="shape=step;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#e066cf;strokeColor=#a83d94;fontColor=#ffffff;fontSize=13;fontStyle=0;" parent="1" vertex="1">
+                    <mxGeometry x="460" y="400" width="200" height="90" as="geometry"/>
+                </mxCell>
+                
+                <!-- Hugging Face Node -->
+                <mxCell id="hugging_face" value="&lt;b&gt;Hugging Face&lt;/b&gt;&#xa;Datasets Hub&#xa;&lt;font style=&quot;font-size: 11px;&quot;&gt;(wikiann / conll2003)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontColor=#1E293B;fontSize=13;fontStyle=0;" parent="1" vertex="1">
+                    <mxGeometry x="820" y="110" width="170" height="85" as="geometry"/>
+                </mxCell>
+                
+                <!-- MinIO Node -->
+                <mxCell id="minio_storage" value="&lt;b&gt;MinIO&lt;/b&gt;&#xa;(S3 Object Storage)&#xa;&lt;font style=&quot;font-size: 11px;&quot;&gt;Buckets: datasets, models&lt;/font&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#ffe6cc;strokeColor=#d79b00;fontColor=#1E293B;fontSize=13;fontStyle=0;" parent="1" vertex="1">
+                    <mxGeometry x="825" y="320" width="160" height="110" as="geometry"/>
+                </mxCell>
+                
+                <!-- Edge 1: Client -> FastAPI -->
+                <mxCell id="edge_request" value="&lt;b&gt;Request&lt;/b&gt;&#xa;('Add train queue time'&#xa;delay_seconds / scheduled_time)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontColor=#003366;fontSize=11;strokeColor=#2563EB;strokeWidth=2;" parent="1" source="client_actor" target="fastapi_server" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                
+                <!-- Edge 2: FastAPI -> Redis -->
+                <mxCell id="edge_enqueue" value="&lt;b&gt;Enqueue&lt;/b&gt;&#xa;(defer_by / arq:queue)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;fontColor=#991B1B;fontSize=11;strokeColor=#DC2626;strokeWidth=2;" parent="1" source="fastapi_server" target="redis_broker" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="310" y="155"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                
+                <!-- Edge 3: Redis -> Trainer Worker -->
+                <mxCell id="edge_trigger" value="&lt;b&gt;Scheduled Trigger&lt;/b&gt;&#xa;(Execute Task)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontColor=#701A75;fontSize=11;strokeColor=#A21CAF;strokeWidth=2;" parent="1" source="redis_broker" target="trainer_worker" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                
+                <!-- Edge 4: Hugging Face -> MinIO -->
+                <mxCell id="edge_hf_datasets" value="&lt;b&gt;Datasets&lt;/b&gt;&#xa;(Ingest &amp; Upload)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;fontColor=#B45309;fontSize=11;strokeColor=#D97706;strokeWidth=2;" parent="1" source="hugging_face" target="minio_storage" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                
+                <!-- Edge 5: Trainer Worker -> MinIO (Load Training Data) -->
+                <mxCell id="edge_load_data" value="&lt;b&gt;Load Training Data&lt;/b&gt;&#xa;(datasets/wikiann)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.3;exitDx=0;exitDy=0;entryX=0;entryY=0.7;entryDx=0;entryDy=0;entryPerimeter=0;fontColor=#047857;fontSize=11;strokeColor=#059669;strokeWidth=2;" parent="1" source="trainer_worker" target="minio_storage" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="740" y="427"/>
+                            <mxPoint x="740" y="397"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                
+                <!-- Edge 6: Trainer Worker -> MinIO (Versioning Trained Model) -->
+                <mxCell id="edge_version_model" value="&lt;b&gt;Versioning Trained Model&lt;/b&gt;&#xa;(models/token_classification_v1.pt)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.7;exitDx=0;exitDy=0;entryX=0;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;fontColor=#4338CA;fontSize=11;strokeColor=#4F46E5;strokeWidth=2;" parent="1" source="trainer_worker" target="minio_storage" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="740" y="463"/>
+                            <mxPoint x="740" y="430"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

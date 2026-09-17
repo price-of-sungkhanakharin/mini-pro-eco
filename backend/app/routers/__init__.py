@@ -1,0 +1,14 @@
+"""Routers package initialization."""
+
+from . import auth, datasets, health, inference, label_studio_router, minio_router, models, train
+
+__all__ = [
+    "auth",
+    "datasets",
+    "health",
+    "inference",
+    "label_studio_router",
+    "minio_router",
+    "models",
+    "train",
+]

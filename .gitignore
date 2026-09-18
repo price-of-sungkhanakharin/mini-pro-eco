@@ -40,6 +40,8 @@ assets/
 # Logs & Test Output
 *.log
 logs/*.log
+*.pid
+logs/*.pid
 !logs/*.sample
 sandbox/minio/downloaded_*
 datasets/
@@ -51,3 +53,4 @@ models/*.safetensors
 task-graph.md
 architecture.md
 skill-instructions.md
+handoff.md

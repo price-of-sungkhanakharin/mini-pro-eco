@@ -53,6 +53,14 @@ body {
   justify-content: center;
 }
 
+#root:has(.dashboard-app-shell) {
+  max-width: 100%;
+  width: 100%;
+  padding: 0;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
 /* Header & Glowing Badge */
 .header {
   text-align: center;

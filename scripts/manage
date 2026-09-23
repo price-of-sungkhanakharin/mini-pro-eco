@@ -81,7 +81,11 @@ start_frontend() {
 
     (
         cd "$FRONTEND_DIR"
-        setsid ./node_modules/.bin/vite --host 0.0.0.0 </dev/null > "$FRONTEND_LOG_FILE" 2>&1 &
+        if command -v setsid >/dev/null 2>&1; then
+            CI=true setsid ./node_modules/.bin/vite --host 0.0.0.0 </dev/null > "$FRONTEND_LOG_FILE" 2>&1 &
+        else
+            CI=true nohup ./node_modules/.bin/vite --host 0.0.0.0 </dev/null > "$FRONTEND_LOG_FILE" 2>&1 &
+        fi
         echo $! > "$FRONTEND_PID_FILE"
     )
 

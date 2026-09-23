@@ -1,0 +1,51 @@
+{
+  "camera_id": "cam1",
+  "folder": "cam1",
+  "location": "front_dept",
+  "location_name": "หน้าภาค",
+  "target": "car",
+  "timestamp": "2026-09-22T18:00:36.616016",
+  "partition": {
+    "date": "2026-09-22",
+    "hour": "18"
+  },
+  "filename": "2026-09-22_18-00-36_616.jpg",
+  "file_size_bytes": 255948,
+  "client_ip": "172.30.91.108",
+  "image_enhancement": {
+    "rotation": 180,
+    "brightness": 0.82,
+    "contrast": 1.15
+  },
+  "telemetry": {
+    "camera_id": "cam1",
+    "location": "front_dept",
+    "uptime_sec": 2174,
+    "chip_temp_c": 80.0,
+    "wifi_rssi_dbm": -82,
+    "free_heap": 156704,
+    "free_psram": 3419476,
+    "framesize": 15,
+    "quality": 10,
+    "brightness": 0,
+    "contrast": 1,
+    "saturation": 0,
+    "sharpness": 1,
+    "special_effect": 0,
+    "wb_mode": 0,
+    "awb": 1,
+    "aec": 1,
+    "aec2": 1,
+    "ae_level": 0,
+    "aec_value": 490,
+    "agc": 1,
+    "agc_gain": 2,
+    "gainceiling": 248,
+    "bpc": 1,
+    "wpc": 1,
+    "raw_gma": 1,
+    "lenc": 1,
+    "hmirror": 0,
+    "vflip": 0
+  }
+}

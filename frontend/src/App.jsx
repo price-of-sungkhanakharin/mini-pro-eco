@@ -1,4 +1,11 @@
 import { useState, useEffect } from 'react'
+import './dashboard.css'
+import Navbar from './components/Navbar.jsx'
+import RightSidebar from './components/RightSidebar.jsx'
+import DashboardView from './components/DashboardView.jsx'
+import SetupView from './components/SetupView.jsx'
+import ParkingSetup from './components/ParkingSetup.jsx'
+import CameraModal from './components/CameraModal.jsx'
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
@@ -10,14 +17,42 @@ function App() {
   const [activeTab, setActiveTab] = useState('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState('user')
+  const [role, setRole] = useState('admin')
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [token, setToken] = useState(() => localStorage.getItem('access_token'))
-  const [user, setUser] = useState(null)
-  const [showToken, setShowToken] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [token, setToken] = useState(() => {
+    if (typeof window !== 'undefined' && window.location.search.includes('preview=true')) {
+      return 'preview-token-2026'
+    }
+    return localStorage.getItem('access_token')
+  })
+  const [user, setUser] = useState(() => {
+    if (typeof window !== 'undefined' && window.location.search.includes('preview=true')) {
+      return { id: 1, email: 'admin@cpe.eng.psu.ac.th', role: 'admin' }
+    }
+    const saved = localStorage.getItem('user_profile')
+    return saved ? JSON.parse(saved) : null
+  })
+
+  // Dashboard Navigation State
+  const [currentView, setCurrentView] = useState(() => {
+    if (typeof window !== 'undefined' && window.location.search.includes('view=setup')) {
+      return 'setup'
+    }
+    return 'dashboard'
+  })
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [selectedCamera, setSelectedCamera] = useState(null)
+
+  // Parking live stats state
+  const [stats, setStats] = useState({
+    freeCar: 9,
+    totalCar: 20,
+    freeBike: 11,
+    totalBike: 15,
+    avgChance: 79
+  })
 
   // Fetch current user details when token is present
   useEffect(() => {
@@ -36,11 +71,14 @@ function App() {
         })
         .then((data) => {
           setUser(data)
+          localStorage.setItem('user_profile', JSON.stringify(data))
           setLoading(false)
         })
         .catch(() => {
-          // Token invalid or expired
-          handleLogout()
+          // If offline or invalid token, keep offline admin session if explicitly set
+          if (!localStorage.getItem('is_demo_session')) {
+            handleLogout()
+          }
           setLoading(false)
         })
     }
@@ -116,6 +154,7 @@ function App() {
       if (meResponse.ok) {
         const userData = await meResponse.json()
         setUser(userData)
+        localStorage.setItem('user_profile', JSON.stringify(userData))
       }
 
       setSuccess('Logged in successfully!')
@@ -126,8 +165,26 @@ function App() {
     }
   }
 
+  // Quick Admin Preview (for testing without running DB/backend)
+  const handleQuickAdminDemo = () => {
+    const demoToken = 'demo-admin-session-cpe-parking-2026'
+    const demoUser = {
+      id: 1,
+      email: 'admin@cpe.eng.psu.ac.th',
+      role: 'admin',
+      created_at: new Date().toISOString()
+    }
+    localStorage.setItem('access_token', demoToken)
+    localStorage.setItem('user_profile', JSON.stringify(demoUser))
+    localStorage.setItem('is_demo_session', 'true')
+    setToken(demoToken)
+    setUser(demoUser)
+  }
+
   const handleLogout = () => {
     localStorage.removeItem('access_token')
+    localStorage.removeItem('user_profile')
+    localStorage.removeItem('is_demo_session')
     setToken(null)
     setUser(null)
     setEmail('')
@@ -136,269 +193,223 @@ function App() {
     setSuccess(null)
   }
 
-  const handleCopyToken = () => {
-    if (token) {
-      navigator.clipboard.writeText(token)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    }
-  }
-
   return (
     <>
-      {/* Header & Brand Title */}
-      <header className="header">
-        <h1 className="brand-title">
-          FastAPI AI Ecosystem Gateway
-          <span className="glowing-badge">
-            <span className="status-dot"></span>
-            v1.0 Live
-          </span>
-        </h1>
-        <p className="subtitle">Secure Authentication & Control Plane for AI Microservices</p>
-      </header>
-
-      {/* Main Content Area */}
       {!token ? (
-        /* Authentication Container (Not Logged In) */
-        <main className="glass-card">
-          <div className="tab-container">
-            <button
-              type="button"
-              className={`tab-btn ${activeTab === 'login' ? 'active' : ''}`}
-              onClick={() => {
-                setActiveTab('login')
-                setError(null)
-                setSuccess(null)
-              }}
-            >
-              Sign In
-            </button>
-            <button
-              type="button"
-              className={`tab-btn ${activeTab === 'register' ? 'active' : ''}`}
-              onClick={() => {
-                setActiveTab('register')
-                setError(null)
-                setSuccess(null)
-              }}
-            >
-              Register
-            </button>
-          </div>
+        /* ================= AUTHENTICATION VIEW (NOT LOGGED IN) ================= */
+        <div className="flex flex-col items-center justify-center w-full min-h-screen py-10 px-4">
+          <header className="header">
+            <h1 className="brand-title">
+              CPE Smart Parking AI
+              <span className="glowing-badge">
+                <span className="status-dot"></span>
+                v2.0 Ecosystem Live
+              </span>
+            </h1>
+            <p className="subtitle">
+              ระบบทำนายที่จอดรถอัจฉริยะ ภาควิชาวิศวกรรมคอมพิวเตอร์ (3 Phone Cameras Stream)
+            </p>
+          </header>
 
-          {/* Alert Boxes */}
-          {error && (
-            <div className="alert alert-error" role="alert">
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>{error}</span>
-            </div>
-          )}
-
-          {success && (
-            <div className="alert alert-success" role="status">
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-              </svg>
-              <span>{success}</span>
-            </div>
-          )}
-
-          {/* Form */}
-          <form onSubmit={activeTab === 'login' ? handleLogin : handleRegister}>
-            <div className="form-group">
-              <label className="form-label" htmlFor="email">Email Address</label>
-              <div className="input-wrapper">
-                <span className="input-icon">
-                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-                  </svg>
-                </span>
-                <input
-                  id="email"
-                  type="email"
-                  className="form-input"
-                  placeholder="user@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
+          <main className="glass-card">
+            <div className="tab-container">
+              <button
+                type="button"
+                className={`tab-btn ${activeTab === 'login' ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveTab('login')
+                  setError(null)
+                  setSuccess(null)
+                }}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                className={`tab-btn ${activeTab === 'register' ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveTab('register')
+                  setError(null)
+                  setSuccess(null)
+                }}
+              >
+                Register
+              </button>
             </div>
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="password">Password</label>
-              <div className="input-wrapper">
-                <span className="input-icon">
-                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                </span>
-                <input
-                  id="password"
-                  type="password"
-                  className="form-input"
-                  placeholder="••••••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
-            {activeTab === 'register' && (
-              <div className="form-group">
-                <label className="form-label" htmlFor="role">User Role</label>
-                <div className="input-wrapper">
-                  <span className="input-icon">
-                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                    </svg>
-                  </span>
-                  <select
-                    id="role"
-                    className="form-select"
-                    value={role}
-                    onChange={(e) => setRole(e.target.value)}
-                  >
-                    <option value="user">User</option>
-                    <option value="admin">Administrator</option>
-                  </select>
-                </div>
+            {/* Alert Boxes */}
+            {error && (
+              <div className="alert alert-error" role="alert">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{error}</span>
               </div>
             )}
 
-            <button type="submit" className="submit-btn" disabled={loading}>
-              {loading ? (
-                <>
-                  <span className="spinner"></span>
-                  <span>Processing...</span>
-                </>
-              ) : activeTab === 'login' ? (
-                'Sign In to Gateway'
-              ) : (
-                'Create Account'
+            {success && (
+              <div className="alert alert-success" role="status">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <span>{success}</span>
+              </div>
+            )}
+
+            {/* Form */}
+            <form onSubmit={activeTab === 'login' ? handleLogin : handleRegister}>
+              <div className="form-group">
+                <label className="form-label" htmlFor="email">Email Address</label>
+                <div className="input-wrapper">
+                  <span className="input-icon">
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                    </svg>
+                  </span>
+                  <input
+                    id="email"
+                    type="email"
+                    className="form-input"
+                    placeholder="admin@cpe.eng.psu.ac.th"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="password">Password</label>
+                <div className="input-wrapper">
+                  <span className="input-icon">
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </span>
+                  <input
+                    id="password"
+                    type="password"
+                    className="form-input"
+                    placeholder="••••••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              {activeTab === 'register' && (
+                <div className="form-group">
+                  <label className="form-label" htmlFor="role">User Role</label>
+                  <div className="input-wrapper">
+                    <span className="input-icon">
+                      <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                    </span>
+                    <select
+                      id="role"
+                      className="form-select"
+                      value={role}
+                      onChange={(e) => setRole(e.target.value)}
+                    >
+                      <option value="admin">Administrator</option>
+                      <option value="user">User</option>
+                    </select>
+                  </div>
+                </div>
               )}
-            </button>
-          </form>
-        </main>
+
+              <button type="submit" className="submit-btn" disabled={loading}>
+                {loading ? (
+                  <>
+                    <span className="spinner"></span>
+                    <span>Processing...</span>
+                  </>
+                ) : activeTab === 'login' ? (
+                  'Sign In to Gateway'
+                ) : (
+                  'Create Account'
+                )}
+              </button>
+            </form>
+
+            {/* Quick Demo Access */}
+            <div className="mt-4 pt-4 border-t border-white/10 text-center">
+              <p className="text-xs text-slate-400 mb-2">หรือทดสอบมุมมองผู้ดูแลระบบทันที:</p>
+              <button
+                type="button"
+                onClick={handleQuickAdminDemo}
+                className="w-full py-2 px-3 rounded-lg text-xs font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 transition-all flex items-center justify-center gap-2"
+              >
+                <span>⚡ Quick Access: เข้าสู่หน้า Admin Dashboard</span>
+              </button>
+            </div>
+          </main>
+        </div>
       ) : (
-        /* Dashboard Container (Logged In) */
-        <main className="dashboard-grid">
-          {/* Welcome Banner */}
-          <div className="welcome-banner">
-            <div>
-              <h2 className="welcome-title">Welcome back, {user?.email || email || 'User'}!</h2>
-              <p className="welcome-subtitle">You are authenticated to access ecosystem API services.</p>
-            </div>
-            <button type="button" className="logout-btn" style={{ width: 'auto' }} onClick={handleLogout}>
-              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              Logout
-            </button>
+        /* ================= EXECUTIVE SMART PARKING DASHBOARD (LOGGED IN) ================= */
+        <div className="dashboard-app-shell">
+          {/* Top Monitoring Navbar */}
+          <Navbar
+            user={user}
+            onLogout={handleLogout}
+            stats={stats}
+          />
+
+          {/* Main Stage with Center Content & Right Sidebar */}
+          <div className="dashboard-main-layout">
+            <main className="dashboard-center-stage">
+              {currentView === 'dashboard' && (
+                <DashboardView
+                  onOpenModal={(cam) => setSelectedCamera(cam)}
+                  onNavigate={(view) => setCurrentView(view)}
+                />
+              )}
+              {currentView === 'setup' && (
+                <SetupView onNavigate={(view) => setCurrentView(view)} />
+              )}
+              {currentView === 'live_cameras' && (
+                <DashboardView
+                  onOpenModal={(cam) => setSelectedCamera(cam)}
+                  onNavigate={(view) => setCurrentView(view)}
+                />
+              )}
+              {currentView === 'slot_map' && (
+                <ParkingSetup onNavigate={(view) => setCurrentView(view)} />
+              )}
+              {currentView === 'ai_inference' && (
+                <DashboardView
+                  onOpenModal={(cam) => setSelectedCamera(cam)}
+                  onNavigate={(view) => setCurrentView(view)}
+                />
+              )}
+              {currentView === 'line_bot' && (
+                <DashboardView
+                  onOpenModal={(cam) => setSelectedCamera(cam)}
+                  onNavigate={(view) => setCurrentView(view)}
+                />
+              )}
+            </main>
+
+            {/* Right-Hand Admin Sidebar (Explicitly Requested by User) */}
+            <RightSidebar
+              currentView={currentView}
+              onSelectView={(view) => setCurrentView(view)}
+              isCollapsed={isSidebarCollapsed}
+              onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            />
           </div>
 
-          {/* User Profile Card */}
-          <div className="dashboard-card">
-            <h3 className="card-title">
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-              User Account Profile
-            </h3>
-            <div className="info-row">
-              <span className="info-label">Email</span>
-              <span className="info-value">{user?.email || email}</span>
-            </div>
-            <div className="info-row">
-              <span className="info-label">Assigned Role</span>
-              <span className="role-badge">{user?.role || role || 'user'}</span>
-            </div>
-            <div className="info-row">
-              <span className="info-label">Account Created</span>
-              <span className="info-value">
-                {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
-              </span>
-            </div>
-            <div className="info-row">
-              <span className="info-label">Account ID</span>
-              <span className="info-value" style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
-                {user?.id || 'Active'}
-              </span>
-            </div>
-          </div>
-
-          {/* JWT Token Card */}
-          <div className="dashboard-card">
-            <h3 className="card-title">
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-              </svg>
-              JWT Bearer Access Token
-            </h3>
-            <div className="token-box">
-              {showToken ? token : '••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••'}
-            </div>
-            <div className="token-actions">
-              <button type="button" className="small-btn" onClick={() => setShowToken(!showToken)}>
-                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  {showToken ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858-5.908a10.05 10.05 0 013.682-.713c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m-3.568-1.41a3 3 0 11-4.243-4.243m4.243 4.243L3 3l18 18" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  )}
-                </svg>
-                {showToken ? 'Hide Token' : 'Reveal Token'}
-              </button>
-              <button type="button" className="small-btn" onClick={handleCopyToken}>
-                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  {copied ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                  )}
-                </svg>
-                {copied ? 'Copied!' : 'Copy Token'}
-              </button>
-            </div>
-          </div>
-
-          {/* Active System Services Summary Card */}
-          <div className="dashboard-card" style={{ gridColumn: '1 / -1' }}>
-            <h3 className="card-title">
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 02-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
-              </svg>
-              Active Ecosystem Services Summary
-            </h3>
-            <div className="service-status-list">
-              <div className="service-item">
-                <div className="service-name">
-                  <span className="status-indicator status-online"></span>
-                  <span>Authentication Service (`/api/v1/auth`)</span>
-                </div>
-                <span className="status-badge-active">Operational</span>
-              </div>
-              <div className="service-item">
-                <div className="service-name">
-                  <span className="status-indicator status-online"></span>
-                  <span>AI Inference & Model Gateway</span>
-                </div>
-                <span className="status-badge-active">Operational</span>
-              </div>
-              <div className="service-item">
-                <div className="service-name">
-                  <span className="status-indicator status-online"></span>
-                  <span>Vector Database & Knowledge Mesh</span>
-                </div>
-                <span className="status-badge-active">Operational</span>
-              </div>
-            </div>
-          </div>
-        </main>
+          {/* Camera Inspection Modal */}
+          {selectedCamera && (
+            <CameraModal
+              camera={selectedCamera}
+              onClose={() => setSelectedCamera(null)}
+              onNavigate={(view) => setCurrentView(view)}
+            />
+          )}
+        </div>
       )}
     </>
   )

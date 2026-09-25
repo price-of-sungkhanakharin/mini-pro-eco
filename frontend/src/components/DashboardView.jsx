@@ -18,15 +18,21 @@ import {
   DEFAULT_CAM1_SLOTS,
   formatTimestampThai,
   formatUptime,
-  formatHeapKb
+  formatHeapKb,
+  getSavedOrInitialSlots,
+  calculateSlotCounts,
+  SLOTS_STORAGE_KEY
 } from '../utils/dumpData'
 
 export default function DashboardView({ onOpenModal }) {
-  const [gridMode, setGridMode] = useState(3) // 3 or 6 or 1
   const [selectedZone, setSelectedZone] = useState('all')
   const [countdown, setCountdown] = useState(5)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [simulatedTime, setSimulatedTime] = useState(new Date())
+  const [showRoiOverlay, setShowRoiOverlay] = useState(true)
+
+  // Dynamic real slots for CAM-01 from shared storage
+  const [cam1Slots, setCam1Slots] = useState(() => getSavedOrInitialSlots())
 
   // Real Live Ingestion Server & Dump Records State
   const [dumpRecords, setDumpRecords] = useState([])
@@ -48,7 +54,7 @@ export default function DashboardView({ onOpenModal }) {
         setImgKey(Date.now())
       }
     } catch (err) {
-      // Fallback silently if port 5005 is not reachable
+      // Fallback silently if ingestion API is not reachable
     }
   }
 
@@ -59,7 +65,32 @@ export default function DashboardView({ onOpenModal }) {
     return () => clearInterval(liveTimer)
   }, [])
 
-  // Load fallback dump metadata from /dump_data/metadata.json
+  // Listen for real-time slots updates from ParkingSetup ROI Editor
+  useEffect(() => {
+    const handleSlotsUpdated = (e) => {
+      if (e.detail && Array.isArray(e.detail)) {
+        setCam1Slots(e.detail)
+      } else {
+        setCam1Slots(getSavedOrInitialSlots())
+      }
+    }
+    const handleStorage = (e) => {
+      if (e.key === SLOTS_STORAGE_KEY || !e.key) {
+        setCam1Slots(getSavedOrInitialSlots())
+      }
+    }
+    window.addEventListener('cpe-slots-updated', handleSlotsUpdated)
+    window.addEventListener('storage', handleStorage)
+    return () => {
+      window.removeEventListener('cpe-slots-updated', handleSlotsUpdated)
+      window.removeEventListener('storage', handleStorage)
+    }
+  }, [])
+
+  // Calculate live slot metrics for CAM-01
+  const cam1Counts = calculateSlotCounts(cam1Slots)
+
+  // Load real dump metadata from /dump_data/metadata.json
   useEffect(() => {
     let mounted = true
     loadDumpMetadata().then((data) => {
@@ -165,10 +196,23 @@ export default function DashboardView({ onOpenModal }) {
             status: 'ONLINE (LIVE STREAM)'
           }
         : currentRecord,
-      car: { free: 4, total: 7 },
-      bike: { free: 5, total: 8 },
-      vacancyChance15m: 85,
-      slots: DEFAULT_CAM1_SLOTS
+      car: cam1Counts.car,
+      bike: cam1Counts.bike,
+      vacancyChance15m:
+        cam1Counts.car.total + cam1Counts.bike.total > 0
+          ? Math.min(
+              95,
+              Math.max(
+                35,
+                Math.round(
+                  ((cam1Counts.car.free + cam1Counts.bike.free) /
+                    (cam1Counts.car.total + cam1Counts.bike.total)) *
+                    100
+                )
+              )
+            )
+          : 85,
+      slots: cam1Slots
     },
     {
       id: 2,
@@ -324,38 +368,10 @@ export default function DashboardView({ onOpenModal }) {
             </button>
           </div>
 
-          {/* Grid Mode Buttons */}
-          <div className="grid-switcher">
-            <button
-              type="button"
-              className={`grid-btn ${gridMode === 3 ? 'active' : ''}`}
-              onClick={() => setGridMode(3)}
-              title="3 Cameras"
-            >
-              3 Cam
-            </button>
-            <button
-              type="button"
-              className={`grid-btn ${gridMode === 6 ? 'active' : ''}`}
-              onClick={() => setGridMode(6)}
-              title="6 Cameras Grid"
-            >
-              6 Cam
-            </button>
-            <button
-              type="button"
-              className={`grid-btn ${gridMode === 1 ? 'active' : ''}`}
-              onClick={() => setGridMode(1)}
-              title="Single Focused Cam"
-            >
-              1 Cam
-            </button>
-          </div>
-
           {/* Ingestion Countdown & Refresh Button */}
           <div className="countdown-badge" title="เวลาถึงรอบจับภาพ Snapshot ถัดไป">
             <span className="text-[11px] text-slate-400">Snapshot ใน:</span>
-            <span className="text-xs font-bold text-emerald-400">
+            <span className="text-xs font-bold text-emerald-400 font-mono">
               {countdown}s
             </span>
           </div>
@@ -371,16 +387,8 @@ export default function DashboardView({ onOpenModal }) {
         </div>
       </div>
 
-      {/* Camera Grid Section */}
-      <div
-        className={`camera-grid-layout ${
-          gridMode === 3
-            ? 'grid-cols-3'
-            : gridMode === 6
-            ? 'grid-cols-3-double'
-            : 'grid-cols-1'
-        }`}
-      >
+      {/* Camera Grid Section (Clean 3-Camera Uniform Layout) */}
+      <div className="camera-grid-layout grid-cols-3">
         {filteredCameras.map((cam) => (
           <div
             key={cam.id}
@@ -395,6 +403,48 @@ export default function DashboardView({ onOpenModal }) {
                 className="camera-feed-img"
               />
 
+              {/* Live ROI SVG Overlay for CAM-01 */}
+              {cam.id === 1 && showRoiOverlay && (
+                <svg
+                  className="cam-tile-svg-overlay"
+                  viewBox="0 0 1600 1200"
+                >
+                  {cam1Slots.map((s) => {
+                    const isBike = s.type === 'motorcycle' || s.type === 'bike'
+                    const isOccupied = !!s.occupied
+                    const pts = s.points.map((p) => `${p.x},${p.y}`).join(' ')
+                    const center = {
+                      x: s.points.reduce((acc, p) => acc + p.x, 0) / s.points.length,
+                      y: s.points.reduce((acc, p) => acc + p.y, 0) / s.points.length
+                    }
+                    return (
+                      <g key={s.id}>
+                        <polygon
+                          points={pts}
+                          className={`slot-polygon ${isBike ? 'bike-polygon' : 'car-polygon'} ${isOccupied ? 'occupied' : 'vacant'}`}
+                        />
+                        <rect
+                          x={center.x - 32}
+                          y={center.y - 12}
+                          width={64}
+                          height={24}
+                          rx={5}
+                          className={`slot-label-bg ${isBike ? 'bike-label' : 'car-label'} ${isOccupied ? 'occupied' : 'vacant'}`}
+                        />
+                        <text
+                          x={center.x}
+                          y={center.y + 5}
+                          textAnchor="middle"
+                          className="slot-label-text text-[11px]"
+                        >
+                          {isBike ? '🏍️ ' : '🚗 '}{s.id}
+                        </text>
+                      </g>
+                    )
+                  })}
+                </svg>
+              )}
+
               {/* Viewport Header Overlay */}
               <div className="viewport-overlay-top">
                 <div className="cam-code-tag flex items-center gap-1.5">
@@ -408,7 +458,7 @@ export default function DashboardView({ onOpenModal }) {
                   <span className="live-ping"></span>
                   <span className="live-dot"></span>
                   <span className="live-text">
-                    {cam.isReal ? 'ONLINE • 5s SNAP' : 'ACTIVE'}
+                    {cam.isReal ? 'ONLINE • 5s' : 'ACTIVE'}
                   </span>
                 </div>
               </div>
@@ -418,15 +468,29 @@ export default function DashboardView({ onOpenModal }) {
                 <div className="cam-name-info">
                   <span className="cam-title-text">{cam.name}</span>
                   <span className="cam-sub-text">
-                    {cam.subtitle} • IP: {cam.ip}
+                    {cam.subtitle} • {formatTimestampThai(cam.snapshotTimestamp)}
                   </span>
                 </div>
 
-                <div className="cam-actions-hover opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="cam-actions-hover">
+                  {cam.id === 1 && (
+                    <button
+                      type="button"
+                      className={`btn-toggle-roi-mini ${showRoiOverlay ? 'active' : ''}`}
+                      title="เปิด/ปิด ผังพิกัดช่องจอด ROI บนภาพ"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setShowRoiOverlay(!showRoiOverlay)
+                      }}
+                    >
+                      <Layers className="w-3 h-3" />
+                      <span>{showRoiOverlay ? 'ผัง ROI: เปิด' : 'ผัง ROI: ปิด'}</span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="action-btn-zoom"
-                    title="ขยายดูภาพและดีเทล"
+                    title="ขยายดูภาพและผังช่องจอด ROI"
                     onClick={(e) => {
                       e.stopPropagation()
                       if (onOpenModal) onOpenModal(cam)
@@ -436,61 +500,9 @@ export default function DashboardView({ onOpenModal }) {
                   </button>
                 </div>
               </div>
-
-              {/* Camera Time Watermark */}
-              <div className="viewport-timestamp">
-                {cam.snapshotTimestamp
-                  ? `REC: ${formatTimestampThai(cam.snapshotTimestamp)}`
-                  : `${simulatedTime.toISOString().replace('T', ' ').substring(0, 19)}`}
-              </div>
             </div>
 
-            {/* Hardware Telemetry Bar (Clean Unified Typography matching the dashboard) */}
-            {cam.isReal && (
-              <div className="cam-telemetry-strip">
-                <div className="telemetry-metrics-row">
-                  <div className="telemetry-pill-item" title="อุณหภูมิชิปประมวลผล (Core Temp)">
-                    <Thermometer className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Temp:</span>
-                    <span className="telemetry-pill-value text-amber-300 font-semibold">
-                      {cam.realTelemetry?.chip_temp_c ? `${cam.realTelemetry.chip_temp_c.toFixed(1)}°C` : '80.5°C'}
-                    </span>
-                  </div>
-
-                  <div className="telemetry-pill-item" title="หน่วยความจำคงเหลือ (Free Heap)">
-                    <Cpu className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>Heap:</span>
-                    <span className="telemetry-pill-value text-cyan-300 font-semibold">
-                      {formatHeapKb(cam.realTelemetry?.free_heap)}
-                    </span>
-                  </div>
-
-                  <div className="telemetry-pill-item" title="ความแรงสัญญาณ Wi-Fi (RSSI)">
-                    <Wifi className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>RSSI:</span>
-                    <span className="telemetry-pill-value text-emerald-300 font-semibold">
-                      {cam.realTelemetry?.wifi_rssi_dbm ? `${cam.realTelemetry.wifi_rssi_dbm} dBm` : '-82 dBm'}
-                    </span>
-                  </div>
-
-                  <div className="telemetry-pill-item" title="ระยะเวลาเปิดทำงานต่อเนื่อง">
-                    <Clock className="w-3.5 h-3.5 text-purple-400" />
-                    <span>Up:</span>
-                    <span className="telemetry-pill-value text-purple-300 font-semibold">
-                      {formatUptime(cam.realTelemetry?.uptime_sec)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Clean Status Tag */}
-                <span className="telemetry-status-tag">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span>{cam.realTelemetry?.status || 'ONLINE'}</span>
-                </span>
-              </div>
-            )}
-
-            {/* Camera Metrics & Parking Counter Bar */}
+            {/* Camera Metrics & Parking Counter Bar (Uniform on all cards) */}
             <div className="camera-metrics-bar">
               <div className="flex items-center gap-3">
                 <div className="slot-badge car-badge">
@@ -517,50 +529,6 @@ export default function DashboardView({ onOpenModal }) {
             </div>
           </div>
         ))}
-
-        {/* In 6 Cam mode, show standby slots 4, 5, 6 */}
-        {gridMode === 6 && (
-          <>
-            <div className="camera-card-tile standby-tile">
-              <div className="standby-viewport">
-                <Video className="w-8 h-8 text-slate-600 mb-2" />
-                <span className="text-xs font-bold text-slate-400">
-                  CAM-04 [STANDBY NODE]
-                </span>
-                <span className="text-[11px] text-slate-500 mt-1">
-                  ลานจอดสำรองทิศใต้ (South Expansion)
-                </span>
-                <span className="standby-badge">Unassigned Stream</span>
-              </div>
-            </div>
-
-            <div className="camera-card-tile standby-tile">
-              <div className="standby-viewport">
-                <Video className="w-8 h-8 text-slate-600 mb-2" />
-                <span className="text-xs font-bold text-slate-400">
-                  CAM-05 [STANDBY NODE]
-                </span>
-                <span className="text-[11px] text-slate-500 mt-1">
-                  จุดจอดจักรยานยนต์โซนทางเชื่อม
-                </span>
-                <span className="standby-badge">Unassigned Stream</span>
-              </div>
-            </div>
-
-            <div className="camera-card-tile standby-tile">
-              <div className="standby-viewport">
-                <Video className="w-8 h-8 text-slate-600 mb-2" />
-                <span className="text-xs font-bold text-slate-400">
-                  CAM-06 [STANDBY NODE]
-                </span>
-                <span className="text-[11px] text-slate-500 mt-1">
-                  ทางออกลานจอดรถด้านข้าง
-                </span>
-                <span className="standby-badge">Unassigned Stream</span>
-              </div>
-            </div>
-          </>
-        )}
       </div>
 
       {/* Intelligence & Analytics Section (Balanced 2-Column Layout, LINE Card Removed) */}
@@ -584,13 +552,30 @@ export default function DashboardView({ onOpenModal }) {
               <div className="zone-progress-header">
                 <span className="font-medium text-xs text-white">Zone A (ลานหน้าตึก)</span>
                 <span className="text-xs text-emerald-400 font-bold">
-                  4/7 ว่าง (43% รถจอด)
+                  🚗 {cam1Counts.car.free}/{cam1Counts.car.total} • 🏍️ {cam1Counts.bike.free}/{cam1Counts.bike.total} ว่าง (
+                  {cam1Counts.car.total + cam1Counts.bike.total > 0
+                    ? Math.round(
+                        ((cam1Counts.car.occupied + cam1Counts.bike.occupied) /
+                          (cam1Counts.car.total + cam1Counts.bike.total)) *
+                          100
+                      )
+                    : 0}% จอดแล้ว)
                 </span>
               </div>
               <div className="progress-track">
                 <div
                   className="progress-fill bg-gradient-to-r from-emerald-500 to-blue-500"
-                  style={{ width: '43%' }}
+                  style={{
+                    width: `${
+                      cam1Counts.car.total + cam1Counts.bike.total > 0
+                        ? Math.round(
+                            ((cam1Counts.car.occupied + cam1Counts.bike.occupied) /
+                              (cam1Counts.car.total + cam1Counts.bike.total)) *
+                              100
+                          )
+                        : 0
+                    }%`
+                  }}
                 ></div>
               </div>
             </div>

@@ -48,6 +48,14 @@ class Settings(BaseSettings):
     log_level: str = Field(default="DEBUG")
     log_file: str = Field(default="logs/app.log")
 
+    # LINE Chatbot & dotBlue AI Settings
+    line_channel_id: str = Field(default="2011743452")
+    line_channel_secret: str = Field(default="")
+    line_channel_access_token: str = Field(default="")
+    dotblue_api_key: str = Field(default="")
+    dotblue_base_url: str = Field(default="https://ai.psu.blue/v1")
+    dotblue_model: str = Field(default="openai/gpt-5.6-luna")
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:

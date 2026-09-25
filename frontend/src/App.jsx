@@ -6,6 +6,36 @@ import DashboardView from './components/DashboardView.jsx'
 import SetupView from './components/SetupView.jsx'
 import ParkingSetup from './components/ParkingSetup.jsx'
 import CameraModal from './components/CameraModal.jsx'
+import {
+  getSavedOrInitialSlots,
+  calculateSlotCounts,
+  SLOTS_STORAGE_KEY
+} from './utils/dumpData'
+
+function calculateTotalStats(cam1SlotsList) {
+  const slots = cam1SlotsList || getSavedOrInitialSlots()
+  const cam1Counts = calculateSlotCounts(slots)
+  // CAM-02: car { free: 3, total: 8 }, bike { free: 4, total: 5 }
+  // CAM-03: car { free: 2, total: 5 }, bike { free: 2, total: 2 }
+  const freeCar = cam1Counts.car.free + 3 + 2
+  const totalCar = cam1Counts.car.total + 8 + 5
+  const freeBike = cam1Counts.bike.free + 4 + 2
+  const totalBike = cam1Counts.bike.total + 5 + 2
+  const totalCapacity = totalCar + totalBike
+  const totalFree = freeCar + freeBike
+  const avgChance =
+    totalCapacity > 0
+      ? Math.min(99, Math.max(30, Math.round((totalFree / totalCapacity) * 100 + 8)))
+      : 79
+
+  return {
+    freeCar,
+    totalCar,
+    freeBike,
+    totalBike,
+    avgChance
+  }
+}
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
@@ -45,14 +75,26 @@ function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [selectedCamera, setSelectedCamera] = useState(null)
 
-  // Parking live stats state
-  const [stats, setStats] = useState({
-    freeCar: 9,
-    totalCar: 20,
-    freeBike: 11,
-    totalBike: 15,
-    avgChance: 79
-  })
+  // Parking live stats state - dynamically synchronized with ROI setup
+  const [stats, setStats] = useState(() => calculateTotalStats())
+
+  // Listen for ROI updates from ParkingSetup
+  useEffect(() => {
+    const handleUpdate = (e) => {
+      setStats(calculateTotalStats(e.detail))
+    }
+    const handleStorage = (e) => {
+      if (e.key === SLOTS_STORAGE_KEY || !e.key) {
+        setStats(calculateTotalStats())
+      }
+    }
+    window.addEventListener('cpe-slots-updated', handleUpdate)
+    window.addEventListener('storage', handleStorage)
+    return () => {
+      window.removeEventListener('cpe-slots-updated', handleUpdate)
+      window.removeEventListener('storage', handleStorage)
+    }
+  }, [])
 
   // Fetch current user details when token is present
   useEffect(() => {

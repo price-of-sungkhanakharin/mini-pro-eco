@@ -18,7 +18,10 @@ import {
   DEFAULT_CAM1_SLOTS,
   formatTimestampThai,
   formatUptime,
-  formatHeapKb
+  formatHeapKb,
+  getSavedOrInitialSlots,
+  calculateSlotCounts,
+  SLOTS_STORAGE_KEY
 } from '../utils/dumpData'
 
 export default function DashboardView({ onOpenModal }) {
@@ -28,9 +31,38 @@ export default function DashboardView({ onOpenModal }) {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [simulatedTime, setSimulatedTime] = useState(new Date())
 
+  // Dynamic real slots for CAM-01 from shared storage
+  const [cam1Slots, setCam1Slots] = useState(() => getSavedOrInitialSlots())
+  const [showRoiOverlay, setShowRoiOverlay] = useState(false)
+
   // Real Dump Records State
   const [dumpRecords, setDumpRecords] = useState([])
   const [frameIndex, setFrameIndex] = useState(29) // Default to latest snapshot (index 29)
+
+  // Listen for real-time slots updates from ParkingSetup ROI Editor
+  useEffect(() => {
+    const handleSlotsUpdated = (e) => {
+      if (e.detail && Array.isArray(e.detail)) {
+        setCam1Slots(e.detail)
+      } else {
+        setCam1Slots(getSavedOrInitialSlots())
+      }
+    }
+    const handleStorage = (e) => {
+      if (e.key === SLOTS_STORAGE_KEY || !e.key) {
+        setCam1Slots(getSavedOrInitialSlots())
+      }
+    }
+    window.addEventListener('cpe-slots-updated', handleSlotsUpdated)
+    window.addEventListener('storage', handleStorage)
+    return () => {
+      window.removeEventListener('cpe-slots-updated', handleSlotsUpdated)
+      window.removeEventListener('storage', handleStorage)
+    }
+  }, [])
+
+  // Calculate live slot metrics for CAM-01
+  const cam1Counts = calculateSlotCounts(cam1Slots)
 
   // Load real dump metadata from /dump_data/metadata.json
   useEffect(() => {
@@ -107,10 +139,23 @@ export default function DashboardView({ onOpenModal }) {
       imageUrl: currentRecord.image_url,
       snapshotTimestamp: currentRecord.local_time,
       realTelemetry: currentRecord,
-      car: { free: 4, total: 7 },
-      bike: { free: 5, total: 8 },
-      vacancyChance15m: 85,
-      slots: DEFAULT_CAM1_SLOTS
+      car: cam1Counts.car,
+      bike: cam1Counts.bike,
+      vacancyChance15m:
+        cam1Counts.car.total + cam1Counts.bike.total > 0
+          ? Math.min(
+              95,
+              Math.max(
+                35,
+                Math.round(
+                  ((cam1Counts.car.free + cam1Counts.bike.free) /
+                    (cam1Counts.car.total + cam1Counts.bike.total)) *
+                    100
+                )
+              )
+            )
+          : 85,
+      slots: cam1Slots
     },
     {
       id: 2,
@@ -313,6 +358,48 @@ export default function DashboardView({ onOpenModal }) {
                 className="camera-feed-img"
               />
 
+              {/* Live ROI SVG Overlay for CAM-01 */}
+              {cam.id === 1 && showRoiOverlay && (
+                <svg
+                  className="cam-tile-svg-overlay"
+                  viewBox="0 0 1600 1200"
+                >
+                  {cam1Slots.map((s) => {
+                    const isBike = s.type === 'motorcycle' || s.type === 'bike'
+                    const isOccupied = !!s.occupied
+                    const pts = s.points.map((p) => `${p.x},${p.y}`).join(' ')
+                    const center = {
+                      x: s.points.reduce((acc, p) => acc + p.x, 0) / s.points.length,
+                      y: s.points.reduce((acc, p) => acc + p.y, 0) / s.points.length
+                    }
+                    return (
+                      <g key={s.id}>
+                        <polygon
+                          points={pts}
+                          className={`slot-polygon ${isBike ? 'bike-polygon' : 'car-polygon'} ${isOccupied ? 'occupied' : 'vacant'}`}
+                        />
+                        <rect
+                          x={center.x - 32}
+                          y={center.y - 12}
+                          width={64}
+                          height={24}
+                          rx={5}
+                          className={`slot-label-bg ${isBike ? 'bike-label' : 'car-label'} ${isOccupied ? 'occupied' : 'vacant'}`}
+                        />
+                        <text
+                          x={center.x}
+                          y={center.y + 5}
+                          textAnchor="middle"
+                          className="slot-label-text text-[11px]"
+                        >
+                          {isBike ? '🏍️ ' : '🚗 '}{s.id}
+                        </text>
+                      </g>
+                    )
+                  })}
+                </svg>
+              )}
+
               {/* Viewport Header Overlay */}
               <div className="viewport-overlay-top">
                 <div className="cam-code-tag flex items-center gap-1.5">
@@ -340,7 +427,21 @@ export default function DashboardView({ onOpenModal }) {
                   </span>
                 </div>
 
-                <div className="cam-actions-hover opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="cam-actions-hover opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5">
+                  {cam.id === 1 && (
+                    <button
+                      type="button"
+                      className={`btn-toggle-roi-mini ${showRoiOverlay ? 'active' : ''}`}
+                      title="เปิด/ปิด ผังพิกัดช่องจอด ROI บนภาพ"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setShowRoiOverlay(!showRoiOverlay)
+                      }}
+                    >
+                      <Layers className="w-3 h-3" />
+                      <span>{showRoiOverlay ? 'ซ่อน ROI' : 'ดูผัง ROI'}</span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="action-btn-zoom"
@@ -502,13 +603,30 @@ export default function DashboardView({ onOpenModal }) {
               <div className="zone-progress-header">
                 <span className="font-medium text-xs text-white">Zone A (ลานหน้าตึก)</span>
                 <span className="text-xs text-emerald-400 font-bold">
-                  4/7 ว่าง (43% รถจอด)
+                  🚗 {cam1Counts.car.free}/{cam1Counts.car.total} • 🏍️ {cam1Counts.bike.free}/{cam1Counts.bike.total} ว่าง (
+                  {cam1Counts.car.total + cam1Counts.bike.total > 0
+                    ? Math.round(
+                        ((cam1Counts.car.occupied + cam1Counts.bike.occupied) /
+                          (cam1Counts.car.total + cam1Counts.bike.total)) *
+                          100
+                      )
+                    : 0}% จอดแล้ว)
                 </span>
               </div>
               <div className="progress-track">
                 <div
                   className="progress-fill bg-gradient-to-r from-emerald-500 to-blue-500"
-                  style={{ width: '43%' }}
+                  style={{
+                    width: `${
+                      cam1Counts.car.total + cam1Counts.bike.total > 0
+                        ? Math.round(
+                            ((cam1Counts.car.occupied + cam1Counts.bike.occupied) /
+                              (cam1Counts.car.total + cam1Counts.bike.total)) *
+                              100
+                          )
+                        : 0
+                    }%`
+                  }}
                 ></div>
               </div>
             </div>

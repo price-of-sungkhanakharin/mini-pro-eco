@@ -22,7 +22,9 @@ import {
 import {
   loadDumpMetadata,
   DEFAULT_CAM1_SLOTS,
-  formatTimestampThai
+  formatTimestampThai,
+  getSavedOrInitialSlots,
+  saveSlotsToStorage
 } from '../utils/dumpData'
 
 // Native image resolution of the dump snapshot (cam1)
@@ -35,20 +37,11 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
 
   // Drawing Tools: 'select', 'bbox' (drag rectangle), 'polygon' (4 points)
   const [currentTool, setCurrentTool] = useState('polygon')
+  // Drawing Vehicle Type: 'car' or 'motorcycle'
+  const [drawType, setDrawType] = useState('car')
 
-  // Slots state
-  const [slots, setSlots] = useState(() => {
-    try {
-      const saved = localStorage.getItem('cpe_parking_slots_cam1')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed
-      }
-    } catch (e) {
-      console.warn('Failed to parse saved slots:', e)
-    }
-    return DEFAULT_CAM1_SLOTS
-  })
+  // Slots state - synchronized with shared localStorage
+  const [slots, setSlots] = useState(() => getSavedOrInitialSlots())
 
   const [selectedSlotId, setSelectedSlotId] = useState(null)
   const [nextSlotPrefix, setNextSlotPrefix] = useState('A')
@@ -92,13 +85,9 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
     }
   }, [])
 
-  // Auto-save to localStorage whenever slots change
+  // Auto-save to localStorage & notify all ecosystem listeners whenever slots change
   useEffect(() => {
-    try {
-      localStorage.setItem('cpe_parking_slots_cam1', JSON.stringify(slots))
-    } catch (e) {
-      console.warn('Failed to save slots to localStorage:', e)
-    }
+    saveSlotsToStorage(slots)
   }, [slots])
 
   const showToast = (msg, type = 'success') => {
@@ -106,6 +95,23 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
     setTimeout(() => {
       setNotification(null)
     }, 3500)
+  }
+
+  // Quick helper to seed default motorcycle slots if missing
+  const handleAddDefaultBikes = () => {
+    const bikeSlots = DEFAULT_CAM1_SLOTS.filter(
+      (s) => s.type === 'motorcycle' || s.type === 'bike'
+    )
+    setSlots((prev) => {
+      const existingIds = new Set(prev.map((s) => s.id))
+      const toAdd = bikeSlots.filter((s) => !existingIds.has(s.id))
+      if (toAdd.length === 0) {
+        showToast('มีช่องจอดมอเตอร์ไซค์ M01/M02 อยู่แล้ว', 'info')
+        return prev
+      }
+      showToast(`เพิ่มช่องมอเตอร์ไซค์ ${toAdd.map((s) => s.id).join(', ')} เรียบร้อยแล้ว!`)
+      return [...prev, ...toAdd]
+    })
   }
 
   // Current background image info
@@ -116,18 +122,20 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
     camera_id: 'cam1'
   }
 
-  // Generate next automatic slot ID (e.g. A01 -> A02 -> A03)
-  const getNextSlotId = () => {
+  // Generate next automatic slot ID (e.g. A01 -> A02 or M01 -> M02)
+  const getNextSlotId = (overrideType) => {
+    const activeType = overrideType || drawType
+    const prefix = activeType === 'motorcycle' ? 'M' : nextSlotPrefix || 'A'
     const existingNums = slots
       .map((s) => {
-        const match = s.id.match(new RegExp(`^${nextSlotPrefix}(\\d+)$`))
+        const match = s.id.match(new RegExp(`^${prefix}(\\d+)$`))
         return match ? parseInt(match[1], 10) : 0
       })
       .filter((n) => n > 0)
 
     const maxNum = existingNums.length > 0 ? Math.max(...existingNums) : 0
     const nextNum = maxNum + 1
-    return `${nextSlotPrefix}${nextNum.toString().padStart(2, '0')}`
+    return `${prefix}${nextNum.toString().padStart(2, '0')}`
   }
 
   // Convert client mouse event to native SVG coordinates (0..1600, 0..1200)
@@ -244,7 +252,7 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
         const newId = getNextSlotId()
         const newSlot = {
           id: newId,
-          type: 'car',
+          type: drawType,
           shape: 'bbox',
           occupied: false,
           vehicle_name: 'ว่างพร้อมจอด',
@@ -258,7 +266,7 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
         }
         setSlots((prev) => [...prev, newSlot])
         setSelectedSlotId(newId)
-        showToast(`เพิ่มช่องจอด ${newId} (Bounding Box) เรียบร้อยแล้ว`)
+        showToast(`เพิ่มช่องจอด ${newId} (${drawType === 'motorcycle' ? 'มอเตอร์ไซค์' : 'รถยนต์'} Box) เรียบร้อยแล้ว`)
       }
 
       setBboxDragStart(null)
@@ -287,7 +295,7 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
 
         const newSlot = {
           id: newId,
-          type: 'car',
+          type: drawType,
           shape: 'polygon',
           occupied: false,
           vehicle_name: 'ว่างพร้อมจอด',
@@ -298,7 +306,7 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
         setSlots((prev) => [...prev, newSlot])
         setSelectedSlotId(newId)
         setPolygonDraft([])
-        showToast(`สร้างช่องจอด ${newId} (4-Point Polygon) สำเร็จ!`)
+        showToast(`สร้างช่องจอด ${newId} (${drawType === 'motorcycle' ? 'มอเตอร์ไซค์' : 'รถยนต์'} Polygon) สำเร็จ!`)
       }
     }
   }
@@ -617,6 +625,46 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
               )}
             </div>
 
+            {/* Middle Left: Vehicle Type Selector for Drawing */}
+            <div className="toolbar-group">
+              <span className="toolbar-label font-bold text-slate-200">ประเภทช่องจอด:</span>
+              <div className="flex items-center gap-1.5 p-1 bg-black/40 rounded-lg border border-white/10">
+                <button
+                  type="button"
+                  className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all ${
+                    drawType === 'car'
+                      ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/60 shadow-[0_0_12px_rgba(16,185,129,0.35)]'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
+                  }`}
+                  onClick={() => {
+                    setDrawType('car')
+                    setNextSlotPrefix('A')
+                  }}
+                  title="วาดช่องจอดรถยนต์ (สีเขียวว่าง / สีแดงมีรถ รหัส A..)"
+                >
+                  <Car className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>🚗 รถยนต์ (Car • A..)</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all ${
+                    drawType === 'motorcycle'
+                      ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(6,182,212,0.35)]'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
+                  }`}
+                  onClick={() => {
+                    setDrawType('motorcycle')
+                    setNextSlotPrefix('M')
+                  }}
+                  title="วาดช่องจอดมอเตอร์ไซค์ (สีฟ้าว่าง / สีส้มมีรถ รหัส M.. เส้นประ)"
+                >
+                  <Bike className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>🏍️ มอเตอร์ไซค์ (Bike • M..)</span>
+                </button>
+              </div>
+            </div>
+
             {/* Middle: Snapshot selector from dump */}
             <div className="toolbar-group">
               <span className="toolbar-label">ภาพ Snapshot:</span>
@@ -698,6 +746,8 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
                   x: slot.points.reduce((acc, p) => acc + p.x, 0) / slot.points.length,
                   y: slot.points.reduce((acc, p) => acc + p.y, 0) / slot.points.length
                 }
+                const isBike = slot.type === 'motorcycle' || slot.type === 'bike'
+                const isOccupied = !!slot.occupied
 
                 return (
                   <g key={slot.id} className={`slot-group ${isSelected ? 'selected' : ''}`}>
@@ -705,8 +755,8 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
                     <polygon
                       points={pointsString}
                       className={`slot-polygon ${isSelected ? 'active-polygon' : ''} ${
-                        slot.type === 'motorcycle' ? 'bike-polygon' : 'car-polygon'
-                      }`}
+                        isBike ? 'bike-polygon' : 'car-polygon'
+                      } ${isOccupied ? 'occupied' : 'vacant'}`}
                       onMouseDown={(e) => handleShapeMouseDown(e, slot)}
                       onClick={(e) => {
                         e.stopPropagation()
@@ -722,7 +772,7 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
                           cx={pt.x}
                           cy={pt.y}
                           r={10}
-                          className="slot-handle-vertex"
+                          className={`slot-handle-vertex ${isBike ? 'bike-vertex' : 'car-vertex'}`}
                           onMouseDown={(e) => handlePointMouseDown(e, slot.id, pIdx)}
                         />
                       ))}
@@ -731,20 +781,22 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
                     {showLabels && (
                       <g className="slot-label-group" pointerEvents="none">
                         <rect
-                          x={centerPoint.x - 34}
+                          x={centerPoint.x - 38}
                           y={centerPoint.y - 14}
-                          width={68}
+                          width={76}
                           height={28}
                           rx={6}
-                          className={`slot-label-bg ${isSelected ? 'active-label' : ''}`}
+                          className={`slot-label-bg ${isSelected ? 'active-label' : ''} ${
+                            isBike ? 'bike-label' : 'car-label'
+                          } ${isOccupied ? 'occupied' : 'vacant'}`}
                         />
                         <text
                           x={centerPoint.x}
-                          y={centerPoint.y + 4}
+                          y={centerPoint.y + 5}
                           textAnchor="middle"
                           className="slot-label-text"
                         >
-                          {slot.id}
+                          {isBike ? '🏍️ ' : '🚗 '}{slot.id}
                         </text>
                       </g>
                     )}
@@ -765,7 +817,7 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
                         y1={pt.y}
                         x2={nextPt.x}
                         y2={nextPt.y}
-                        className="polygon-draft-line"
+                        className={`polygon-draft-line ${drawType === 'motorcycle' ? 'bike-draft' : 'car-draft'}`}
                       />
                     )
                   })}
@@ -773,9 +825,14 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
                   {/* Vertices of draft */}
                   {polygonDraft.map((pt, idx) => (
                     <g key={idx}>
-                      <circle cx={pt.x} cy={pt.y} r={8} className="draft-point-circle" />
+                      <circle
+                        cx={pt.x}
+                        cy={pt.y}
+                        r={9}
+                        className={`draft-point-circle ${drawType === 'motorcycle' ? 'bike-point' : 'car-point'}`}
+                      />
                       <text x={pt.x + 12} y={pt.y - 8} className="draft-point-label">
-                        จุดที่ {idx + 1}
+                        {drawType === 'motorcycle' ? '🏍️' : '🚗'} จุดที่ {idx + 1}
                       </text>
                     </g>
                   ))}
@@ -789,7 +846,7 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
                   y={Math.min(bboxDragStart.y, bboxDragCurrent.y)}
                   width={Math.abs(bboxDragCurrent.x - bboxDragStart.x)}
                   height={Math.abs(bboxDragCurrent.y - bboxDragStart.y)}
-                  className="bbox-drag-preview"
+                  className={`bbox-drag-preview ${drawType === 'motorcycle' ? 'bike-bbox' : 'car-bbox'}`}
                 />
               )}
             </svg>
@@ -843,28 +900,39 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
               </div>
               <div className="flex gap-2">
                 <span className="mini-chip bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  รถยนต์: {slots.filter((s) => s.type === 'car').length}
+                  🚗 รถยนต์: {slots.filter((s) => s.type !== 'motorcycle' && s.type !== 'bike').length}
                 </span>
                 <span className="mini-chip bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                  มอเตอร์ไซค์: {slots.filter((s) => s.type === 'motorcycle').length}
+                  🏍️ มอเตอร์ไซค์: {slots.filter((s) => s.type === 'motorcycle' || s.type === 'bike').length}
                 </span>
               </div>
             </div>
 
+            {/* If no motorcycle slots yet, show quick helper button */}
+            {slots.filter((s) => s.type === 'motorcycle' || s.type === 'bike').length === 0 && (
+              <div className="mt-2.5 p-2 rounded-lg bg-cyan-950/40 border border-cyan-500/30 text-xs flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-cyan-300">
+                  <Bike className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>ยังไม่มีช่องมอเตอร์ไซค์</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAddDefaultBikes}
+                  className="px-2.5 py-1 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-200 border border-cyan-500/40 font-semibold text-[11px] transition-all cursor-pointer"
+                >
+                  + เพิ่ม M01, M02 ทันที
+                </button>
+              </div>
+            )}
+
             {/* Quick Auto-Naming Prefix Setting */}
             <div className="pt-3 flex items-center justify-between text-xs">
-              <span className="text-slate-400">รหัสเริ่มต้นถัดไป:</span>
+              <span className="text-slate-400">
+                รหัสเริ่มต้นถัดไป ({drawType === 'motorcycle' ? 'มอเตอร์ไซค์' : 'รถยนต์'}):
+              </span>
               <div className="flex items-center gap-1.5">
-                <input
-                  type="text"
-                  maxLength={3}
-                  className="prefix-input"
-                  value={nextSlotPrefix}
-                  onChange={(e) => setNextSlotPrefix(e.target.value.toUpperCase())}
-                  title="Prefix สำหรับรหัสช่องจอด เช่น A, B, C"
-                />
-                <span className="font-mono text-emerald-400 font-bold">
-                  &rarr; {getNextSlotId()}
+                <span className="font-mono text-emerald-400 font-bold bg-black/40 px-2 py-0.5 rounded border border-white/10">
+                  {getNextSlotId()}
                 </span>
               </div>
             </div>
@@ -920,21 +988,54 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    className={`type-select-btn ${selectedSlot.type === 'car' ? 'active' : ''}`}
+                    className={`type-select-btn ${selectedSlot.type === 'car' ? 'active car-active' : ''}`}
                     onClick={() => handleUpdateSlotField(selectedSlot.id, 'type', 'car')}
                   >
-                    <Car className="w-3.5 h-3.5" />
+                    <Car className="w-3.5 h-3.5 text-blue-400" />
                     <span>รถยนต์ (Car)</span>
                   </button>
                   <button
                     type="button"
-                    className={`type-select-btn ${selectedSlot.type === 'motorcycle' ? 'active' : ''}`}
+                    className={`type-select-btn ${selectedSlot.type === 'motorcycle' ? 'active bike-active' : ''}`}
                     onClick={() => handleUpdateSlotField(selectedSlot.id, 'type', 'motorcycle')}
                   >
-                    <Bike className="w-3.5 h-3.5" />
-                    <span>มอเตอร์ไซค์</span>
+                    <Bike className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>มอเตอร์ไซค์ (Bike)</span>
                   </button>
                 </div>
+              </div>
+
+              {/* Edit Occupancy Status (ว่าง / ไม่ว่าง) */}
+              <div className="inspector-field">
+                <label>สถานะช่องจอด:</label>
+                <div className="flex gap-2 mb-2">
+                  <button
+                    type="button"
+                    className={`occupancy-toggle-btn ${!selectedSlot.occupied ? 'vacant' : 'opacity-50'}`}
+                    onClick={() => handleUpdateSlotField(selectedSlot.id, 'occupied', false)}
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>ว่างพร้อมจอด (Vacant)</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`occupancy-toggle-btn ${selectedSlot.occupied ? 'occupied' : 'opacity-50'}`}
+                    onClick={() => handleUpdateSlotField(selectedSlot.id, 'occupied', true)}
+                  >
+                    <X className="w-3.5 h-3.5 text-rose-400" />
+                    <span>มีรถจอด (Occupied)</span>
+                  </button>
+                </div>
+
+                {selectedSlot.occupied && (
+                  <input
+                    type="text"
+                    className="inspector-text-input text-xs"
+                    placeholder="ระบุชื่อรุ่น/ทะเบียน (เช่น Sedan ดำ ฮฮ-9988)"
+                    value={selectedSlot.vehicle_name || ''}
+                    onChange={(e) => handleUpdateSlotField(selectedSlot.id, 'vehicle_name', e.target.value)}
+                  />
+                )}
               </div>
 
               {/* Coordinate Points Readout */}
@@ -986,12 +1087,21 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
                       {slot.id}
                     </span>
                     <span className="text-xs text-slate-300 flex items-center gap-1">
-                      {slot.type === 'motorcycle' ? (
+                      {slot.type === 'motorcycle' || slot.type === 'bike' ? (
                         <Bike className="w-3.5 h-3.5 text-cyan-400" />
                       ) : (
-                        <Car className="w-3.5 h-3.5 text-blue-400" />
+                        <Car className="w-3.5 h-3.5 text-emerald-400" />
                       )}
-                      <span>{slot.type === 'motorcycle' ? 'มอเตอร์ไซค์' : 'รถยนต์'}</span>
+                      <span>{slot.type === 'motorcycle' || slot.type === 'bike' ? 'มอเตอร์ไซค์' : 'รถยนต์'}</span>
+                    </span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${
+                        slot.occupied
+                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                      }`}
+                    >
+                      {slot.occupied ? 'Occupied' : 'Vacant'}
                     </span>
                   </div>
 

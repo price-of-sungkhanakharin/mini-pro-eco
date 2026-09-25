@@ -16,6 +16,7 @@ from backend.app.routers import (
     health,
     inference,
     label_studio_router,
+    line_bot_router,
     minio_router,
     models,
     train,
@@ -54,6 +55,10 @@ tags_metadata = [
     {
         "name": "Label Studio",
         "description": "Label Studio data annotation workspace and task management integration",
+    },
+    {
+        "name": "LINE Chatbot",
+        "description": "LINE Messaging API integration with dotBlue AI for smart parking advisory",
     },
 ]
 
@@ -171,8 +176,15 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 def startup_event():
     """Execute startup database initialization."""
     logger.info("Ensuring database tables exist...", extra={"operation": "startup", "status": "INFO"})
-    Base.metadata.create_all(bind=engine)
-    logger.info("FastAPI AI Ecosystem Gateway API successfully started", extra={"operation": "startup", "status": "SUCCESS"})
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("FastAPI AI Ecosystem Gateway API successfully started", extra={"operation": "startup", "status": "SUCCESS"})
+    except Exception as exc:
+        logger.warning(
+            "Could not connect to PostgreSQL on startup (running in lightweight/development mode): %s",
+            exc,
+            extra={"operation": "startup", "status": "WARNING"},
+        )
 
 
 # Include API Routers
@@ -184,6 +196,7 @@ app.include_router(inference.router)
 app.include_router(health.router)
 app.include_router(minio_router.router)
 app.include_router(label_studio_router.router)
+app.include_router(line_bot_router.router)
 
 
 @app.get("/")

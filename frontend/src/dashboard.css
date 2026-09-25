@@ -902,17 +902,49 @@
   border-color: #10b981;
 }
 
-.viewport-timestamp {
+.btn-toggle-roi-mini {
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s;
+  backdrop-filter: blur(4px);
+}
+
+.btn-toggle-roi-mini:hover {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.btn-toggle-roi-mini.active {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: #10b981;
+  color: #34d399;
+}
+
+.cam-tile-svg-overlay {
   position: absolute;
-  bottom: 0.4rem;
-  right: 0.6rem;
-  font-family: monospace;
-  font-size: 0.6rem;
-  color: #64748b;
-  background: rgba(0, 0, 0, 0.6);
-  padding: 1px 4px;
-  border-radius: 3px;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
+}
+
+.modal-svg-roi-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: auto;
 }
 
 /* Camera Metrics Bar */
@@ -1947,94 +1979,175 @@
 .slot-polygon {
   stroke-width: 2.5;
   cursor: pointer;
-  transition: fill 0.15s ease, stroke 0.15s ease;
+  transition: fill 0.2s ease, stroke 0.2s ease, filter 0.2s ease;
 }
 
-.slot-polygon.car-polygon {
-  fill: rgba(16, 185, 129, 0.22);
+/* Car Slots - Vacant vs Occupied */
+.slot-polygon.car-polygon.vacant {
+  fill: rgba(16, 185, 129, 0.24);
   stroke: #10b981;
 }
 
-.slot-polygon.bike-polygon {
-  fill: rgba(6, 182, 212, 0.22);
+.slot-polygon.car-polygon.occupied {
+  fill: rgba(244, 63, 94, 0.28);
+  stroke: #f43f5e;
+}
+
+/* Motorcycle Slots - Vacant vs Occupied (Distinct Cyan/Amber Palette & Dashed Perimeter) */
+.slot-polygon.bike-polygon.vacant {
+  fill: rgba(6, 182, 212, 0.26);
   stroke: #06b6d4;
+  stroke-dasharray: 8 4;
+}
+
+.slot-polygon.bike-polygon.occupied {
+  fill: rgba(245, 158, 11, 0.28);
+  stroke: #fbbf24;
+  stroke-dasharray: 8 4;
 }
 
 .slot-polygon:hover {
-  fill: rgba(16, 185, 129, 0.38);
+  filter: brightness(1.3) drop-shadow(0 0 8px rgba(255, 255, 255, 0.4));
 }
 
 .slot-polygon.active-polygon {
-  fill: rgba(16, 185, 129, 0.45);
+  stroke-width: 4;
+  filter: drop-shadow(0 0 14px rgba(255, 255, 255, 0.7));
+}
+
+.slot-polygon.active-polygon.car-polygon {
   stroke: #34d399;
-  stroke-width: 3.5;
-  filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.6));
+}
+
+.slot-polygon.active-polygon.bike-polygon {
+  stroke: #38bdf8;
 }
 
 .slot-handle-vertex {
-  fill: #10b981;
   stroke: #ffffff;
   stroke-width: 2.5;
   cursor: grab;
   filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.8));
-  transition: transform 0.1s ease;
+  transition: transform 0.1s ease, r 0.1s ease;
+}
+
+.slot-handle-vertex.car-vertex {
+  fill: #10b981;
+}
+
+.slot-handle-vertex.bike-vertex {
+  fill: #06b6d4;
 }
 
 .slot-handle-vertex:hover {
-  fill: #34d399;
   r: 12;
+  fill: #fbbf24;
 }
 
 .slot-handle-vertex:active {
   cursor: grabbing;
-  fill: #fbbf24;
+  fill: #f59e0b;
 }
 
+/* Slot Labels */
 .slot-label-bg {
-  fill: rgba(11, 17, 26, 0.9);
+  fill: rgba(11, 17, 26, 0.94);
   stroke: rgba(255, 255, 255, 0.25);
   stroke-width: 1.5;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6));
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.7));
+  transition: all 0.2s ease;
+}
+
+.slot-label-bg.car-label.vacant {
+  fill: rgba(6, 78, 59, 0.95);
+  stroke: #10b981;
+}
+
+.slot-label-bg.car-label.occupied {
+  fill: rgba(136, 19, 55, 0.95);
+  stroke: #f43f5e;
+}
+
+.slot-label-bg.bike-label.vacant {
+  fill: rgba(8, 51, 68, 0.95);
+  stroke: #06b6d4;
+}
+
+.slot-label-bg.bike-label.occupied {
+  fill: rgba(120, 53, 15, 0.95);
+  stroke: #f59e0b;
 }
 
 .slot-label-bg.active-label {
-  stroke: #34d399;
-  fill: rgba(6, 78, 59, 0.95);
+  stroke: #fcd34d;
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 10px rgba(252, 211, 77, 0.6));
 }
 
 .slot-label-text {
   fill: #ffffff;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
   font-family: monospace;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
 }
 
+/* Polygon In-Progress Draft Lines */
 .polygon-draft-line {
-  stroke: #f59e0b;
+  stroke: #10b981;
   stroke-width: 2.5;
   stroke-dasharray: 6 6;
 }
 
+.polygon-draft-line.bike-draft {
+  stroke: #06b6d4;
+  stroke-dasharray: 6 4;
+}
+
+.polygon-draft-line.car-draft {
+  stroke: #10b981;
+  stroke-dasharray: 6 4;
+}
+
 .draft-point-circle {
-  fill: #f59e0b;
+  fill: #10b981;
   stroke: #ffffff;
   stroke-width: 2;
-  filter: drop-shadow(0 0 8px #f59e0b);
+  filter: drop-shadow(0 0 8px #10b981);
+}
+
+.draft-point-circle.bike-point {
+  fill: #06b6d4;
+  filter: drop-shadow(0 0 8px #06b6d4);
+}
+
+.draft-point-circle.car-point {
+  fill: #10b981;
+  filter: drop-shadow(0 0 8px #10b981);
 }
 
 .draft-point-label {
-  fill: #fcd34d;
+  fill: #ffffff;
   font-size: 13px;
   font-family: monospace;
   font-weight: bold;
 }
 
 .bbox-drag-preview {
-  fill: rgba(59, 130, 246, 0.25);
-  stroke: #3b82f6;
+  fill: rgba(16, 185, 129, 0.25);
+  stroke: #10b981;
   stroke-width: 2.5;
   stroke-dasharray: 6 6;
+}
+
+.bbox-drag-preview.bike-bbox {
+  fill: rgba(6, 182, 212, 0.28);
+  stroke: #06b6d4;
+}
+
+.bbox-drag-preview.car-bbox {
+  fill: rgba(16, 185, 129, 0.28);
+  stroke: #10b981;
 }
 
 /* Viewport Status Footer */
@@ -2139,10 +2252,42 @@
   transition: all 0.15s ease;
 }
 
-.type-select-btn.active {
+.type-select-btn.active.car-active {
   background: rgba(16, 185, 129, 0.18);
   color: #34d399;
   border-color: rgba(16, 185, 129, 0.45);
+}
+
+.type-select-btn.active.bike-active {
+  background: rgba(6, 182, 212, 0.18);
+  color: #38bdf8;
+  border-color: rgba(6, 182, 212, 0.45);
+}
+
+.occupancy-toggle-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.45rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.occupancy-toggle-btn.vacant {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.occupancy-toggle-btn.occupied {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.35);
 }
 
 .coords-grid {

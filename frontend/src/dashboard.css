@@ -886,6 +886,13 @@
   text-overflow: ellipsis;
 }
 
+.cam-actions-hover {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
 .action-btn-zoom {
   width: 28px;
   height: 28px;

@@ -29,6 +29,7 @@ export default function DashboardView({ onOpenModal }) {
   const [countdown, setCountdown] = useState(5)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [simulatedTime, setSimulatedTime] = useState(new Date())
+  const [showRoiOverlay, setShowRoiOverlay] = useState(true)
 
   // Dynamic real slots for CAM-01 from shared storage
   const [cam1Slots, setCam1Slots] = useState(() => getSavedOrInitialSlots())
@@ -389,7 +390,21 @@ export default function DashboardView({ onOpenModal }) {
                   </span>
                 </div>
 
-                <div className="cam-actions-hover opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="cam-actions-hover">
+                  {cam.id === 1 && (
+                    <button
+                      type="button"
+                      className={`btn-toggle-roi-mini ${showRoiOverlay ? 'active' : ''}`}
+                      title="เปิด/ปิด ผังพิกัดช่องจอด ROI บนภาพ"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setShowRoiOverlay(!showRoiOverlay)
+                      }}
+                    >
+                      <Layers className="w-3 h-3" />
+                      <span>{showRoiOverlay ? 'ผัง ROI: เปิด' : 'ผัง ROI: ปิด'}</span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="action-btn-zoom"

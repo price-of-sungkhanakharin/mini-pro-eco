@@ -524,27 +524,17 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
             <button
               type="button"
               onClick={() => onNavigate('dashboard')}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 bg-white/5 hover:bg-white/10 border border-white/10 transition-all flex items-center gap-1.5"
+              className="btn-setup-back"
             >
-              <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+              <RotateCcw className="w-3.5 h-3.5" />
               <span>กลับสู่ Dashboard</span>
             </button>
           )}
 
           <button
             type="button"
-            onClick={() => setShowImportModal(true)}
-            className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 bg-white/5 hover:bg-white/10 border border-white/10 transition-all flex items-center gap-1.5"
-            title="นำเข้าไฟล์ JSON พิกัดที่เคยบันทึกไว้"
-          >
-            <Upload className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Import JSON</span>
-          </button>
-
-          <button
-            type="button"
             onClick={() => setShowExportModal(true)}
-            className="btn-save-setup flex items-center gap-1.5"
+            className="btn-setup-export"
             title="บันทึกและ Export พิกัดช่องจอดเป็น JSON"
           >
             <Download className="w-4 h-4" />
@@ -571,9 +561,9 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
         <div className="setup-canvas-panel">
           {/* Top Canvas Toolbar */}
           <div className="canvas-toolbar">
+            {/* Group 1: Tools & Vehicle Type */}
             <div className="toolbar-group">
-              <span className="toolbar-label">เครื่องมือวาด:</span>
-
+              <span className="toolbar-label">โหมด:</span>
               <button
                 type="button"
                 className={`tool-btn ${currentTool === 'select' ? 'active' : ''}`}
@@ -584,32 +574,58 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
                 title="เลือกและขยับจุดพิกัด (Select & Move)"
               >
                 <MousePointer className="w-3.5 h-3.5" />
-                <span>Select & Move</span>
+                <span>Move & Edit</span>
+              </button>
+
+              <button
+                type="button"
+                className={`vehicle-type-pill car ${currentTool !== 'select' && drawType === 'car' ? 'active' : ''}`}
+                onClick={() => {
+                  setDrawType('car')
+                  setNextSlotPrefix('A')
+                  if (currentTool === 'select') setCurrentTool('polygon')
+                }}
+                title="วาดช่องจอดรถยนต์ (สีเขียวว่าง / สีแดงมีรถ รหัส A..)"
+              >
+                <Car className="w-3.5 h-3.5" />
+                <span>วาดรถยนต์ (A..)</span>
+              </button>
+
+              <button
+                type="button"
+                className={`vehicle-type-pill bike ${currentTool !== 'select' && drawType === 'motorcycle' ? 'active' : ''}`}
+                onClick={() => {
+                  setDrawType('motorcycle')
+                  setNextSlotPrefix('M')
+                  if (currentTool === 'select') setCurrentTool('polygon')
+                }}
+                title="วาดช่องจอดมอเตอร์ไซค์ (สีฟ้าว่าง / สีส้มมีรถ รหัส M.. เส้นประ)"
+              >
+                <Bike className="w-3.5 h-3.5" />
+                <span>วาดมอเตอร์ไซค์ (M..)</span>
+              </button>
+            </div>
+
+            {/* Group 2: Shape Format */}
+            <div className="toolbar-group">
+              <button
+                type="button"
+                className={`tool-btn ${currentTool === 'polygon' ? 'active' : ''}`}
+                onClick={() => setCurrentTool('polygon')}
+                title="คลิก 4 มุมช่องจอด (4-Point Polygon)"
+              >
+                <Pentagon className="w-3.5 h-3.5 text-amber-400" />
+                <span>4-Pt Polygon</span>
               </button>
 
               <button
                 type="button"
                 className={`tool-btn ${currentTool === 'bbox' ? 'active' : ''}`}
-                onClick={() => {
-                  setCurrentTool('bbox')
-                  setPolygonDraft([])
-                }}
-                title="คลิกลากวาดกรอบสี่เหลี่ยม (Bounding Box)"
+                onClick={() => setCurrentTool('bbox')}
+                title="คลิกลากกล่องสี่เหลี่ยม (BBox)"
               >
                 <Square className="w-3.5 h-3.5" />
-                <span>Box (BBox)</span>
-              </button>
-
-              <button
-                type="button"
-                className={`tool-btn ${currentTool === 'polygon' ? 'active' : ''}`}
-                onClick={() => {
-                  setCurrentTool('polygon')
-                }}
-                title="คลิก 4 จุดมุมตามมุมมองเอียง (4-Point Polygon)"
-              >
-                <Pentagon className="w-3.5 h-3.5 text-amber-400" />
-                <span>4-Pt Polygon</span>
+                <span>Box</span>
               </button>
 
               {polygonDraft.length > 0 && (
@@ -625,49 +641,9 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
               )}
             </div>
 
-            {/* Middle Left: Vehicle Type Selector for Drawing */}
+            {/* Group 3: Snapshot Frame Selector */}
             <div className="toolbar-group">
-              <span className="toolbar-label font-bold text-slate-200">ประเภทช่องจอด:</span>
-              <div className="flex items-center gap-1.5 p-1 bg-black/40 rounded-lg border border-white/10">
-                <button
-                  type="button"
-                  className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all ${
-                    drawType === 'car'
-                      ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/60 shadow-[0_0_12px_rgba(16,185,129,0.35)]'
-                      : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
-                  }`}
-                  onClick={() => {
-                    setDrawType('car')
-                    setNextSlotPrefix('A')
-                  }}
-                  title="วาดช่องจอดรถยนต์ (สีเขียวว่าง / สีแดงมีรถ รหัส A..)"
-                >
-                  <Car className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>🚗 รถยนต์ (Car • A..)</span>
-                </button>
-
-                <button
-                  type="button"
-                  className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all ${
-                    drawType === 'motorcycle'
-                      ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(6,182,212,0.35)]'
-                      : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
-                  }`}
-                  onClick={() => {
-                    setDrawType('motorcycle')
-                    setNextSlotPrefix('M')
-                  }}
-                  title="วาดช่องจอดมอเตอร์ไซค์ (สีฟ้าว่าง / สีส้มมีรถ รหัส M.. เส้นประ)"
-                >
-                  <Bike className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>🏍️ มอเตอร์ไซค์ (Bike • M..)</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Middle: Snapshot selector from dump */}
-            <div className="toolbar-group">
-              <span className="toolbar-label">ภาพ Snapshot:</span>
+              <span className="toolbar-label">Frame:</span>
               <select
                 className="snapshot-select-input"
                 value={selectedImageIndex}
@@ -675,13 +651,13 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
               >
                 {dumpRecords.map((r, i) => (
                   <option key={r.id || i} value={i}>
-                    #{i + 1} • {r.local_time || r.filename}
+                    #{i + 1} • {r.local_time ? r.local_time.split(' ')[1] : r.filename}
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* Right: Viewport Display Toggles */}
+            {/* Group 4: Quick Toggles */}
             <div className="toolbar-group">
               <button
                 type="button"
@@ -710,7 +686,7 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
                 title="ล้างช่องจอดทั้งหมด"
               >
                 <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                <span>Clear All</span>
+                <span>Clear</span>
               </button>
             </div>
           </div>
@@ -918,7 +894,7 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
                 <button
                   type="button"
                   onClick={handleAddDefaultBikes}
-                  className="px-2.5 py-1 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-200 border border-cyan-500/40 font-semibold text-[11px] transition-all cursor-pointer"
+                  className="btn-seed-bikes"
                 >
                   + เพิ่ม M01, M02 ทันที
                 </button>
@@ -1082,26 +1058,15 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
                   className={`slot-item-row ${slot.id === selectedSlotId ? 'active' : ''}`}
                   onClick={() => setSelectedSlotId(slot.id)}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="slot-row-meta">
                     <span className="slot-badge-id font-mono font-bold">
                       {slot.id}
                     </span>
-                    <span className="text-xs text-slate-300 flex items-center gap-1">
-                      {slot.type === 'motorcycle' || slot.type === 'bike' ? (
-                        <Bike className="w-3.5 h-3.5 text-cyan-400" />
-                      ) : (
-                        <Car className="w-3.5 h-3.5 text-emerald-400" />
-                      )}
-                      <span>{slot.type === 'motorcycle' || slot.type === 'bike' ? 'มอเตอร์ไซค์' : 'รถยนต์'}</span>
+                    <span className={`slot-type-chip ${slot.type === 'motorcycle' || slot.type === 'bike' ? 'bike' : 'car'}`}>
+                      {slot.type === 'motorcycle' || slot.type === 'bike' ? '🏍️ มอเตอร์ไซค์' : '🚗 รถยนต์'}
                     </span>
-                    <span
-                      className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${
-                        slot.occupied
-                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                      }`}
-                    >
-                      {slot.occupied ? 'Occupied' : 'Vacant'}
+                    <span className={`slot-status-chip ${slot.occupied ? 'occupied' : 'vacant'}`}>
+                      {slot.occupied ? 'มีรถ' : 'ว่าง'}
                     </span>
                   </div>
 

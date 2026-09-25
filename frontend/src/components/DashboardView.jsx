@@ -25,7 +25,6 @@ import {
 } from '../utils/dumpData'
 
 export default function DashboardView({ onOpenModal }) {
-  const [gridMode, setGridMode] = useState(3) // 3 or 6 or 1
   const [selectedZone, setSelectedZone] = useState('all')
   const [countdown, setCountdown] = useState(5)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -33,7 +32,6 @@ export default function DashboardView({ onOpenModal }) {
 
   // Dynamic real slots for CAM-01 from shared storage
   const [cam1Slots, setCam1Slots] = useState(() => getSavedOrInitialSlots())
-  const [showRoiOverlay, setShowRoiOverlay] = useState(false)
 
   // Real Dump Records State
   const [dumpRecords, setDumpRecords] = useState([])
@@ -287,38 +285,10 @@ export default function DashboardView({ onOpenModal }) {
             </button>
           </div>
 
-          {/* Grid Mode Buttons */}
-          <div className="grid-switcher">
-            <button
-              type="button"
-              className={`grid-btn ${gridMode === 3 ? 'active' : ''}`}
-              onClick={() => setGridMode(3)}
-              title="3 Cameras"
-            >
-              3 Cam
-            </button>
-            <button
-              type="button"
-              className={`grid-btn ${gridMode === 6 ? 'active' : ''}`}
-              onClick={() => setGridMode(6)}
-              title="6 Cameras Grid"
-            >
-              6 Cam
-            </button>
-            <button
-              type="button"
-              className={`grid-btn ${gridMode === 1 ? 'active' : ''}`}
-              onClick={() => setGridMode(1)}
-              title="Single Focused Cam"
-            >
-              1 Cam
-            </button>
-          </div>
-
           {/* Ingestion Countdown & Refresh Button */}
           <div className="countdown-badge" title="เวลาถึงรอบจับภาพ Snapshot ถัดไป">
             <span className="text-[11px] text-slate-400">Snapshot ใน:</span>
-            <span className="text-xs font-bold text-emerald-400">
+            <span className="text-xs font-bold text-emerald-400 font-mono">
               {countdown}s
             </span>
           </div>
@@ -334,16 +304,8 @@ export default function DashboardView({ onOpenModal }) {
         </div>
       </div>
 
-      {/* Camera Grid Section */}
-      <div
-        className={`camera-grid-layout ${
-          gridMode === 3
-            ? 'grid-cols-3'
-            : gridMode === 6
-            ? 'grid-cols-3-double'
-            : 'grid-cols-1'
-        }`}
-      >
+      {/* Camera Grid Section (Clean 3-Camera Uniform Layout) */}
+      <div className="camera-grid-layout grid-cols-3">
         {filteredCameras.map((cam) => (
           <div
             key={cam.id}
@@ -413,7 +375,7 @@ export default function DashboardView({ onOpenModal }) {
                   <span className="live-ping"></span>
                   <span className="live-dot"></span>
                   <span className="live-text">
-                    {cam.isReal ? 'ONLINE • 5s SNAP' : 'ACTIVE'}
+                    {cam.isReal ? 'ONLINE • 5s' : 'ACTIVE'}
                   </span>
                 </div>
               </div>
@@ -423,29 +385,15 @@ export default function DashboardView({ onOpenModal }) {
                 <div className="cam-name-info">
                   <span className="cam-title-text">{cam.name}</span>
                   <span className="cam-sub-text">
-                    {cam.subtitle} • IP: {cam.ip}
+                    {cam.subtitle} • {formatTimestampThai(cam.snapshotTimestamp)}
                   </span>
                 </div>
 
-                <div className="cam-actions-hover opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5">
-                  {cam.id === 1 && (
-                    <button
-                      type="button"
-                      className={`btn-toggle-roi-mini ${showRoiOverlay ? 'active' : ''}`}
-                      title="เปิด/ปิด ผังพิกัดช่องจอด ROI บนภาพ"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setShowRoiOverlay(!showRoiOverlay)
-                      }}
-                    >
-                      <Layers className="w-3 h-3" />
-                      <span>{showRoiOverlay ? 'ซ่อน ROI' : 'ดูผัง ROI'}</span>
-                    </button>
-                  )}
+                <div className="cam-actions-hover opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     type="button"
                     className="action-btn-zoom"
-                    title="ขยายดูภาพและดีเทล"
+                    title="ขยายดูภาพและผังช่องจอด ROI"
                     onClick={(e) => {
                       e.stopPropagation()
                       if (onOpenModal) onOpenModal(cam)
@@ -455,61 +403,9 @@ export default function DashboardView({ onOpenModal }) {
                   </button>
                 </div>
               </div>
-
-              {/* Camera Time Watermark */}
-              <div className="viewport-timestamp">
-                {cam.snapshotTimestamp
-                  ? `REC: ${formatTimestampThai(cam.snapshotTimestamp)}`
-                  : `${simulatedTime.toISOString().replace('T', ' ').substring(0, 19)}`}
-              </div>
             </div>
 
-            {/* Hardware Telemetry Bar (Clean Unified Typography matching the dashboard) */}
-            {cam.isReal && (
-              <div className="cam-telemetry-strip">
-                <div className="telemetry-metrics-row">
-                  <div className="telemetry-pill-item" title="อุณหภูมิชิปประมวลผล (Core Temp)">
-                    <Thermometer className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Temp:</span>
-                    <span className="telemetry-pill-value text-amber-300 font-semibold">
-                      {cam.realTelemetry?.chip_temp_c ? `${cam.realTelemetry.chip_temp_c.toFixed(1)}°C` : '80.5°C'}
-                    </span>
-                  </div>
-
-                  <div className="telemetry-pill-item" title="หน่วยความจำคงเหลือ (Free Heap)">
-                    <Cpu className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>Heap:</span>
-                    <span className="telemetry-pill-value text-cyan-300 font-semibold">
-                      {formatHeapKb(cam.realTelemetry?.free_heap)}
-                    </span>
-                  </div>
-
-                  <div className="telemetry-pill-item" title="ความแรงสัญญาณ Wi-Fi (RSSI)">
-                    <Wifi className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>RSSI:</span>
-                    <span className="telemetry-pill-value text-emerald-300 font-semibold">
-                      {cam.realTelemetry?.wifi_rssi_dbm ? `${cam.realTelemetry.wifi_rssi_dbm} dBm` : '-82 dBm'}
-                    </span>
-                  </div>
-
-                  <div className="telemetry-pill-item" title="ระยะเวลาเปิดทำงานต่อเนื่อง">
-                    <Clock className="w-3.5 h-3.5 text-purple-400" />
-                    <span>Up:</span>
-                    <span className="telemetry-pill-value text-purple-300 font-semibold">
-                      {formatUptime(cam.realTelemetry?.uptime_sec)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Clean Status Tag */}
-                <span className="telemetry-status-tag">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span>{cam.realTelemetry?.status || 'ONLINE'}</span>
-                </span>
-              </div>
-            )}
-
-            {/* Camera Metrics & Parking Counter Bar */}
+            {/* Camera Metrics & Parking Counter Bar (Uniform on all cards) */}
             <div className="camera-metrics-bar">
               <div className="flex items-center gap-3">
                 <div className="slot-badge car-badge">
@@ -536,50 +432,6 @@ export default function DashboardView({ onOpenModal }) {
             </div>
           </div>
         ))}
-
-        {/* In 6 Cam mode, show standby slots 4, 5, 6 */}
-        {gridMode === 6 && (
-          <>
-            <div className="camera-card-tile standby-tile">
-              <div className="standby-viewport">
-                <Video className="w-8 h-8 text-slate-600 mb-2" />
-                <span className="text-xs font-bold text-slate-400">
-                  CAM-04 [STANDBY NODE]
-                </span>
-                <span className="text-[11px] text-slate-500 mt-1">
-                  ลานจอดสำรองทิศใต้ (South Expansion)
-                </span>
-                <span className="standby-badge">Unassigned Stream</span>
-              </div>
-            </div>
-
-            <div className="camera-card-tile standby-tile">
-              <div className="standby-viewport">
-                <Video className="w-8 h-8 text-slate-600 mb-2" />
-                <span className="text-xs font-bold text-slate-400">
-                  CAM-05 [STANDBY NODE]
-                </span>
-                <span className="text-[11px] text-slate-500 mt-1">
-                  จุดจอดจักรยานยนต์โซนทางเชื่อม
-                </span>
-                <span className="standby-badge">Unassigned Stream</span>
-              </div>
-            </div>
-
-            <div className="camera-card-tile standby-tile">
-              <div className="standby-viewport">
-                <Video className="w-8 h-8 text-slate-600 mb-2" />
-                <span className="text-xs font-bold text-slate-400">
-                  CAM-06 [STANDBY NODE]
-                </span>
-                <span className="text-[11px] text-slate-500 mt-1">
-                  ทางออกลานจอดรถด้านข้าง
-                </span>
-                <span className="standby-badge">Unassigned Stream</span>
-              </div>
-            </div>
-          </>
-        )}
       </div>
 
       {/* Intelligence & Analytics Section (Balanced 2-Column Layout, LINE Card Removed) */}

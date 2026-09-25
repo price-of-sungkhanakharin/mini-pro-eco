@@ -268,5 +268,81 @@ export const DEFAULT_CAM1_SLOTS = [
       { x: 10, y: 960 }
     ],
     bbox: { x: 10, y: 700, width: 360, height: 275 }
+  },
+  {
+    id: 'M01',
+    type: 'motorcycle',
+    shape: 'polygon',
+    occupied: true,
+    vehicle_name: 'Honda Wave แดง',
+    points: [
+      { x: 1060, y: 470 },
+      { x: 1140, y: 472 },
+      { x: 1130, y: 550 },
+      { x: 1050, y: 548 }
+    ],
+    bbox: { x: 1050, y: 470, width: 90, height: 80 }
+  },
+  {
+    id: 'M02',
+    type: 'motorcycle',
+    shape: 'polygon',
+    occupied: false,
+    vehicle_name: 'ว่างพร้อมจอด',
+    points: [
+      { x: 1150, y: 472 },
+      { x: 1230, y: 475 },
+      { x: 1220, y: 552 },
+      { x: 1140, y: 550 }
+    ],
+    bbox: { x: 1140, y: 472, width: 90, height: 80 }
   }
 ]
+
+export const SLOTS_STORAGE_KEY = 'cpe_parking_slots_cam1'
+
+export function getSavedOrInitialSlots() {
+  if (typeof window === 'undefined') return DEFAULT_CAM1_SLOTS
+  try {
+    const raw = localStorage.getItem(SLOTS_STORAGE_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed
+      }
+    }
+  } catch (e) {
+    console.warn('Error reading saved slots from localStorage:', e)
+  }
+  return DEFAULT_CAM1_SLOTS
+}
+
+export function saveSlotsToStorage(slots) {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(SLOTS_STORAGE_KEY, JSON.stringify(slots))
+    window.dispatchEvent(new CustomEvent('cpe-slots-updated', { detail: slots }))
+  } catch (e) {
+    console.warn('Failed to save slots to storage:', e)
+  }
+}
+
+export function calculateSlotCounts(slots) {
+  const safeSlots = Array.isArray(slots) ? slots : []
+  const carSlots = safeSlots.filter(s => s.type !== 'motorcycle' && s.type !== 'bike')
+  const bikeSlots = safeSlots.filter(s => s.type === 'motorcycle' || s.type === 'bike')
+
+  const totalCar = carSlots.length
+  const freeCar = carSlots.filter(s => !s.occupied).length
+  const occupiedCar = totalCar - freeCar
+
+  const totalBike = bikeSlots.length
+  const freeBike = bikeSlots.filter(s => !s.occupied).length
+  const occupiedBike = totalBike - freeBike
+
+  return {
+    car: { free: freeCar, total: totalCar, occupied: occupiedCar },
+    bike: { free: freeBike, total: totalBike, occupied: occupiedBike }
+  }
+}
+

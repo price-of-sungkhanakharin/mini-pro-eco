@@ -4,10 +4,10 @@ import logging
 from typing import Any, Dict
 
 from fastapi import APIRouter, Header, HTTPException, Request
-from linebot.v3.exceptions import InvalidSignatureError
 
 from backend.app.services.line_bot_service import (
     CURRENT_PARKING_STATE,
+    InvalidSignatureError,
     line_bot_service,
 )
 

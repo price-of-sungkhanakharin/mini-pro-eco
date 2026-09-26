@@ -101,7 +101,10 @@ services:
     ports:
       - "8000:8000"
     volumes:
+      - ./backend:/app/backend
       - ./logs:/app/logs
+      - ./data:/app/data
+      - ./.env:/app/.env
     depends_on:
       db:
         condition: service_healthy

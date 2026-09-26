@@ -22,6 +22,8 @@ import {
   ShieldCheck
 } from 'lucide-react'
 
+const INTERVAL_SECONDS = 1800 // 30 Minutes
+
 export default function RoboflowStudio({ apiBase }) {
   const effectiveApiBase =
     apiBase ||

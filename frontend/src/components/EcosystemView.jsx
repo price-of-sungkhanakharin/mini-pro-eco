@@ -11,60 +11,61 @@ import {
 } from 'lucide-react'
 
 export default function EcosystemView() {
+  const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost'
   const tools = [
     {
-      title: 'Grafana Observability',
-      subtitle: 'System Metrics, CPU/RAM, Prometheus, Loki Logs & OTel',
-      port: ':3000',
-      url: 'http://localhost:3000',
-      desc: 'แดชบอร์ดศูนย์กลางมอนิเตอร์สถานะระบบ AI Ecosystem, Traces, Service Health',
+      title: 'FastAPI Interactive Swagger Docs',
+      subtitle: 'REST API Specifications & Interactive Testing',
+      port: ':8000',
+      url: `http://${host}:8000/docs`,
+      desc: 'ทดสอบยิง API ทุกเส้น เช่น /parking/summary, /api/v1/roboflow/status, /predict',
       status: 'Active',
-      color: 'emerald'
+      color: 'amber'
     },
     {
-      title: 'MLflow Tracking Server',
-      subtitle: 'Model Versioning, Metrics Tracking, Runs & Artifacts',
-      port: ':5001',
-      url: 'http://localhost:5001',
-      desc: 'เก็บบันทึกการเทรนโมเดล AI, Loss/Accuracy Curves และ Model Weights',
+      title: 'Ingestion Server & Live Telemetry',
+      subtitle: 'Edge IoT Camera Ingestion & Telemetry API',
+      port: ':5005',
+      url: `http://${host}:5005/api/telemetry`,
+      desc: 'รับภาพและข้อมูลสตรีมสดจากกล้อง ESP32-CAM พร้อมสั่งการ Deep Sleep',
       status: 'Active',
-      color: 'blue'
+      color: 'emerald'
     },
     {
       title: 'MinIO Object Storage Console',
       subtitle: 'S3-Compatible Storage for Dataset & Image Snapshots',
       port: ':9001',
-      url: 'http://localhost:9001',
+      url: `http://${host}:9001`,
       desc: 'เข้าดู Bucket รูปภาพ Snapshot กล้องวงจรปิด และไฟล์ Weights',
       status: 'Active',
       color: 'rose'
     },
     {
-      title: 'FastAPI Interactive Swagger Docs',
-      subtitle: 'REST API Specifications & Interactive Testing',
-      port: ':8005',
-      url: 'http://localhost:8005/docs',
-      desc: 'ทดสอบยิง API ทุกเส้น เช่น /parking/summary, /roboflow/upload, /predict',
+      title: 'Label Studio Annotation Platform',
+      subtitle: 'Self-hosted Multi-modal Data Annotation Platform',
+      port: ':8080',
+      url: `http://${host}:8080`,
+      desc: 'ระบบ Label ภาพและสร้าง Annotation สำหรับ Dataset ภายในเครื่อง',
       status: 'Active',
-      color: 'amber'
+      color: 'blue'
     },
     {
-      title: 'Prometheus Metrics Target',
-      subtitle: 'Time-Series Monitoring Database Engine',
-      port: ':9090',
-      url: 'http://localhost:9090',
-      desc: 'สืบค้น PromQL และดูสถานะ Scrape Targets ทั้งหมดของ Ecosystem',
-      status: 'Active',
-      color: 'cyan'
-    },
-    {
-      title: 'PostgreSQL / TimescaleDB',
+      title: 'PostgreSQL Database Engine',
       subtitle: 'Relational & Time-Series Parking Occupancy Logs',
       port: ':5432',
-      url: 'localhost:5432',
-      desc: 'ฐานข้อมูลเก็บ User, Model Registry และตาราง parking_occupancy_logs',
+      url: `${host}:5432`,
+      desc: 'ฐานข้อมูลเก็บ User, Model Registry, Audit Roboflow และ parking_occupancy_logs',
       status: 'Active',
       color: 'indigo'
+    },
+    {
+      title: 'Redis Cache & Queue',
+      subtitle: 'In-Memory Cache & Asynchronous Task Queue',
+      port: ':6379',
+      url: `${host}:6379`,
+      desc: 'ระบบแคชข้อมูลความเร็วสูงและคิวงานประมวลผลพื้นหลัง',
+      status: 'Active',
+      color: 'cyan'
     }
   ]
 

@@ -9,6 +9,8 @@ from . import (
     line_bot_router,
     minio_router,
     models,
+    parking_router,
+    roboflow_router,
     train,
 )
 
@@ -21,5 +23,7 @@ __all__ = [
     "line_bot_router",
     "minio_router",
     "models",
+    "parking_router",
+    "roboflow_router",
     "train",
 ]

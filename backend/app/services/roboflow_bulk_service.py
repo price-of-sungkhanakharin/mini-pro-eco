@@ -52,7 +52,8 @@ class RoboflowBulkSyncManager:
             "completed_at": None,
             "last_message": "ระบบพร้อมสำหรับการส่งข้อมูลเก่าย้อนหลัง",
         }
-        self.roboflow_service = RoboflowService()
+        self._cached_candidates: List[Dict[str, Any]] = []
+        self._last_scan_time: float = 0.0
 
     @property
     def is_active(self) -> bool:
@@ -65,32 +66,39 @@ class RoboflowBulkSyncManager:
             **self._progress,
         }
 
-    def scan_historical_candidates(self, db: Session, limit: int = 5000) -> List[Dict[str, Any]]:
+    def scan_historical_candidates(self, db: Session, limit: int = 5000, force_refresh: bool = False) -> List[Dict[str, Any]]:
         """Scan candidate directories for unuploaded historical images (06:00 - 20:00 only)."""
+        now = time.time()
+        if not force_refresh and self._cached_candidates and (now - self._last_scan_time < 30.0):
+            return self._cached_candidates
+
         candidate_dirs = [
-            Path("storage/cctv_dumps"),
-            Path("storage"),
+            Path("data/dataset"),
+            Path("data/4camera"),
             Path("data/raw_images"),
-            Path("frontend/public/dump_data/images"),
-            Path("public/dump_data/images"),
+            Path("data"),
+            Path("storage/cctv_dumps"),
             Path("dump_data/images"),
-            Path("data/raw_images/cam1"),
-            Path("data/raw_images/cam2"),
-            Path("data/raw_images/cam3"),
-            Path("/drsum/data/raw_images"),
         ]
 
         found_files: List[Path] = []
         for cdir in candidate_dirs:
             if cdir.exists() and cdir.is_dir():
-                for p in sorted(cdir.rglob("*")):
-                    if p.is_file() and p.suffix.lower() in ALLOWED_IMAGE_EXTENSIONS:
+                for p in cdir.rglob("*.jpg"):
+                    if p.is_file():
                         found_files.append(p)
+                for p in cdir.rglob("*.png"):
+                    if p.is_file():
+                        found_files.append(p)
+                if len(found_files) >= limit * 2:
+                    break
 
         if not found_files:
+            self._cached_candidates = []
+            self._last_scan_time = now
             return []
 
-        # Deduplicate by resolved file path so cam1, cam2, cam3 images aren't mistakenly merged
+        # Deduplicate by resolved file path
         seen_paths = set()
         unique_files = []
         for f in found_files:
@@ -98,6 +106,10 @@ class RoboflowBulkSyncManager:
             if p_str not in seen_paths:
                 seen_paths.add(p_str)
                 unique_files.append(f)
+
+        # Bulk fetch all already uploaded file paths from DB in a single fast query
+        uploaded_records = db.query(RoboflowUploadLog.file_path).filter(RoboflowUploadLog.status == "UPLOADED").all()
+        uploaded_set = {r[0] for r in uploaded_records}
 
         cam_cycle = ["cam1", "cam2", "cam3"]
         candidates = []
@@ -108,7 +120,7 @@ class RoboflowBulkSyncManager:
             # Determine camera_id from path parts (cam1, cam2, cam3) or fall back to cycle
             camera_id = None
             for part in img_path.parts:
-                if part.lower() in ("cam1", "cam2", "cam3"):
+                if part.lower() in ("cam1", "cam2", "cam3", "cam4"):
                     camera_id = part.lower()
                     break
             if not camera_id:
@@ -133,13 +145,7 @@ class RoboflowBulkSyncManager:
 
             structured_path = f"{camera_id}/{date_str}/{hour_str}/{file_name}"
 
-            # Check database: if already UPLOADED, skip
-            existing = (
-                db.query(RoboflowUploadLog)
-                .filter(RoboflowUploadLog.file_path == structured_path)
-                .first()
-            )
-            if existing and existing.status == "UPLOADED":
+            if structured_path in uploaded_set:
                 continue
 
             candidates.append({
@@ -152,6 +158,8 @@ class RoboflowBulkSyncManager:
                 "captured_at": captured_at,
             })
 
+        self._cached_candidates = candidates
+        self._last_scan_time = now
         return candidates
 
     async def run_bulk_upload_job(self, chunk_size: Optional[int] = None):

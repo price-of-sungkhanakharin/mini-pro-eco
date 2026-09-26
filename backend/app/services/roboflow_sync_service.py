@@ -63,19 +63,22 @@ class RoboflowSyncManager:
         Organizes paths into: {cam_id}/{YYYY-MM-DD}/{HH}/{filename}
         """
         candidate_dirs = [
-            Path("storage/cctv_dumps"),
+            Path("data/dataset"),
+            Path("data/4camera"),
             Path("data/raw_images"),
-            Path("frontend/public/dump_data/images"),
-            Path("public/dump_data/images"),
+            Path("data"),
+            Path("storage/cctv_dumps"),
             Path("dump_data/images"),
-            Path("data/raw_images/cam1"),
         ]
 
         found_images: List[Path] = []
         for d in candidate_dirs:
             if d.exists() and d.is_dir():
-                for p in sorted(d.rglob("*")):
-                    if p.is_file() and p.suffix.lower() in ALLOWED_IMAGE_EXTENSIONS:
+                for p in d.rglob("*.jpg"):
+                    if p.is_file():
+                        found_images.append(p)
+                for p in d.rglob("*.png"):
+                    if p.is_file():
                         found_images.append(p)
                 if found_images:
                     break

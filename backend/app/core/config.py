@@ -56,6 +56,12 @@ class Settings(BaseSettings):
     dotblue_base_url: str = Field(default="https://ai.psu.blue/v1")
     dotblue_model: str = Field(default="openai/gpt-5.6-luna")
 
+    # Roboflow Cloud Annotation Settings
+    roboflow_api_key: str = Field(default="")
+    roboflow_workspace: str = Field(default="")
+    roboflow_project: str = Field(default="")
+    roboflow_version: int = Field(default=1)
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:

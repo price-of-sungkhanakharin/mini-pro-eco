@@ -22,10 +22,13 @@ import {
   ShieldCheck
 } from 'lucide-react'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8005'
-const INTERVAL_SECONDS = 1800 // 30 Minutes
-
-export default function RoboflowStudio() {
+export default function RoboflowStudio({ apiBase }) {
+  const effectiveApiBase =
+    apiBase ||
+    import.meta.env.VITE_API_BASE_URL ||
+    (typeof window !== 'undefined'
+      ? `http://${window.location.hostname}:8000`
+      : 'http://localhost:8000')
   const [syncStatus, setSyncStatus] = useState(null)
   const [bulkStatus, setBulkStatus] = useState(null)
   const [countdown, setCountdown] = useState(INTERVAL_SECONDS)
@@ -37,8 +40,8 @@ export default function RoboflowStudio() {
   const fetchStatus = async () => {
     try {
       const [syncRes, bulkRes] = await Promise.all([
-        fetch(`${API_BASE}/api/v1/roboflow/sync/status`),
-        fetch(`${API_BASE}/api/v1/roboflow/bulk/status`)
+        fetch(`${effectiveApiBase}/api/v1/roboflow/sync/status`),
+        fetch(`${effectiveApiBase}/api/v1/roboflow/bulk/status`)
       ])
       if (syncRes.ok) {
         const data = await syncRes.json()
@@ -61,7 +64,7 @@ export default function RoboflowStudio() {
     fetchStatus()
     const pollTimer = setInterval(fetchStatus, 4000)
     return () => clearInterval(pollTimer)
-  }, [])
+  }, [effectiveApiBase])
 
   // Local 1-second countdown ticker for smooth UI
   useEffect(() => {
@@ -69,18 +72,18 @@ export default function RoboflowStudio() {
       setCountdown((prev) => {
         if (prev <= 1) {
           fetchStatus()
-          return INTERVAL_SECONDS
+          return 1800
         }
         return prev - 1
       })
     }, 1000)
     return () => clearInterval(ticker)
-  }, [])
+  }, [effectiveApiBase])
 
   const handleForceSync = async () => {
     setTriggering(true)
     try {
-      const res = await fetch(`${API_BASE}/api/v1/roboflow/sync/trigger?batch_size=15`, {
+      const res = await fetch(`${effectiveApiBase}/api/v1/roboflow/sync/trigger?batch_size=15`, {
         method: 'POST'
       })
       if (res.ok) {
@@ -96,7 +99,7 @@ export default function RoboflowStudio() {
   const handleStartBulk = async () => {
     setStartingBulk(true)
     try {
-      const res = await fetch(`${API_BASE}/api/v1/roboflow/bulk/start?chunk_size=300`, {
+      const res = await fetch(`${effectiveApiBase}/api/v1/roboflow/bulk/start?chunk_size=300`, {
         method: 'POST'
       })
       if (res.ok) {
@@ -111,7 +114,7 @@ export default function RoboflowStudio() {
 
   const handleCancelBulk = async () => {
     try {
-      await fetch(`${API_BASE}/api/v1/roboflow/bulk/cancel`, { method: 'POST' })
+      await fetch(`${effectiveApiBase}/api/v1/roboflow/bulk/cancel`, { method: 'POST' })
       await fetchStatus()
     } catch (err) {
       console.error('Cancel bulk error:', err)

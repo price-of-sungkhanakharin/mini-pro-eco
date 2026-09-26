@@ -67,10 +67,14 @@ class RoboflowBulkSyncManager:
             **self._progress,
         }
 
-    def scan_historical_candidates(self, db: Session, limit: int = 5000, force_refresh: bool = False) -> List[Dict[str, Any]]:
+    def scan_historical_candidates(
+        self, db: Session, limit: int = 5000, force_refresh: bool = False, camera_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         """Scan candidate directories for unuploaded historical images (06:00 - 20:00 only)."""
         now = time.time()
         if not force_refresh and self._cached_candidates and (now - self._last_scan_time < 30.0):
+            if camera_id and camera_id.lower() != "all":
+                return [c for c in self._cached_candidates if c["camera_id"] == camera_id.lower()]
             return self._cached_candidates
 
         candidate_dirs = [
@@ -161,12 +165,15 @@ class RoboflowBulkSyncManager:
 
         self._cached_candidates = candidates
         self._last_scan_time = now
+        if camera_id and camera_id.lower() != "all":
+            return [c for c in candidates if c["camera_id"] == camera_id.lower()]
         return candidates
 
-    async def run_bulk_upload_job(self, chunk_size: Optional[int] = None):
+    async def run_bulk_upload_job(self, chunk_size: Optional[int] = None, camera_id: Optional[str] = None):
         """Execute the bulk packing and chunked upload job in background."""
         self._is_active = True
         c_size = chunk_size or self.chunk_size
+        target_cam = (camera_id or "all").upper()
         self._progress.update({
             "status": "SCANNING",
             "started_at": datetime.now(timezone.utc).isoformat(),
@@ -174,12 +181,13 @@ class RoboflowBulkSyncManager:
             "processed_images": 0,
             "uploaded_images": 0,
             "failed_images": 0,
-            "last_message": "กำลังสแกนค้นหารูปภาพย้อนหลังบนระบบ...",
+            "target_camera": target_cam,
+            "last_message": f"กำลังสแกนค้นหารูปภาพย้อนหลัง ({target_cam})...",
         })
 
         try:
             with SessionLocal() as db:
-                candidates = self.scan_historical_candidates(db)
+                candidates = self.scan_historical_candidates(db, camera_id=camera_id)
 
             total_cands = len(candidates)
             self._progress["total_candidates"] = total_cands
@@ -229,8 +237,12 @@ class RoboflowBulkSyncManager:
                     # 2. Upload images to Roboflow and update PostgreSQL
                     async def upload_one(item):
                         img_bytes = item["local_path"].read_bytes()
-                        batch_name = f"bulk_chunk_{chunk_idx}_{item['camera_id']}"
-                        tags = ["bulk_sync", item["camera_id"], item["date_str"]]
+                        cam_id = item["camera_id"]
+                        date_str = item["date_str"]
+                        hour_str = item["hour_str"]
+                        # Clean batch name for Roboflow Studio: e.g. CAM1_2026-09-24_06h
+                        batch_name = f"{cam_id.upper()}_{date_str}_{hour_str}h"
+                        tags = [cam_id, date_str, f"{hour_str}:00", f"{cam_id}_{date_str}"]
 
                         with SessionLocal() as task_db:
                             rec = (
@@ -322,7 +334,7 @@ class RoboflowBulkSyncManager:
         finally:
             self._is_active = False
 
-    def start_job(self, chunk_size: Optional[int] = None) -> bool:
+    def start_job(self, chunk_size: Optional[int] = None, camera_id: Optional[str] = None) -> bool:
         """Start the bulk upload job if not currently active."""
         if self._is_active:
             return False
@@ -330,7 +342,7 @@ class RoboflowBulkSyncManager:
             loop = asyncio.get_running_loop()
         except RuntimeError:
             loop = asyncio.get_event_loop_policy().get_event_loop()
-        self._current_task = loop.create_task(self.run_bulk_upload_job(chunk_size=chunk_size))
+        self._current_task = loop.create_task(self.run_bulk_upload_job(chunk_size=chunk_size, camera_id=camera_id))
         return True
 
     def cancel_job(self) -> bool:

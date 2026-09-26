@@ -64,14 +64,17 @@ def get_custom_logger(name="AIEcosystem", log_level="DEBUG", system_name=None):
         stream_handler.setFormatter(formatter)
         logger.addHandler(stream_handler)
         
-        file_handler = logging.FileHandler("logs/app.log")
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
-        
-        if system_name:
-            system_file_handler = logging.FileHandler(f"logs/{system_name}.log")
-            system_file_handler.setFormatter(formatter)
-            logger.addHandler(system_file_handler)
+        try:
+            file_handler = logging.FileHandler("logs/app.log")
+            file_handler.setFormatter(formatter)
+            logger.addHandler(file_handler)
+            
+            if system_name:
+                system_file_handler = logging.FileHandler(f"logs/{system_name}.log")
+                system_file_handler.setFormatter(formatter)
+                logger.addHandler(system_file_handler)
+        except (PermissionError, OSError):
+            pass
             
     return logger
 

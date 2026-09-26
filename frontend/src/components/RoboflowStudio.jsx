@@ -343,7 +343,7 @@ export default function RoboflowStudio({ apiBase }) {
               type="button"
               onClick={handleForceSync}
               disabled={triggering}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-indigo-500/25 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+              className="btn-platform btn-platform-primary"
               title="สั่งยิงรอบ 30 นาทีทันที (15 ภาพ)"
             >
               <Zap className={`w-4 h-4 text-amber-300 ${triggering ? 'animate-bounce' : ''}`} />
@@ -353,7 +353,7 @@ export default function RoboflowStudio({ apiBase }) {
             <button
               type="button"
               onClick={() => fetchStatus(true)}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all cursor-pointer"
+              className="btn-platform btn-platform-dark p-2"
               title="รีเฟรชข้อมูล"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-indigo-400' : ''}`} />
@@ -375,9 +375,9 @@ export default function RoboflowStudio({ apiBase }) {
               <button
                 type="button"
                 onClick={handleCancelBulk}
-                className="px-3.5 py-1.5 rounded-lg bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 border border-rose-500/40 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                className="btn-platform btn-platform-rose"
               >
-                <Square className="w-3 h-3 fill-current" />
+                <Square className="w-3.5 h-3.5 fill-current" />
                 <span>ยกเลิก (Cancel)</span>
               </button>
             ) : (
@@ -385,7 +385,7 @@ export default function RoboflowStudio({ apiBase }) {
                 type="button"
                 onClick={handleStartBulk}
                 disabled={startingBulk}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-purple-500/25 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                className="btn-platform btn-platform-purple"
               >
                 <Play className="w-3.5 h-3.5 fill-current" />
                 <span>{startingBulk ? 'กำลังเริ่ม...' : '🚀 เริ่มบีบอัด & ส่งรูปย้อนหลัง (Start Bulk)'}</span>

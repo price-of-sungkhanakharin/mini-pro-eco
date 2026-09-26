@@ -54,6 +54,7 @@ class RoboflowBulkSyncManager:
         }
         self._cached_candidates: List[Dict[str, Any]] = []
         self._last_scan_time: float = 0.0
+        self.roboflow_service = RoboflowService()
 
     @property
     def is_active(self) -> bool:
@@ -226,11 +227,14 @@ class RoboflowBulkSyncManager:
                     self._progress["last_message"] = f"กำลังส่งก้อนที่ {chunk_idx}/{len(chunks)} (ขนาด {zip_size_mb} MB) ขึ้น Roboflow..."
 
                     # 2. Upload images to Roboflow and update PostgreSQL
-                    with SessionLocal() as db:
-                        async def upload_one(item):
-                            # Ensure recorded in DB
+                    async def upload_one(item):
+                        img_bytes = item["local_path"].read_bytes()
+                        batch_name = f"bulk_chunk_{chunk_idx}_{item['camera_id']}"
+                        tags = ["bulk_sync", item["camera_id"], item["date_str"]]
+
+                        with SessionLocal() as task_db:
                             rec = (
-                                db.query(RoboflowUploadLog)
+                                task_db.query(RoboflowUploadLog)
                                 .filter(RoboflowUploadLog.file_path == item["structured_path"])
                                 .first()
                             )
@@ -242,46 +246,59 @@ class RoboflowBulkSyncManager:
                                     status="UPLOADING",
                                     captured_at=item["captured_at"],
                                     is_purged=False,
+                                    created_at=datetime.now(timezone.utc),
                                 )
-                                db.add(rec)
+                                task_db.add(rec)
                             else:
                                 rec.status = "UPLOADING"
-                            db.commit()
+                            task_db.commit()
 
-                            img_bytes = item["local_path"].read_bytes()
-                            batch_name = f"bulk_chunk_{chunk_idx}_{item['camera_id']}"
-                            tags = ["bulk_sync", item["camera_id"], item["date_str"]]
-
-                            async with semaphore:
-                                if self.roboflow_service.is_configured():
-                                    res = await self.roboflow_service.upload_image(
-                                        image_bytes=img_bytes,
-                                        filename=item["structured_path"],
-                                        split="train",
-                                        batch=batch_name,
-                                        tag=tags,
+                        async with semaphore:
+                            if self.roboflow_service.is_configured():
+                                res = await self.roboflow_service.upload_image(
+                                    image_bytes=img_bytes,
+                                    filename=item["structured_path"],
+                                    split="train",
+                                    batch=batch_name,
+                                    tag=tags,
+                                )
+                                with SessionLocal() as task_db:
+                                    rec = (
+                                        task_db.query(RoboflowUploadLog)
+                                        .filter(RoboflowUploadLog.file_path == item["structured_path"])
+                                        .first()
                                     )
                                     if res.get("success"):
-                                        rec.status = "UPLOADED"
-                                        rec.uploaded_at = datetime.now(timezone.utc)
-                                        rec.roboflow_image_id = res.get("roboflow_id") or f"rf_{int(time.time())}"
+                                        if rec:
+                                            rec.status = "UPLOADED"
+                                            rec.uploaded_at = datetime.now(timezone.utc)
+                                            rec.roboflow_image_id = res.get("roboflow_id") or f"rf_{int(time.time())}"
                                         self._progress["uploaded_images"] += 1
                                     else:
-                                        rec.status = "FAILED"
-                                        rec.error_message = res.get("error") or res.get("message")
+                                        if rec:
+                                            rec.status = "FAILED"
+                                            rec.error_message = res.get("error") or res.get("message")
                                         self._progress["failed_images"] += 1
-                                else:
-                                    rec.status = "UPLOADED"
-                                    rec.uploaded_at = datetime.now(timezone.utc)
-                                    rec.roboflow_image_id = f"bulk_sim_{int(time.time())}"
-                                    self._progress["uploaded_images"] += 1
+                                    task_db.commit()
+                            else:
+                                with SessionLocal() as task_db:
+                                    rec = (
+                                        task_db.query(RoboflowUploadLog)
+                                        .filter(RoboflowUploadLog.file_path == item["structured_path"])
+                                        .first()
+                                    )
+                                    if rec:
+                                        rec.status = "UPLOADED"
+                                        rec.uploaded_at = datetime.now(timezone.utc)
+                                        rec.roboflow_image_id = f"bulk_sim_{int(time.time())}"
+                                    task_db.commit()
+                                self._progress["uploaded_images"] += 1
 
-                            self._progress["processed_images"] += 1
-                            db.commit()
+                        self._progress["processed_images"] += 1
 
-                        # Run all items in this chunk concurrently
-                        tasks = [upload_one(it) for it in chunk_items]
-                        await asyncio.gather(*tasks)
+                    # Run items in this chunk concurrently
+                    tasks = [upload_one(it) for it in chunk_items]
+                    await asyncio.gather(*tasks)
 
                 # Temp directory and ZIP are automatically deleted here
                 logger.info("Finished bulk chunk %d/%d", chunk_idx, len(chunks))

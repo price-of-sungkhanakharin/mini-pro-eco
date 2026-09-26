@@ -309,7 +309,10 @@ class RoboflowBulkSyncManager:
         """Start the bulk upload job if not currently active."""
         if self._is_active:
             return False
-        loop = asyncio.get_event_loop()
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = asyncio.get_event_loop_policy().get_event_loop()
         self._current_task = loop.create_task(self.run_bulk_upload_job(chunk_size=chunk_size))
         return True
 

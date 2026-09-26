@@ -49,7 +49,7 @@ def get_bulk_sync_status(db: Session = Depends(get_db)) -> Dict[str, Any]:
 
 
 @router.post("/bulk/start")
-def start_bulk_sync_job(
+async def start_bulk_sync_job(
     chunk_size: int = Query(300, ge=50, le=1000, description="Images per ZIP chunk"),
 ) -> Dict[str, Any]:
     """Start packaging and chunked uploading of historical legacy images."""
@@ -63,7 +63,7 @@ def start_bulk_sync_job(
 
 
 @router.post("/bulk/cancel")
-def cancel_bulk_sync_job() -> Dict[str, Any]:
+async def cancel_bulk_sync_job() -> Dict[str, Any]:
     """Cancel the active bulk historical upload job."""
     cancelled = bulk_sync_manager.cancel_job()
     return {"success": cancelled, "message": "Bulk job cancelled." if cancelled else "No active bulk job to cancel."}

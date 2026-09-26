@@ -186,11 +186,12 @@ class RoboflowSyncManager:
         failed = 0
 
         base_img_dirs = [
+            Path("data/dataset"),
+            Path("data/4camera"),
+            Path("data/raw_images"),
+            Path("data"),
             Path("storage/cctv_dumps"),
             Path("storage"),
-            Path("data/raw_images"),
-            Path("frontend/public/dump_data/images"),
-            Path("public/dump_data/images"),
             Path("dump_data/images"),
         ]
 
@@ -205,23 +206,39 @@ class RoboflowSyncManager:
 
             img_bytes: Optional[bytes] = None
             for bdir in base_img_dirs:
-                # 1. Try structured path: e.g. storage/cctv_dumps/cam1/2026-09-22/18/filename.jpg
-                target_file = bdir / record.file_path
-                if target_file.exists() and target_file.is_file():
-                    try:
-                        img_bytes = target_file.read_bytes()
-                        break
-                    except Exception as e:
-                        logger.error("Failed reading file %s: %s", target_file, e)
+                # 1. Try direct structured path
+                candidates_to_try = [
+                    bdir / record.file_path,
+                    bdir / record.file_name,
+                    bdir / record.camera_id / record.file_name,
+                ]
+                # Also try subdirectories if partition exists (e.g. data/dataset/cam1/YYYY-MM-DD/HH/images/filename.jpg)
+                path_parts = record.file_path.split("/")
+                if len(path_parts) >= 4:
+                    candidates_to_try.append(bdir / path_parts[0] / path_parts[1] / path_parts[2] / "images" / path_parts[3])
+                    candidates_to_try.append(bdir / path_parts[0] / path_parts[1] / path_parts[2] / path_parts[3])
 
-                # 2. Try flat filename
-                target_file = bdir / record.file_name
-                if target_file.exists() and target_file.is_file():
-                    try:
-                        img_bytes = target_file.read_bytes()
-                        break
-                    except Exception as e:
-                        logger.error("Failed reading file %s: %s", target_file, e)
+                for target_file in candidates_to_try:
+                    if target_file.exists() and target_file.is_file():
+                        try:
+                            img_bytes = target_file.read_bytes()
+                            break
+                        except Exception as e:
+                            logger.error("Failed reading file %s: %s", target_file, e)
+                if img_bytes:
+                    break
+
+            if not img_bytes:
+                # Fallback search by filename
+                for bdir in base_img_dirs:
+                    if bdir.exists() and bdir.is_dir():
+                        matches = list(bdir.rglob(record.file_name))
+                        if matches:
+                            try:
+                                img_bytes = matches[0].read_bytes()
+                                break
+                            except Exception:
+                                pass
 
             if not img_bytes:
                 record.status = "FAILED"

@@ -1,8 +1,7 @@
-"""Dataset storage API router."""
-
+from datetime import datetime, timezone
 from typing import List
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from backend.app.core.security import get_current_user
@@ -108,3 +107,85 @@ def get_dataset_by_id(
             detail=f"Dataset with ID {dataset_id} not found",
         )
     return dataset
+
+
+@router.post(
+    "/camera-upload",
+    status_code=status.HTTP_201_CREATED,
+    summary="Upload Camera Frame Dataset Directly to MinIO",
+    description="Receive raw binary JPEG frame from IoT camera (ESP32-CAM) and store in MinIO bucket 'raw-datasets'.",
+)
+async def upload_camera_frame(
+    request: Request,
+    location: str = Query("front_dept", description="Camera location identifier (e.g. front_dept, side_dept)"),
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Receive raw binary JPEG frame from IoT camera (ESP32-CAM) and store in MinIO bucket 'raw-datasets'."""
+    contents = await request.body()
+    if not contents:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No image bytes received")
+
+    file_size = len(contents)
+    timestamp_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
+    filename = f"{location}_{timestamp_str}.jpg"
+    bucket_name = "raw-datasets"
+    object_path = f"camera/{location}/{filename}"
+
+    minio_service = MinIOService()
+    minio_service.ensure_bucket(bucket_name)
+    minio_service.upload_bytes(
+        object_name=object_path,
+        data=contents,
+        bucket_name=bucket_name,
+        content_type="image/jpeg",
+    )
+
+    dataset_record = DatasetModel(
+        filename=filename,
+        minio_path=object_path,
+        file_size=file_size,
+        uploaded_by=current_user.id,
+    )
+    db.add(dataset_record)
+    db.commit()
+    db.refresh(dataset_record)
+
+    return {
+        "success": True,
+        "location": location,
+        "filename": filename,
+        "file_size": file_size,
+        "minio_path": object_path,
+        "uploaded_by": current_user.email,
+    }
+
+
+@router.get(
+    "/camera/latest",
+    summary="View Latest Camera Frame Directly",
+    description="Retrieve the latest JPEG image captured by the camera from MinIO and display it in browser.",
+)
+def get_latest_camera_frame(
+    location: str = Query("front_dept", description="Camera location identifier (e.g. front_dept, side_dept)"),
+    db: Session = Depends(get_db),
+):
+    """Retrieve the latest JPEG image captured by the camera from MinIO and display it in browser."""
+    record = (
+        db.query(DatasetModel)
+        .filter(DatasetModel.filename.like(f"{location}_%.jpg"))
+        .order_by(DatasetModel.id.desc())
+        .first()
+    )
+    if not record:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"No image available for {location}")
+
+    minio_service = MinIOService()
+    try:
+        minio_response = minio_service.client.get_object("raw-datasets", record.minio_path)
+        image_bytes = minio_response.read()
+        minio_response.close()
+        minio_response.release_conn()
+        return Response(content=image_bytes, media_type="image/jpeg")
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

@@ -17,34 +17,53 @@ import {
   Sparkles,
   Info,
   Layers,
-  CheckCircle2
+  CheckCircle2,
+  Video,
+  Camera,
+  Image as ImageIcon
 } from 'lucide-react'
 import {
   loadDumpMetadata,
   DEFAULT_CAM1_SLOTS,
-  formatTimestampThai,
+  SYSTEM_CAMERAS,
+  getCameraConfig,
+  getDefaultSlotsForCamera,
   getSavedOrInitialSlots,
-  saveSlotsToStorage
+  saveSlotsToStorage,
+  resetCameraSlots,
+  getCameraImage,
+  saveCameraImage,
+  calculateSlotCounts,
+  formatTimestampThai
 } from '../utils/dumpData'
 
 // Native image resolution of the dump snapshot (cam1)
 const NATIVE_WIDTH = 1600
 const NATIVE_HEIGHT = 1200
 
-export default function ParkingSetup({ onNavigate, embedded = false }) {
+export default function ParkingSetup({ onNavigate, embedded = false, initialCameraId = 'cam1' }) {
+  // Active Camera Selection State (cam1, cam2, cam3)
+  const [selectedCamId, setSelectedCamId] = useState(() => {
+    return initialCameraId || 'cam1'
+  })
+  const activeCam = getCameraConfig(selectedCamId)
+
   const [dumpRecords, setDumpRecords] = useState([])
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+
+  // Custom uploaded/configured snapshot image for current camera
+  const [customCamImage, setCustomCamImage] = useState(() => getCameraImage(selectedCamId))
 
   // Drawing Tools: 'select', 'bbox' (drag rectangle), 'polygon' (4 points)
   const [currentTool, setCurrentTool] = useState('polygon')
   // Drawing Vehicle Type: 'car' or 'motorcycle'
   const [drawType, setDrawType] = useState('car')
 
-  // Slots state - synchronized with shared localStorage
-  const [slots, setSlots] = useState(() => getSavedOrInitialSlots())
+  // Slots state - synchronized with shared localStorage for active camera
+  const [slots, setSlots] = useState(() => getSavedOrInitialSlots(selectedCamId))
 
   const [selectedSlotId, setSelectedSlotId] = useState(null)
-  const [nextSlotPrefix, setNextSlotPrefix] = useState('A')
+  const [nextSlotPrefix, setNextSlotPrefix] = useState(activeCam.defaultCarPrefix)
 
   // Active Polygon drawing state (for 4-point clicks)
   const [polygonDraft, setPolygonDraft] = useState([])
@@ -67,8 +86,10 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
   const [importJsonText, setImportJsonText] = useState('')
   const [notification, setNotification] = useState(null)
 
+  const fileInputRef = useRef(null)
   const svgRef = useRef(null)
   const containerRef = useRef(null)
+  const prevCamIdRef = useRef(selectedCamId)
 
   // Load real dump records
   useEffect(() => {
@@ -76,7 +97,6 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
     loadDumpMetadata().then((data) => {
       if (mounted && data && data.length > 0) {
         setDumpRecords(data)
-        // Default to first snapshot or latest
         setSelectedImageIndex(0)
       }
     })
@@ -85,10 +105,21 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
     }
   }, [])
 
-  // Auto-save to localStorage & notify all ecosystem listeners whenever slots change
+  // When initialCameraId prop changes externally
   useEffect(() => {
-    saveSlotsToStorage(slots)
-  }, [slots])
+    if (initialCameraId && initialCameraId !== selectedCamId) {
+      handleSwitchCamera(initialCameraId)
+    }
+  }, [initialCameraId])
+
+  // Auto-save to localStorage & notify ecosystem listeners whenever slots change
+  useEffect(() => {
+    if (prevCamIdRef.current === selectedCamId) {
+      saveSlotsToStorage(slots, selectedCamId)
+    } else {
+      prevCamIdRef.current = selectedCamId
+    }
+  }, [slots, selectedCamId])
 
   const showToast = (msg, type = 'success') => {
     setNotification({ msg, type })
@@ -97,16 +128,88 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
     }, 3500)
   }
 
-  // Quick helper to seed default motorcycle slots if missing
+  // Handle switching active camera
+  const handleSwitchCamera = (newCamId) => {
+    if (newCamId === selectedCamId) return
+    // 1. Save current camera's slots before switching
+    saveSlotsToStorage(slots, selectedCamId)
+
+    // 2. Load target camera
+    const nextCam = getCameraConfig(newCamId)
+    setSelectedCamId(newCamId)
+    prevCamIdRef.current = newCamId
+    const loadedSlots = getSavedOrInitialSlots(newCamId)
+    setSlots(loadedSlots)
+    setCustomCamImage(getCameraImage(newCamId))
+
+    // 3. Reset editor drawing & selection state
+    setSelectedSlotId(null)
+    setPolygonDraft([])
+    setBboxDragStart(null)
+    setBboxDragCurrent(null)
+    setDragging(null)
+    setNextSlotPrefix(drawType === 'motorcycle' ? nextCam.defaultBikePrefix : nextCam.defaultCarPrefix)
+    showToast(`สลับไปยัง ${nextCam.code} (${nextCam.name}) เรียบร้อย`)
+  }
+
+  // Handle image upload from user device (ESP32-CAM snapshot or phone photo)
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result
+      try {
+        saveCameraImage(selectedCamId, dataUrl)
+        setCustomCamImage(dataUrl)
+        showToast(`อัปโหลดภาพเฉพาะของกล้อง ${activeCam.code} สำเร็จ!`)
+      } catch (err) {
+        showToast('ไฟล์ภาพมีขนาดใหญ่เกินไปสำหรับ LocalStorage แนะนำให้ใช้ภาพย่อขนาด', 'info')
+      }
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
+  // Reset to default snapshot photo
+  const handleResetImage = () => {
+    saveCameraImage(selectedCamId, null)
+    setCustomCamImage(null)
+    showToast(`คืนค่าภาพมาตรฐานของ ${activeCam.code} แล้ว`)
+  }
+
+  // Quick helper to seed default motorcycle slots for the current camera
   const handleAddDefaultBikes = () => {
-    const bikeSlots = DEFAULT_CAM1_SLOTS.filter(
+    const defSlots = getDefaultSlotsForCamera(selectedCamId)
+    const bikeSlots = defSlots.filter(
       (s) => s.type === 'motorcycle' || s.type === 'bike'
     )
+    if (bikeSlots.length === 0) {
+      const newId = `${activeCam.defaultBikePrefix}01`
+      const newBikeSlot = {
+        id: newId,
+        type: 'motorcycle',
+        shape: 'polygon',
+        occupied: false,
+        vehicle_name: 'ว่างพร้อมจอด',
+        points: [
+          { x: 120, y: 550 },
+          { x: 230, y: 550 },
+          { x: 220, y: 680 },
+          { x: 110, y: 680 }
+        ],
+        bbox: { x: 110, y: 550, width: 120, height: 130 }
+      }
+      setSlots((prev) => [...prev, newBikeSlot])
+      showToast(`สร้างช่องมอเตอร์ไซค์ ${newId} เรียบร้อยแล้ว`)
+      return
+    }
+
     setSlots((prev) => {
       const existingIds = new Set(prev.map((s) => s.id))
       const toAdd = bikeSlots.filter((s) => !existingIds.has(s.id))
       if (toAdd.length === 0) {
-        showToast('มีช่องจอดมอเตอร์ไซค์ M01/M02 อยู่แล้ว', 'info')
+        showToast(`มีช่องจอดมอเตอร์ไซค์ของ ${activeCam.code} อยู่แล้ว`, 'info')
         return prev
       }
       showToast(`เพิ่มช่องมอเตอร์ไซค์ ${toAdd.map((s) => s.id).join(', ')} เรียบร้อยแล้ว!`)
@@ -114,18 +217,37 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
     })
   }
 
-  // Current background image info
-  const currentRecord = dumpRecords[selectedImageIndex] || {
-    filename: '2026-09-22_18-00-01_562.jpg',
-    local_time: '2026-09-22 18:00:01',
-    image_url: '/dump_data/images/2026-09-22_18-00-01_562.jpg',
-    camera_id: 'cam1'
+  // Compute active background image URL
+  const activeImageUrl =
+    customCamImage ||
+    (selectedCamId === 'cam1' && dumpRecords.length > 0
+      ? dumpRecords[selectedImageIndex]?.image_url || activeCam.defaultImage
+      : activeCam.defaultImage)
+
+  // Current background image info for meta display
+  const currentRecord = {
+    camera_id: selectedCamId,
+    location_name: activeCam.name,
+    filename: customCamImage
+      ? 'custom_uploaded_snapshot.jpg'
+      : (selectedCamId === 'cam1' && dumpRecords.length > 0
+          ? dumpRecords[selectedImageIndex]?.filename
+          : activeCam.defaultImage.split('/').pop()),
+    local_time:
+      selectedCamId === 'cam1' && dumpRecords.length > 0
+        ? dumpRecords[selectedImageIndex]?.local_time
+        : '2026-09-22 18:00:00',
+    image_url: activeImageUrl
   }
 
-  // Generate next automatic slot ID (e.g. A01 -> A02 or M01 -> M02)
+  // Generate next automatic slot ID according to active camera prefix
   const getNextSlotId = (overrideType) => {
     const activeType = overrideType || drawType
-    const prefix = activeType === 'motorcycle' ? 'M' : nextSlotPrefix || 'A'
+    const prefix =
+      activeType === 'motorcycle'
+        ? activeCam.defaultBikePrefix
+        : nextSlotPrefix || activeCam.defaultCarPrefix
+
     const existingNums = slots
       .map((s) => {
         const match = s.id.match(new RegExp(`^${prefix}(\\d+)$`))
@@ -372,23 +494,24 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
     showToast(`คัดลอกช่อง ${slot.id} เป็น ${newId}`)
   }
 
-  // Reset to default sample slots
+  // Reset to default sample slots for active camera
   const handleResetDefaults = () => {
-    if (window.confirm('คุณต้องการรีเซ็ตกลับเป็นช่องจอดแนะนำเริ่มต้นใช่หรือไม่?')) {
-      setSlots(DEFAULT_CAM1_SLOTS)
+    if (window.confirm(`คุณต้องการรีเซ็ตช่องจอดของ ${activeCam.code} (${activeCam.name}) กลับเป็นค่าเริ่มต้นใช่หรือไม่?`)) {
+      const defs = resetCameraSlots(selectedCamId)
+      setSlots(defs)
       setSelectedSlotId(null)
       setPolygonDraft([])
-      showToast('รีเซ็ตเป็นช่องจอดเริ่มต้นเรียบร้อยแล้ว')
+      showToast(`รีเซ็ตช่องจอดของ ${activeCam.code} เรียบร้อยแล้ว`)
     }
   }
 
-  // Clear all slots
+  // Clear all slots for active camera
   const handleClearAll = () => {
-    if (window.confirm('คุณแน่ใจหรือไม่ว่าต้องการล้างช่องจอดทั้งหมด?')) {
+    if (window.confirm(`คุณแน่ใจหรือไม่ว่าต้องการล้างช่องจอดทั้งหมดของ ${activeCam.code}?`)) {
       setSlots([])
       setSelectedSlotId(null)
       setPolygonDraft([])
-      showToast('ล้างช่องจอดทั้งหมดแล้ว')
+      showToast(`ล้างช่องจอดทั้งหมดของ ${activeCam.code} แล้ว`)
     }
   }
 
@@ -403,8 +526,11 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
   const getExportData = () => {
     return {
       version: '1.0.0',
-      camera_id: currentRecord.camera_id || 'cam1',
-      camera_name: 'หน้าภาควิชาคอมพิวเตอร์ (front_dept)',
+      camera_id: selectedCamId,
+      camera_code: activeCam.code,
+      camera_name: activeCam.name,
+      location: activeCam.location,
+      zone: activeCam.zone,
       reference_image: currentRecord.filename,
       image_dimensions: {
         width: NATIVE_WIDTH,
@@ -412,12 +538,14 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
       },
       exported_at: new Date().toISOString(),
       total_slots: slots.length,
-      car_slots: slots.filter((s) => s.type === 'car').length,
-      motorcycle_slots: slots.filter((s) => s.type === 'motorcycle').length,
+      car_slots: slots.filter((s) => s.type !== 'motorcycle' && s.type !== 'bike').length,
+      motorcycle_slots: slots.filter((s) => s.type === 'motorcycle' || s.type === 'bike').length,
       slots: slots.map((s) => ({
         slot_id: s.id,
         type: s.type || 'car',
         shape: s.shape || 'polygon',
+        occupied: !!s.occupied,
+        vehicle_name: s.vehicle_name || '',
         // Absolute pixel points (1600x1200)
         points: s.points,
         // Normalized points (0.0 to 1.0) for AI frameworks (YOLO, PyTorch, TensorRT)
@@ -439,7 +567,7 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
   const handleCopyJson = () => {
     const jsonStr = JSON.stringify(getExportData(), null, 2)
     navigator.clipboard.writeText(jsonStr).then(() => {
-      showToast('คัดลอก JSON พิกัดช่องจอดลง Clipboard เรียบร้อยแล้ว!')
+      showToast(`คัดลอก JSON พิกัดช่องจอดของ ${activeCam.code} เรียบร้อยแล้ว!`)
     })
   }
 
@@ -449,12 +577,12 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `cpe_parking_slots_${currentRecord.camera_id || 'cam1'}.json`
+    a.download = `cpe_parking_slots_${selectedCamId}.json`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-    showToast('ดาวน์โหลดไฟล์ JSON เรียบร้อยแล้ว')
+    showToast(`ดาวน์โหลดไฟล์ JSON ของ ${activeCam.code} เรียบร้อยแล้ว`)
   }
 
   const handleImportJson = () => {
@@ -465,11 +593,11 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
         throw new Error('Invalid JSON structure: slots array not found')
       }
       const formatted = importedSlots.map((item, idx) => ({
-        id: item.slot_id || item.id || `A${(idx + 1).toString().padStart(2, '0')}`,
+        id: item.slot_id || item.id || `${activeCam.defaultCarPrefix}${(idx + 1).toString().padStart(2, '0')}`,
         type: item.type || 'car',
         shape: item.shape || 'polygon',
-        occupied: false,
-        vehicle_name: 'ว่างพร้อมจอด',
+        occupied: !!item.occupied,
+        vehicle_name: item.vehicle_name || 'ว่างพร้อมจอด',
         points: item.points || [
           { x: item.bbox?.x || 100, y: item.bbox?.y || 100 },
           { x: (item.bbox?.x || 100) + (item.bbox?.width || 150), y: item.bbox?.y || 100 },
@@ -485,9 +613,10 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
       }))
 
       setSlots(formatted)
+      saveSlotsToStorage(formatted, selectedCamId)
       setShowImportModal(false)
       setImportJsonText('')
-      showToast(`นำเข้าสำเร็จ ${formatted.length} ช่องจอด`)
+      showToast(`นำเข้าสำเร็จ ${formatted.length} ช่องจอดสำหรับ ${activeCam.code}`)
     } catch (err) {
       alert('เกิดข้อผิดพลาดในการอ่าน JSON: ' + err.message)
     }
@@ -509,11 +638,11 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
                 Setup Parking Slot (พิกัดช่องจอด ROI)
               </h2>
               <span className="badge-chip badge-chip-live">
-                <span>INTERACTIVE ROI EDITOR</span>
+                <span>MULTI-CAMERA ROI EDITOR</span>
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              วาด/กำหนดพิกัดช่องจอด (Bounding Box & 4-Point Polygon) บนภาพจริงจากกล้อง CAM-01 ({NATIVE_WIDTH}×{NATIVE_HEIGHT}px)
+              วาดและกำหนดพิกัดช่องจอดแยกตามจุดติดตั้งกล้องจริง ({activeCam.code} • {activeCam.name})
             </p>
           </div>
         </div>
@@ -555,6 +684,62 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
         </div>
       )}
 
+      {/* Camera Selection Switcher Bar */}
+      <div className="camera-switcher-card">
+        <div className="camera-switcher-header">
+          <div className="flex items-center gap-2">
+            <Video className="w-4 h-4 text-emerald-400" />
+            <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+              เลือกกล้องที่ต้องการวาดช่องจอด ({SYSTEM_CAMERAS.length} ตัว):
+            </span>
+          </div>
+          <span className="text-[11px] text-slate-400">
+            คลิกสลับกล้องเพื่อวาดพิกัด ROI แยกแต่ละสถานที่ได้อิสระ
+          </span>
+        </div>
+
+        <div className="camera-switcher-tabs-grid">
+          {SYSTEM_CAMERAS.map((cam) => {
+            const isSelected = cam.id === selectedCamId
+            const camSlots = isSelected ? slots : getSavedOrInitialSlots(cam.id)
+            const counts = calculateSlotCounts(camSlots)
+            const hasCustomImage = !!getCameraImage(cam.id)
+
+            return (
+              <button
+                key={cam.id}
+                type="button"
+                className={`camera-switcher-btn ${isSelected ? 'active' : ''}`}
+                onClick={() => handleSwitchCamera(cam.id)}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <span className="cam-switcher-code">{cam.code}</span>
+                  <div className="flex items-center gap-1.5">
+                    {hasCustomImage && (
+                      <span className="cam-tab-custom-badge" title="มีภาพอัปโหลดเฉพาะของกล้องนี้">
+                        CUSTOM PHOTO
+                      </span>
+                    )}
+                    <span className="cam-switcher-zone">{cam.zoneName}</span>
+                  </div>
+                </div>
+
+                <div className="cam-switcher-name text-left">{cam.name}</div>
+
+                <div className="cam-switcher-stats">
+                  <span className="stat-pill car">
+                    🚗 รถยนต์: <strong>{counts.car.total}</strong> ({counts.car.free} ว่าง)
+                  </span>
+                  <span className="stat-pill bike">
+                    🏍️ มอเตอร์ไซค์: <strong>{counts.bike.total}</strong> ({counts.bike.free} ว่าง)
+                  </span>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
       {/* Main Work Area: Canvas on Left, Controls & List on Right */}
       <div className="setup-workspace-grid">
         {/* Left Column: Canvas Viewport & Toolbar */}
@@ -582,13 +767,13 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
                 className={`vehicle-type-pill car ${currentTool !== 'select' && drawType === 'car' ? 'active' : ''}`}
                 onClick={() => {
                   setDrawType('car')
-                  setNextSlotPrefix('A')
+                  setNextSlotPrefix(activeCam.defaultCarPrefix)
                   if (currentTool === 'select') setCurrentTool('polygon')
                 }}
-                title="วาดช่องจอดรถยนต์ (สีเขียวว่าง / สีแดงมีรถ รหัส A..)"
+                title={`วาดช่องจอดรถยนต์สำหรับ ${activeCam.code} (รหัส ${activeCam.defaultCarPrefix}..)`}
               >
                 <Car className="w-3.5 h-3.5" />
-                <span>วาดรถยนต์ (A..)</span>
+                <span>วาดรถยนต์ ({activeCam.defaultCarPrefix}..)</span>
               </button>
 
               <button
@@ -596,13 +781,13 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
                 className={`vehicle-type-pill bike ${currentTool !== 'select' && drawType === 'motorcycle' ? 'active' : ''}`}
                 onClick={() => {
                   setDrawType('motorcycle')
-                  setNextSlotPrefix('M')
+                  setNextSlotPrefix(activeCam.defaultBikePrefix)
                   if (currentTool === 'select') setCurrentTool('polygon')
                 }}
-                title="วาดช่องจอดมอเตอร์ไซค์ (สีฟ้าว่าง / สีส้มมีรถ รหัส M.. เส้นประ)"
+                title={`วาดช่องจอดมอเตอร์ไซค์สำหรับ ${activeCam.code} (รหัส ${activeCam.defaultBikePrefix}..)`}
               >
                 <Bike className="w-3.5 h-3.5" />
-                <span>วาดมอเตอร์ไซค์ (M..)</span>
+                <span>วาดมอเตอร์ไซค์ ({activeCam.defaultBikePrefix}..)</span>
               </button>
             </div>
 
@@ -641,23 +826,54 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
               )}
             </div>
 
-            {/* Group 3: Snapshot Frame Selector */}
+            {/* Group 3: Camera Snapshot & Image Source */}
             <div className="toolbar-group">
-              <span className="toolbar-label">Frame:</span>
-              <select
-                className="snapshot-select-input"
-                value={selectedImageIndex}
-                onChange={(e) => setSelectedImageIndex(Number(e.target.value))}
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                accept="image/*"
+                onChange={handleFileUpload}
+              />
+              <button
+                type="button"
+                className="tool-btn highlight"
+                onClick={() => fileInputRef.current?.click()}
+                title={`อัปโหลดภาพถ่ายสถานที่จริงจากกล้อง ${activeCam.code}`}
               >
-                {dumpRecords.map((r, i) => (
-                  <option key={r.id || i} value={i}>
-                    #{i + 1} • {r.local_time ? r.local_time.split(' ')[1] : r.filename}
-                  </option>
-                ))}
-              </select>
+                <Upload className="w-3.5 h-3.5 text-cyan-400" />
+                <span>📸 อัปโหลดภาพ {activeCam.code}</span>
+              </button>
+
+              {customCamImage ? (
+                <button
+                  type="button"
+                  className="tool-btn"
+                  onClick={handleResetImage}
+                  title="คืนค่ากลับเป็นภาพมาตรฐานของกล้องนี้"
+                >
+                  <RotateCcw className="w-3 h-3 text-amber-400" />
+                  <span>คืนค่าภาพเดิม</span>
+                </button>
+              ) : selectedCamId === 'cam1' && dumpRecords.length > 0 ? (
+                <>
+                  <span className="toolbar-label">Frame:</span>
+                  <select
+                    className="snapshot-select-input"
+                    value={selectedImageIndex}
+                    onChange={(e) => setSelectedImageIndex(Number(e.target.value))}
+                  >
+                    {dumpRecords.map((r, i) => (
+                      <option key={r.id || i} value={i}>
+                        #{i + 1} • {r.local_time ? r.local_time.split(' ')[1] : r.filename}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              ) : null}
             </div>
 
-            {/* Group 4: Quick Toggles */}
+            {/* Group 4: Quick Toggles & Reset */}
             <div className="toolbar-group">
               <button
                 type="button"
@@ -673,7 +889,7 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
                 type="button"
                 className="icon-toggle-btn"
                 onClick={handleResetDefaults}
-                title="รีเซ็ตเป็นชุดพิกัดตัวอย่างเริ่มต้น"
+                title={`รีเซ็ตช่องจอดของ ${activeCam.code} กลับเป็นค่าเริ่มต้น`}
               >
                 <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
                 <span>Reset</span>
@@ -683,7 +899,7 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
                 type="button"
                 className="icon-toggle-btn danger"
                 onClick={handleClearAll}
-                title="ล้างช่องจอดทั้งหมด"
+                title={`ล้างช่องจอดทั้งหมดของ ${activeCam.code}`}
               >
                 <Trash2 className="w-3.5 h-3.5 text-rose-400" />
                 <span>Clear</span>
@@ -696,10 +912,10 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
             className={`roi-viewport-wrapper ${currentTool}`}
             ref={containerRef}
           >
-            {/* Background Image from dump */}
+            {/* Background Image for Active Camera */}
             <img
-              src={currentRecord.image_url}
-              alt="CCTV Background Feed"
+              src={activeImageUrl}
+              alt={`${activeCam.code} Background Feed`}
               className="roi-bg-image"
             />
 
@@ -831,7 +1047,7 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
             <div className="viewport-status-footer">
               <div className="flex items-center gap-3">
                 <span className="badge-tag">
-                  CAM-01 • {currentRecord.location_name || 'front_dept'}
+                  {activeCam.code} • {activeCam.name}
                 </span>
                 <span className="text-slate-400">
                   ไฟล์: <code className="text-cyan-400">{currentRecord.filename}</code>
@@ -871,7 +1087,7 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
               <div className="flex items-center gap-2">
                 <Layers className="w-4 h-4 text-emerald-400" />
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                  Slot Registry ({slots.length})
+                  Slot Registry • {activeCam.code} ({slots.length})
                 </h3>
               </div>
               <div className="flex gap-2">
@@ -889,14 +1105,14 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
               <div className="mt-2.5 p-2 rounded-lg bg-cyan-950/40 border border-cyan-500/30 text-xs flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-cyan-300">
                   <Bike className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>ยังไม่มีช่องมอเตอร์ไซค์</span>
+                  <span>ยังไม่มีช่องมอเตอร์ไซค์ ({activeCam.code})</span>
                 </div>
                 <button
                   type="button"
                   onClick={handleAddDefaultBikes}
                   className="btn-seed-bikes"
                 >
-                  + เพิ่ม M01, M02 ทันที
+                  + เพิ่มช่องมอเตอร์ไซค์ทันที
                 </button>
               </div>
             )}
@@ -981,22 +1197,29 @@ export default function ParkingSetup({ onNavigate, embedded = false }) {
                 </div>
               </div>
 
-              {/* Edit Occupancy Status (ว่าง / ไม่ว่าง) */}
+              {/* Edit Occupancy Status (สถานะจำลอง / Test Override) */}
               <div className="inspector-field">
-                <label>สถานะช่องจอด:</label>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                  <label style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600 }}>สถานะจำลอง (Simulation):</label>
+                  <span style={{ fontSize: '0.65rem', color: '#64748b' }}>
+                    *ตรวจจับจริงด้วย AI YOLO
+                  </span>
+                </div>
                 <div className="flex gap-2 mb-2">
                   <button
                     type="button"
-                    className={`occupancy-toggle-btn ${!selectedSlot.occupied ? 'vacant' : 'opacity-50'}`}
+                    className={`occupancy-toggle-btn ${!selectedSlot.occupied ? 'vacant' : ''}`}
                     onClick={() => handleUpdateSlotField(selectedSlot.id, 'occupied', false)}
+                    title="ทดสอบจำลองเป็นช่องว่าง"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                     <span>ว่างพร้อมจอด (Vacant)</span>
                   </button>
                   <button
                     type="button"
-                    className={`occupancy-toggle-btn ${selectedSlot.occupied ? 'occupied' : 'opacity-50'}`}
+                    className={`occupancy-toggle-btn ${selectedSlot.occupied ? 'occupied' : ''}`}
                     onClick={() => handleUpdateSlotField(selectedSlot.id, 'occupied', true)}
+                    title="ทดสอบจำลองเป็นมีรถจอด"
                   >
                     <X className="w-3.5 h-3.5 text-rose-400" />
                     <span>มีรถจอด (Occupied)</span>

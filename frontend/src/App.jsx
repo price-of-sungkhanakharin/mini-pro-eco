@@ -14,15 +14,15 @@ import {
   SLOTS_STORAGE_KEY
 } from './utils/dumpData'
 
-function calculateTotalStats(cam1SlotsList) {
-  const slots = cam1SlotsList || getSavedOrInitialSlots()
-  const cam1Counts = calculateSlotCounts(slots)
-  // CAM-02: car { free: 3, total: 8 }, bike { free: 4, total: 5 }
-  // CAM-03: car { free: 2, total: 5 }, bike { free: 2, total: 2 }
-  const freeCar = cam1Counts.car.free + 3 + 2
-  const totalCar = cam1Counts.car.total + 8 + 5
-  const freeBike = cam1Counts.bike.free + 4 + 2
-  const totalBike = cam1Counts.bike.total + 5 + 2
+function calculateTotalStats() {
+  const cam1Counts = calculateSlotCounts(getSavedOrInitialSlots('cam1'))
+  const cam2Counts = calculateSlotCounts(getSavedOrInitialSlots('cam2'))
+  const cam3Counts = calculateSlotCounts(getSavedOrInitialSlots('cam3'))
+
+  const freeCar = cam1Counts.car.free + cam2Counts.car.free + cam3Counts.car.free
+  const totalCar = cam1Counts.car.total + cam2Counts.car.total + cam3Counts.car.total
+  const freeBike = cam1Counts.bike.free + cam2Counts.bike.free + cam3Counts.bike.free
+  const totalBike = cam1Counts.bike.total + cam2Counts.bike.total + cam3Counts.bike.total
   const totalCapacity = totalCar + totalBike
   const totalFree = freeCar + freeBike
   const avgChance =
@@ -76,17 +76,25 @@ function App() {
   })
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [selectedCamera, setSelectedCamera] = useState(null)
+  const [setupCameraId, setSetupCameraId] = useState('cam1')
 
-  // Parking live stats state - dynamically synchronized with ROI setup
+  const handleNavigate = (view, targetCamId) => {
+    if (targetCamId) {
+      setSetupCameraId(targetCamId)
+    }
+    setCurrentView(view)
+  }
+
+  // Parking live stats state - dynamically synchronized with ROI setup across all cameras
   const [stats, setStats] = useState(() => calculateTotalStats())
 
   // Listen for ROI updates from ParkingSetup
   useEffect(() => {
-    const handleUpdate = (e) => {
-      setStats(calculateTotalStats(e.detail))
+    const handleUpdate = () => {
+      setStats(calculateTotalStats())
     }
     const handleStorage = (e) => {
-      if (e.key === SLOTS_STORAGE_KEY || !e.key) {
+      if (!e.key || e.key.startsWith('cpe_parking_slots_')) {
         setStats(calculateTotalStats())
       }
     }
@@ -407,20 +415,26 @@ function App() {
               {currentView === 'dashboard' && (
                 <DashboardView
                   onOpenModal={(cam) => setSelectedCamera(cam)}
-                  onNavigate={(view) => setCurrentView(view)}
+                  onNavigate={handleNavigate}
                 />
               )}
               {currentView === 'setup' && (
-                <SetupView onNavigate={(view) => setCurrentView(view)} />
+                <SetupView
+                  onNavigate={handleNavigate}
+                  initialCameraId={setupCameraId}
+                />
               )}
               {currentView === 'live_cameras' && (
                 <DashboardView
                   onOpenModal={(cam) => setSelectedCamera(cam)}
-                  onNavigate={(view) => setCurrentView(view)}
+                  onNavigate={handleNavigate}
                 />
               )}
               {currentView === 'slot_map' && (
-                <ParkingSetup onNavigate={(view) => setCurrentView(view)} />
+                <ParkingSetup
+                  onNavigate={handleNavigate}
+                  initialCameraId={setupCameraId}
+                />
               )}
               {currentView === 'roboflow' && (
                 <RoboflowStudio apiBase={API_BASE_URL} />
@@ -428,13 +442,13 @@ function App() {
               {currentView === 'ai_inference' && (
                 <DashboardView
                   onOpenModal={(cam) => setSelectedCamera(cam)}
-                  onNavigate={(view) => setCurrentView(view)}
+                  onNavigate={handleNavigate}
                 />
               )}
               {currentView === 'line_bot' && (
                 <DashboardView
                   onOpenModal={(cam) => setSelectedCamera(cam)}
-                  onNavigate={(view) => setCurrentView(view)}
+                  onNavigate={handleNavigate}
                 />
               )}
               {currentView === 'ecosystem' && (
@@ -445,7 +459,7 @@ function App() {
             {/* Right-Hand Admin Sidebar (Explicitly Requested by User) */}
             <RightSidebar
               currentView={currentView}
-              onSelectView={(view) => setCurrentView(view)}
+              onSelectView={(view) => handleNavigate(view)}
               isCollapsed={isSidebarCollapsed}
               onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             />
@@ -456,7 +470,7 @@ function App() {
             <CameraModal
               camera={selectedCamera}
               onClose={() => setSelectedCamera(null)}
-              onNavigate={(view) => setCurrentView(view)}
+              onNavigate={handleNavigate}
             />
           )}
         </div>

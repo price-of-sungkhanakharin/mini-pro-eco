@@ -11,7 +11,8 @@ import {
   Radio,
   Cpu,
   Wifi,
-  Thermometer
+  Thermometer,
+  MapPin
 } from 'lucide-react'
 import {
   loadDumpMetadata,
@@ -21,47 +22,111 @@ import {
   formatHeapKb,
   getSavedOrInitialSlots,
   calculateSlotCounts,
+  getCameraImage,
   SLOTS_STORAGE_KEY
 } from '../utils/dumpData'
 
-export default function DashboardView({ onOpenModal }) {
+export default function DashboardView({ onOpenModal, onNavigate }) {
   const [selectedZone, setSelectedZone] = useState('all')
   const [countdown, setCountdown] = useState(5)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [simulatedTime, setSimulatedTime] = useState(new Date())
   const [showRoiOverlay, setShowRoiOverlay] = useState(true)
 
-  // Dynamic real slots for CAM-01 from shared storage
-  const [cam1Slots, setCam1Slots] = useState(() => getSavedOrInitialSlots())
+  // Dynamic real slots for all 3 cameras from shared storage
+  const [cam1Slots, setCam1Slots] = useState(() => getSavedOrInitialSlots('cam1'))
+  const [cam2Slots, setCam2Slots] = useState(() => getSavedOrInitialSlots('cam2'))
+  const [cam3Slots, setCam3Slots] = useState(() => getSavedOrInitialSlots('cam3'))
 
-  // Real Dump Records State
+  // Custom uploaded images for cameras
+  const [cam1CustomImage, setCam1CustomImage] = useState(() => getCameraImage('cam1'))
+  const [cam2CustomImage, setCam2CustomImage] = useState(() => getCameraImage('cam2'))
+  const [cam3CustomImage, setCam3CustomImage] = useState(() => getCameraImage('cam3'))
+
+  // Real Live Ingestion Server & Dump Records State
   const [dumpRecords, setDumpRecords] = useState([])
   const [frameIndex, setFrameIndex] = useState(29) // Default to latest snapshot (index 29)
+  const [liveData, setLiveData] = useState(null)
+  const [imgKey, setImgKey] = useState(() => Date.now())
 
-  // Listen for real-time slots updates from ParkingSetup ROI Editor
+  const INGESTION_API =
+    typeof window !== 'undefined'
+      ? `http://${window.location.hostname}:5005`
+      : 'http://localhost:5005'
+
+  const fetchLiveTelemetry = async () => {
+    try {
+      const res = await fetch(`${INGESTION_API}/api/telemetry`)
+      if (res.ok) {
+        const data = await res.json()
+        setLiveData(data)
+        setImgKey(Date.now())
+      }
+    } catch (err) {
+      // Fallback silently if ingestion API is not reachable
+    }
+  }
+
+  // Poll live camera telemetry every 3s
+  useEffect(() => {
+    fetchLiveTelemetry()
+    const liveTimer = setInterval(fetchLiveTelemetry, 3000)
+    return () => clearInterval(liveTimer)
+  }, [])
+
+  // Listen for real-time slots and images updates from ParkingSetup ROI Editor
   useEffect(() => {
     const handleSlotsUpdated = (e) => {
-      if (e.detail && Array.isArray(e.detail)) {
-        setCam1Slots(e.detail)
+      const detail = e.detail
+      if (detail && detail.cameraId) {
+        if (detail.cameraId === 'cam1') setCam1Slots(detail.slots)
+        else if (detail.cameraId === 'cam2') setCam2Slots(detail.slots)
+        else if (detail.cameraId === 'cam3') setCam3Slots(detail.slots)
+      } else if (Array.isArray(detail)) {
+        setCam1Slots(detail)
       } else {
-        setCam1Slots(getSavedOrInitialSlots())
+        setCam1Slots(getSavedOrInitialSlots('cam1'))
+        setCam2Slots(getSavedOrInitialSlots('cam2'))
+        setCam3Slots(getSavedOrInitialSlots('cam3'))
       }
     }
+
+    const handleImageUpdated = (e) => {
+      const detail = e.detail
+      if (detail && detail.cameraId) {
+        if (detail.cameraId === 'cam1') setCam1CustomImage(detail.imageUrl)
+        else if (detail.cameraId === 'cam2') setCam2CustomImage(detail.imageUrl)
+        else if (detail.cameraId === 'cam3') setCam3CustomImage(detail.imageUrl)
+      }
+    }
+
     const handleStorage = (e) => {
-      if (e.key === SLOTS_STORAGE_KEY || !e.key) {
-        setCam1Slots(getSavedOrInitialSlots())
+      if (!e.key || e.key.startsWith('cpe_parking_slots_')) {
+        setCam1Slots(getSavedOrInitialSlots('cam1'))
+        setCam2Slots(getSavedOrInitialSlots('cam2'))
+        setCam3Slots(getSavedOrInitialSlots('cam3'))
+      }
+      if (!e.key || e.key.startsWith('cpe_camera_image_')) {
+        setCam1CustomImage(getCameraImage('cam1'))
+        setCam2CustomImage(getCameraImage('cam2'))
+        setCam3CustomImage(getCameraImage('cam3'))
       }
     }
+
     window.addEventListener('cpe-slots-updated', handleSlotsUpdated)
+    window.addEventListener('cpe-camera-image-updated', handleImageUpdated)
     window.addEventListener('storage', handleStorage)
     return () => {
       window.removeEventListener('cpe-slots-updated', handleSlotsUpdated)
+      window.removeEventListener('cpe-camera-image-updated', handleImageUpdated)
       window.removeEventListener('storage', handleStorage)
     }
   }, [])
 
-  // Calculate live slot metrics for CAM-01
+  // Calculate live slot metrics for all 3 cameras
   const cam1Counts = calculateSlotCounts(cam1Slots)
+  const cam2Counts = calculateSlotCounts(cam2Slots)
+  const cam3Counts = calculateSlotCounts(cam3Slots)
 
   // Load real dump metadata from /dump_data/metadata.json
   useEffect(() => {
@@ -82,6 +147,7 @@ export default function DashboardView({ onOpenModal }) {
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
+          fetchLiveTelemetry()
           if (dumpRecords.length > 0) {
             setFrameIndex((curr) => (curr + 1) % dumpRecords.length)
           }
@@ -97,6 +163,7 @@ export default function DashboardView({ onOpenModal }) {
   const handleManualRefresh = () => {
     setIsRefreshing(true)
     setCountdown(5)
+    fetchLiveTelemetry()
     if (dumpRecords.length > 0) {
       setFrameIndex(dumpRecords.length - 1)
     }
@@ -105,7 +172,7 @@ export default function DashboardView({ onOpenModal }) {
     }, 500)
   }
 
-  // Current real snapshot record from cam1
+  // Fallback snapshot record
   const currentRecord = dumpRecords[frameIndex] || {
     filename: '2026-09-22_18-02-28_966.jpg',
     image_url: '/dump_data/images/2026-09-22_18-02-28_966.jpg',
@@ -120,24 +187,54 @@ export default function DashboardView({ onOpenModal }) {
     status: 'ONLINE (HEALTHY)'
   }
 
-  // Camera Data incorporating real dump data for CAM-01
+  // Live telemetry per camera node
+  const cam1Live = liveData?.front_dept_1 || liveData?.cam1
+  const cam2Live = liveData?.front_dept_2 || liveData?.cam2
+  const cam3Live = liveData?.side_dept || liveData?.cam3
+
+  const cam1Image = cam1CustomImage || (cam1Live
+    ? `${INGESTION_API}/api/latest?location=front_dept_1&image=true&t=${imgKey}`
+    : currentRecord.image_url)
+
+  const cam2Image = cam2CustomImage || (cam2Live
+    ? `${INGESTION_API}/api/latest?location=front_dept_2&image=true&t=${imgKey}`
+    : dumpRecords[8]?.image_url || '/dump_data/images/2026-09-22_18-00-42_303.jpg')
+
+  const cam3Image = cam3CustomImage || (cam3Live
+    ? `${INGESTION_API}/api/latest?location=side_dept&image=true&t=${imgKey}`
+    : dumpRecords[18]?.image_url || '/dump_data/images/2026-09-22_18-01-33_173.jpg')
+
+  // Camera Data incorporating real live streams, telemetry & shared slot registry
   const cameras = [
     {
       id: 1,
+      camId: 'cam1',
       slotCode: 'CAM-01',
-      name: 'หน้าภาค (ลานหน้าภาควิชาคอมพิวเตอร์)',
+      name: 'หน้าภาค (ลานหน้าภาควิชาคอมพิวเตอร์ 1)',
       subtitle: 'Zone A - Main Front Gate',
       device: 'Edge Node (ESP32-CAM / Cam1)',
       zone: 'zone_a',
-      ip: currentRecord.client_ip || '172.30.91.108',
-      minioKey: `s3://raw-datasets/cam1/images/2026-09-22/18/${currentRecord.filename}`,
+      ip: cam1Live?.client_ip || currentRecord.client_ip || '172.30.94.142',
+      minioKey: cam1Live ? `s3://raw-datasets/dataset/cam1/${cam1Live.partition?.date}/${cam1Live.partition?.hour}/images/${cam1Live.filename}` : `s3://raw-datasets/cam1/images/2026-09-22/18/${currentRecord.filename}`,
       fps: '0.2 fps (ทุก 5s)',
       status: 'online',
-      latency: '34ms',
+      latency: '28ms',
       isReal: true,
-      imageUrl: currentRecord.image_url,
-      snapshotTimestamp: currentRecord.local_time,
-      realTelemetry: currentRecord,
+      imageUrl: cam1Image,
+      snapshotTimestamp: cam1Live?.timestamp ? cam1Live.timestamp.replace('T', ' ').substring(0, 19) : currentRecord.local_time,
+      realTelemetry: cam1Live
+        ? {
+            chip_temp_c: cam1Live.telemetry?.chip_temp_c ?? 42.5,
+            uptime_sec: cam1Live.telemetry?.uptime_sec ?? 120,
+            free_heap: cam1Live.telemetry?.free_heap ?? 154200,
+            free_psram: cam1Live.telemetry?.free_psram ?? 3419476,
+            wifi_rssi_dbm: cam1Live.telemetry?.wifi_rssi_dbm ?? cam1Live.telemetry?.rssi ?? -60,
+            light_aec_value: cam1Live.telemetry?.aec_value ?? 294,
+            client_ip: cam1Live.client_ip,
+            filename: cam1Live.filename,
+            status: 'ONLINE (LIVE STREAM)'
+          }
+        : currentRecord,
       car: cam1Counts.car,
       bike: cam1Counts.bike,
       vacancyChance15m:
@@ -158,72 +255,109 @@ export default function DashboardView({ onOpenModal }) {
     },
     {
       id: 2,
+      camId: 'cam2',
       slotCode: 'CAM-02',
-      name: 'ลานจอดรถในร่มข้างอาคาร',
+      name: 'ลานจอดรถในร่มข้างอาคาร (หน้าภาค 2)',
       subtitle: 'Zone B - Covered Lot',
-      device: 'Smartphone #2 (iPhone 13)',
+      device: 'Edge Node (ESP32-CAM / Cam2)',
       zone: 'zone_b',
-      ip: '192.168.1.102',
-      minioKey: 'parking-raw/cam2_latest.jpg',
+      ip: cam2Live?.client_ip || '172.30.94.135',
+      minioKey: cam2Live ? `s3://raw-datasets/dataset/cam2/${cam2Live.partition?.date}/${cam2Live.partition?.hour}/images/${cam2Live.filename}` : 'parking-raw/cam2_latest.jpg',
       fps: '0.2 fps (ทุก 5s)',
       status: 'online',
-      latency: '38ms',
-      isReal: false,
-      imageUrl: dumpRecords[8]?.image_url || '/dump_data/images/2026-09-22_18-00-42_303.jpg',
-      snapshotTimestamp: '2026-09-22 18:00:42',
-      realTelemetry: {
-        chip_temp_c: 78.5,
-        uptime_sec: 1850,
-        free_heap: 160000,
-        wifi_rssi_dbm: -75,
-        status: 'ONLINE (HEALTHY)'
-      },
-      car: { free: 3, total: 8 },
-      bike: { free: 4, total: 5 },
-      vacancyChance15m: 78,
-      slots: [
-        { id: 'B01', type: 'car', occupied: true, name: '1กค-2020' },
-        { id: 'B02', type: 'car', occupied: true, name: '2ขพ-4433' },
-        { id: 'B03', type: 'car', occupied: true, name: '5กษ-8811' },
-        { id: 'B04', type: 'car', occupied: false, name: 'ว่าง' },
-        { id: 'B05', type: 'car', occupied: true, name: '3ฒณ-9090' },
-        { id: 'B06', type: 'car', occupied: false, name: 'ว่าง' },
-        { id: 'B07', type: 'car', occupied: false, name: 'ว่าง' },
-        { id: 'B08', type: 'car', occupied: true, name: 'กง-1122' }
-      ]
+      latency: '31ms',
+      isReal: true,
+      imageUrl: cam2Image,
+      snapshotTimestamp: cam2Live?.timestamp ? cam2Live.timestamp.replace('T', ' ').substring(0, 19) : '2026-09-25 15:27:48',
+      realTelemetry: cam2Live
+        ? {
+            chip_temp_c: cam2Live.telemetry?.chip_temp_c ?? 62.8,
+            uptime_sec: cam2Live.telemetry?.uptime_sec ?? 9,
+            free_heap: cam2Live.telemetry?.free_heap ?? 155068,
+            free_psram: cam2Live.telemetry?.free_psram ?? 3417932,
+            wifi_rssi_dbm: cam2Live.telemetry?.wifi_rssi_dbm ?? cam2Live.telemetry?.rssi ?? -78,
+            light_aec_value: cam2Live.telemetry?.aec_value ?? 196,
+            client_ip: cam2Live.client_ip,
+            filename: cam2Live.filename,
+            status: 'ONLINE (LIVE STREAM)'
+          }
+        : {
+            chip_temp_c: 62.8,
+            uptime_sec: 9,
+            free_heap: 155068,
+            wifi_rssi_dbm: -78,
+            status: 'ONLINE (LIVE)'
+          },
+      car: cam2Counts.car,
+      bike: cam2Counts.bike,
+      vacancyChance15m:
+        cam2Counts.car.total + cam2Counts.bike.total > 0
+          ? Math.min(
+              95,
+              Math.max(
+                35,
+                Math.round(
+                  ((cam2Counts.car.free + cam2Counts.bike.free) /
+                    (cam2Counts.car.total + cam2Counts.bike.total)) *
+                    100
+                )
+              )
+            )
+          : 78,
+      slots: cam2Slots
     },
     {
       id: 3,
+      camId: 'cam3',
       slotCode: 'CAM-03',
-      name: 'ลานจอดด้านหลังภาควิชา',
+      name: 'ลานจอดด้านหลังภาควิชา (ข้างภาคคอม)',
       subtitle: 'Zone C - Rear Faculty Lot',
-      device: 'Smartphone #3 (iPhone 13)',
+      device: 'Edge Node (ESP32-CAM / Cam3)',
       zone: 'zone_c',
-      ip: '192.168.1.103',
-      minioKey: 'parking-raw/cam3_latest.jpg',
+      ip: cam3Live?.client_ip || '172.30.92.100',
+      minioKey: cam3Live ? `s3://raw-datasets/dataset/cam3/${cam3Live.partition?.date}/${cam3Live.partition?.hour}/images/${cam3Live.filename}` : 'parking-raw/cam3_latest.jpg',
       fps: '0.2 fps (ทุก 5s)',
       status: 'online',
-      latency: '46ms',
-      isReal: false,
-      imageUrl: dumpRecords[18]?.image_url || '/dump_data/images/2026-09-22_18-01-33_173.jpg',
-      snapshotTimestamp: '2026-09-22 18:01:33',
-      realTelemetry: {
-        chip_temp_c: 79.0,
-        uptime_sec: 1920,
-        free_heap: 158000,
-        wifi_rssi_dbm: -79,
-        status: 'ONLINE (HEALTHY)'
-      },
-      car: { free: 2, total: 5 },
-      bike: { free: 2, total: 2 },
-      vacancyChance15m: 60,
-      slots: [
-        { id: 'C01', type: 'car', occupied: true, name: 'อาจารย์ 1' },
-        { id: 'C02', type: 'car', occupied: true, name: 'อาจารย์ 2' },
-        { id: 'C03', type: 'car', occupied: true, name: 'เจ้าหน้าที่' },
-        { id: 'C04', type: 'car', occupied: false, name: 'ว่าง' },
-        { id: 'C05', type: 'car', occupied: false, name: 'ว่าง' }
-      ]
+      latency: '36ms',
+      isReal: true,
+      imageUrl: cam3Image,
+      snapshotTimestamp: cam3Live?.timestamp ? cam3Live.timestamp.replace('T', ' ').substring(0, 19) : '2026-09-25 14:46:36',
+      realTelemetry: cam3Live
+        ? {
+            chip_temp_c: cam3Live.telemetry?.chip_temp_c ?? 42.5,
+            uptime_sec: cam3Live.telemetry?.uptime_sec ?? 120,
+            free_heap: cam3Live.telemetry?.free_heap ?? 154200,
+            free_psram: cam3Live.telemetry?.free_psram ?? 3419476,
+            wifi_rssi_dbm: cam3Live.telemetry?.wifi_rssi_dbm ?? cam3Live.telemetry?.rssi ?? -60,
+            light_aec_value: cam3Live.telemetry?.aec_value ?? 490,
+            client_ip: cam3Live.client_ip,
+            filename: cam3Live.filename,
+            status: 'ONLINE (LIVE STREAM)'
+          }
+        : {
+            chip_temp_c: 42.5,
+            uptime_sec: 120,
+            free_heap: 154200,
+            wifi_rssi_dbm: -60,
+            status: 'ONLINE (LIVE)'
+          },
+      car: cam3Counts.car,
+      bike: cam3Counts.bike,
+      vacancyChance15m:
+        cam3Counts.car.total + cam3Counts.bike.total > 0
+          ? Math.min(
+              95,
+              Math.max(
+                35,
+                Math.round(
+                  ((cam3Counts.car.free + cam3Counts.bike.free) /
+                    (cam3Counts.car.total + cam3Counts.bike.total)) *
+                    100
+                )
+              )
+            )
+          : 60,
+      slots: cam3Slots
     }
   ]
 
@@ -321,13 +455,14 @@ export default function DashboardView({ onOpenModal }) {
                 className="camera-feed-img"
               />
 
-              {/* Live ROI SVG Overlay for CAM-01 */}
-              {cam.id === 1 && showRoiOverlay && (
+              {/* Live ROI SVG Overlay for any camera */}
+              {showRoiOverlay && cam.slots && cam.slots.length > 0 && (
                 <svg
                   className="cam-tile-svg-overlay"
                   viewBox="0 0 1600 1200"
                 >
-                  {cam1Slots.map((s) => {
+                  {cam.slots.map((s) => {
+                    if (!s.points || s.points.length === 0) return null
                     const isBike = s.type === 'motorcycle' || s.type === 'bike'
                     const isOccupied = !!s.occupied
                     const pts = s.points.map((p) => `${p.x},${p.y}`).join(' ')
@@ -391,20 +526,34 @@ export default function DashboardView({ onOpenModal }) {
                 </div>
 
                 <div className="cam-actions-hover">
-                  {cam.id === 1 && (
+                  <button
+                    type="button"
+                    className={`btn-toggle-roi-mini ${showRoiOverlay ? 'active' : ''}`}
+                    title="เปิด/ปิด ผังพิกัดช่องจอด ROI บนภาพ"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowRoiOverlay(!showRoiOverlay)
+                    }}
+                  >
+                    <Layers className="w-3 h-3" />
+                    <span>{showRoiOverlay ? 'ผัง ROI: เปิด' : 'ผัง ROI: ปิด'}</span>
+                  </button>
+
+                  {onNavigate && (
                     <button
                       type="button"
-                      className={`btn-toggle-roi-mini ${showRoiOverlay ? 'active' : ''}`}
-                      title="เปิด/ปิด ผังพิกัดช่องจอด ROI บนภาพ"
+                      className="btn-toggle-roi-mini"
+                      title={`ไปที่หน้า Setup ROI เพื่อวาดพิกัดของ ${cam.slotCode}`}
                       onClick={(e) => {
                         e.stopPropagation()
-                        setShowRoiOverlay(!showRoiOverlay)
+                        onNavigate('slot_map', cam.camId)
                       }}
                     >
-                      <Layers className="w-3 h-3" />
-                      <span>{showRoiOverlay ? 'ผัง ROI: เปิด' : 'ผัง ROI: ปิด'}</span>
+                      <MapPin className="w-3 h-3 text-emerald-400" />
+                      <span>วาด ROI</span>
                     </button>
                   )}
+
                   <button
                     type="button"
                     className="action-btn-zoom"
@@ -502,13 +651,30 @@ export default function DashboardView({ onOpenModal }) {
               <div className="zone-progress-header">
                 <span className="font-medium text-xs text-white">Zone B (ลานในร่มข้างตึก)</span>
                 <span className="text-xs text-amber-400 font-bold">
-                  3/8 ว่าง (62% รถจอด)
+                  🚗 {cam2Counts.car.free}/{cam2Counts.car.total} • 🏍️ {cam2Counts.bike.free}/{cam2Counts.bike.total} ว่าง (
+                  {cam2Counts.car.total + cam2Counts.bike.total > 0
+                    ? Math.round(
+                        ((cam2Counts.car.occupied + cam2Counts.bike.occupied) /
+                          (cam2Counts.car.total + cam2Counts.bike.total)) *
+                          100
+                      )
+                    : 0}% จอดแล้ว)
                 </span>
               </div>
               <div className="progress-track">
                 <div
                   className="progress-fill bg-gradient-to-r from-amber-500 to-rose-500"
-                  style={{ width: '62%' }}
+                  style={{
+                    width: `${
+                      cam2Counts.car.total + cam2Counts.bike.total > 0
+                        ? Math.round(
+                            ((cam2Counts.car.occupied + cam2Counts.bike.occupied) /
+                              (cam2Counts.car.total + cam2Counts.bike.total)) *
+                              100
+                          )
+                        : 0
+                    }%`
+                  }}
                 ></div>
               </div>
             </div>
@@ -517,13 +683,30 @@ export default function DashboardView({ onOpenModal }) {
               <div className="zone-progress-header">
                 <span className="font-medium text-xs text-white">Zone C (ลานหลังตึกบุคลากร)</span>
                 <span className="text-xs text-blue-400 font-bold">
-                  2/5 ว่าง (60% รถจอด)
+                  🚗 {cam3Counts.car.free}/{cam3Counts.car.total} • 🏍️ {cam3Counts.bike.free}/{cam3Counts.bike.total} ว่าง (
+                  {cam3Counts.car.total + cam3Counts.bike.total > 0
+                    ? Math.round(
+                        ((cam3Counts.car.occupied + cam3Counts.bike.occupied) /
+                          (cam3Counts.car.total + cam3Counts.bike.total)) *
+                          100
+                      )
+                    : 0}% จอดแล้ว)
                 </span>
               </div>
               <div className="progress-track">
                 <div
                   className="progress-fill bg-gradient-to-r from-blue-500 to-indigo-500"
-                  style={{ width: '60%' }}
+                  style={{
+                    width: `${
+                      cam3Counts.car.total + cam3Counts.bike.total > 0
+                        ? Math.round(
+                            ((cam3Counts.car.occupied + cam3Counts.bike.occupied) /
+                              (cam3Counts.car.total + cam3Counts.bike.total)) *
+                              100
+                          )
+                        : 0
+                    }%`
+                  }}
                 ></div>
               </div>
             </div>

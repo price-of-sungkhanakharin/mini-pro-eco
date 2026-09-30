@@ -1,6 +1,7 @@
 import React from 'react'
 import {
   LayoutDashboard,
+  ScrollText,
   Settings,
   Server,
   ChevronRight,
@@ -21,6 +22,14 @@ export default function RightSidebar({
       icon: LayoutDashboard,
       badge: 'LIVE',
       badgeColor: 'badge-emerald'
+    },
+    {
+      id: 'logs',
+      label: 'Ingestion Logs',
+      sublabel: 'ตารางประวัติภาพ & ข้อมูล ESP32',
+      icon: ScrollText,
+      badge: 'ESP32',
+      badgeColor: 'badge-blue'
     },
     {
       id: 'setup',

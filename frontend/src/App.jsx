@@ -8,6 +8,7 @@ import ParkingSetup from './components/ParkingSetup.jsx'
 import CameraModal from './components/CameraModal.jsx'
 import RoboflowStudio from './components/RoboflowStudio.jsx'
 import EcosystemView from './components/EcosystemView.jsx'
+import IngestionLogsView from './components/IngestionLogsView.jsx'
 import {
   getSavedOrInitialSlots,
   calculateSlotCounts,
@@ -417,6 +418,9 @@ function App() {
                   onOpenModal={(cam) => setSelectedCamera(cam)}
                   onNavigate={handleNavigate}
                 />
+              )}
+              {currentView === 'logs' && (
+                <IngestionLogsView onNavigate={handleNavigate} />
               )}
               {currentView === 'setup' && (
                 <SetupView

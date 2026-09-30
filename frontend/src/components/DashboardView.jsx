@@ -12,7 +12,8 @@ import {
   Cpu,
   Wifi,
   Thermometer,
-  MapPin
+  MapPin,
+  ExternalLink
 } from 'lucide-react'
 import {
   loadDumpMetadata,
@@ -741,7 +742,20 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
                 </span>
               </div>
             </div>
-            <span className="log-badge-pulse">Live Telemetry</span>
+            <div className="flex items-center gap-2">
+              <span className="log-badge-pulse">Live Telemetry</span>
+              {onNavigate && (
+                <button
+                  type="button"
+                  onClick={() => onNavigate('logs')}
+                  className="text-xs bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 px-2.5 py-0.5 rounded border border-indigo-500/40 transition-all flex items-center gap-1 cursor-pointer"
+                  title="เปิดดูตารางประวัติ Log เต็มรูปแบบ"
+                >
+                  <span>ดูตาราง Logs เต็ม</span>
+                  <ExternalLink className="w-3 h-3" />
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="logs-scroll-area">

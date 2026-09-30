@@ -355,22 +355,6 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
-.sidebar-nav-btn.setup-highlight {
-  border-color: rgba(99, 102, 241, 0.3);
-  background: rgba(99, 102, 241, 0.08);
-}
-
-.sidebar-nav-btn.setup-highlight:hover {
-  border-color: rgba(99, 102, 241, 0.6);
-  background: rgba(99, 102, 241, 0.18);
-  color: #ffffff;
-}
-
-.sidebar-nav-btn.setup-highlight.active {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(168, 85, 247, 0.25) 100%);
-  border-color: rgba(99, 102, 241, 0.6);
-}
-
 .nav-btn-icon-wrapper {
   position: relative;
   display: flex;

@@ -37,8 +37,7 @@ export default function RightSidebar({
       sublabel: 'กำหนดค่าระบบ, ROI & Roboflow',
       icon: Settings,
       badge: 'CONFIG',
-      badgeColor: 'badge-indigo',
-      isSetup: true
+      badgeColor: 'badge-indigo'
     },
     {
       id: 'ecosystem',
@@ -88,9 +87,7 @@ export default function RightSidebar({
               key={item.id}
               type="button"
               onClick={() => onSelectView(item.id)}
-              className={`sidebar-nav-btn ${isActive ? 'active' : ''} ${
-                item.isSetup ? 'setup-highlight' : ''
-              }`}
+              className={`sidebar-nav-btn ${isActive ? 'active' : ''}`}
               title={isCollapsed ? item.label : undefined}
             >
               <div className="nav-btn-icon-wrapper">

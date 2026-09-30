@@ -301,10 +301,280 @@ export const DEFAULT_CAM1_SLOTS = [
 
 export const SLOTS_STORAGE_KEY = 'cpe_parking_slots_cam1'
 
-export function getSavedOrInitialSlots() {
-  if (typeof window === 'undefined') return DEFAULT_CAM1_SLOTS
+export const DEFAULT_CAM2_SLOTS = [
+  {
+    id: 'B01',
+    type: 'car',
+    shape: 'polygon',
+    occupied: true,
+    vehicle_name: 'Sedan ดำ (1กค-2020)',
+    points: [
+      { x: 180, y: 520 },
+      { x: 380, y: 520 },
+      { x: 360, y: 720 },
+      { x: 150, y: 720 }
+    ],
+    bbox: { x: 150, y: 520, width: 230, height: 200 }
+  },
+  {
+    id: 'B02',
+    type: 'car',
+    shape: 'polygon',
+    occupied: true,
+    vehicle_name: 'Sedan ขาว (2ขพ-4433)',
+    points: [
+      { x: 410, y: 520 },
+      { x: 610, y: 520 },
+      { x: 590, y: 720 },
+      { x: 390, y: 720 }
+    ],
+    bbox: { x: 390, y: 520, width: 220, height: 200 }
+  },
+  {
+    id: 'B03',
+    type: 'car',
+    shape: 'polygon',
+    occupied: true,
+    vehicle_name: 'SUV บรอนซ์ (5กษ-8811)',
+    points: [
+      { x: 640, y: 520 },
+      { x: 840, y: 520 },
+      { x: 820, y: 720 },
+      { x: 620, y: 720 }
+    ],
+    bbox: { x: 620, y: 520, width: 220, height: 200 }
+  },
+  {
+    id: 'B04',
+    type: 'car',
+    shape: 'polygon',
+    occupied: false,
+    vehicle_name: 'ว่างพร้อมจอด',
+    points: [
+      { x: 870, y: 520 },
+      { x: 1070, y: 520 },
+      { x: 1050, y: 720 },
+      { x: 850, y: 720 }
+    ],
+    bbox: { x: 850, y: 520, width: 220, height: 200 }
+  },
+  {
+    id: 'B05',
+    type: 'car',
+    shape: 'polygon',
+    occupied: true,
+    vehicle_name: 'กระบะ ขาว (3ฒณ-9090)',
+    points: [
+      { x: 1100, y: 520 },
+      { x: 1300, y: 520 },
+      { x: 1280, y: 720 },
+      { x: 1080, y: 720 }
+    ],
+    bbox: { x: 1080, y: 520, width: 220, height: 200 }
+  },
+  {
+    id: 'B06',
+    type: 'car',
+    shape: 'polygon',
+    occupied: false,
+    vehicle_name: 'ว่างพร้อมจอด',
+    points: [
+      { x: 1330, y: 520 },
+      { x: 1530, y: 520 },
+      { x: 1510, y: 720 },
+      { x: 1310, y: 720 }
+    ],
+    bbox: { x: 1310, y: 520, width: 220, height: 200 }
+  },
+  {
+    id: 'MB01',
+    type: 'motorcycle',
+    shape: 'polygon',
+    occupied: false,
+    vehicle_name: 'ว่างพร้อมจอด',
+    points: [
+      { x: 180, y: 780 },
+      { x: 280, y: 780 },
+      { x: 270, y: 880 },
+      { x: 170, y: 880 }
+    ],
+    bbox: { x: 170, y: 780, width: 110, height: 100 }
+  },
+  {
+    id: 'MB02',
+    type: 'motorcycle',
+    shape: 'polygon',
+    occupied: true,
+    vehicle_name: 'Yamaha Fazzio',
+    points: [
+      { x: 300, y: 780 },
+      { x: 400, y: 780 },
+      { x: 390, y: 880 },
+      { x: 290, y: 880 }
+    ],
+    bbox: { x: 290, y: 780, width: 110, height: 100 }
+  }
+]
+
+export const DEFAULT_CAM3_SLOTS = [
+  {
+    id: 'C01',
+    type: 'car',
+    shape: 'polygon',
+    occupied: true,
+    vehicle_name: 'Sedan น้ำเงิน (อาจารย์ 1)',
+    points: [
+      { x: 250, y: 480 },
+      { x: 480, y: 480 },
+      { x: 460, y: 700 },
+      { x: 230, y: 700 }
+    ],
+    bbox: { x: 230, y: 480, width: 250, height: 220 }
+  },
+  {
+    id: 'C02',
+    type: 'car',
+    shape: 'polygon',
+    occupied: true,
+    vehicle_name: 'SUV ขาว (อาจารย์ 2)',
+    points: [
+      { x: 520, y: 480 },
+      { x: 750, y: 480 },
+      { x: 730, y: 700 },
+      { x: 500, y: 700 }
+    ],
+    bbox: { x: 500, y: 480, width: 250, height: 220 }
+  },
+  {
+    id: 'C03',
+    type: 'car',
+    shape: 'polygon',
+    occupied: true,
+    vehicle_name: 'Sedan เทา (เจ้าหน้าที่)',
+    points: [
+      { x: 790, y: 480 },
+      { x: 1020, y: 480 },
+      { x: 1000, y: 700 },
+      { x: 770, y: 700 }
+    ],
+    bbox: { x: 770, y: 480, width: 250, height: 220 }
+  },
+  {
+    id: 'C04',
+    type: 'car',
+    shape: 'polygon',
+    occupied: false,
+    vehicle_name: 'ว่างพร้อมจอด',
+    points: [
+      { x: 1060, y: 480 },
+      { x: 1290, y: 480 },
+      { x: 1270, y: 700 },
+      { x: 1040, y: 700 }
+    ],
+    bbox: { x: 1040, y: 480, width: 250, height: 220 }
+  },
+  {
+    id: 'C05',
+    type: 'car',
+    shape: 'polygon',
+    occupied: false,
+    vehicle_name: 'ว่างพร้อมจอด',
+    points: [
+      { x: 1330, y: 480 },
+      { x: 1560, y: 480 },
+      { x: 1540, y: 700 },
+      { x: 1310, y: 700 }
+    ],
+    bbox: { x: 1310, y: 480, width: 250, height: 220 }
+  },
+  {
+    id: 'MC01',
+    type: 'motorcycle',
+    shape: 'polygon',
+    occupied: true,
+    vehicle_name: 'Honda Click ดำ',
+    points: [
+      { x: 100, y: 500 },
+      { x: 200, y: 500 },
+      { x: 190, y: 620 },
+      { x: 90, y: 620 }
+    ],
+    bbox: { x: 90, y: 500, width: 110, height: 120 }
+  },
+  {
+    id: 'MC02',
+    type: 'motorcycle',
+    shape: 'polygon',
+    occupied: false,
+    vehicle_name: 'ว่างพร้อมจอด',
+    points: [
+      { x: 100, y: 650 },
+      { x: 200, y: 650 },
+      { x: 190, y: 770 },
+      { x: 90, y: 770 }
+    ],
+    bbox: { x: 90, y: 650, width: 110, height: 120 }
+  }
+]
+
+export const SYSTEM_CAMERAS = [
+  {
+    id: 'cam1',
+    code: 'CAM-01',
+    name: 'ลานหน้าภาควิชาคอมพิวเตอร์',
+    location: 'front_dept',
+    zone: 'zone_a',
+    zoneName: 'Zone A - Main Front Gate',
+    device: 'Edge Node (ESP32-CAM / Cam1)',
+    defaultCarPrefix: 'A',
+    defaultBikePrefix: 'M',
+    defaultImage: '/dump_data/images/2026-09-22_18-00-01_562.jpg',
+    storageKey: 'cpe_parking_slots_cam1'
+  },
+  {
+    id: 'cam2',
+    code: 'CAM-02',
+    name: 'ลานจอดรถในร่มข้างอาคาร',
+    location: 'covered_lot',
+    zone: 'zone_b',
+    zoneName: 'Zone B - Covered Lot',
+    device: 'Smartphone #2 (iPhone 13)',
+    defaultCarPrefix: 'B',
+    defaultBikePrefix: 'MB',
+    defaultImage: '/dump_data/images/2026-09-22_18-00-42_303.jpg',
+    storageKey: 'cpe_parking_slots_cam2'
+  },
+  {
+    id: 'cam3',
+    code: 'CAM-03',
+    name: 'ลานจอดด้านหลังภาควิชา',
+    location: 'rear_faculty',
+    zone: 'zone_c',
+    zoneName: 'Zone C - Rear Faculty Lot',
+    device: 'Smartphone #3 (iPhone 13)',
+    defaultCarPrefix: 'C',
+    defaultBikePrefix: 'MC',
+    defaultImage: '/dump_data/images/2026-09-22_18-01-33_173.jpg',
+    storageKey: 'cpe_parking_slots_cam3'
+  }
+]
+
+export function getCameraConfig(camId = 'cam1') {
+  return SYSTEM_CAMERAS.find((c) => c.id === camId) || SYSTEM_CAMERAS[0]
+}
+
+export function getDefaultSlotsForCamera(camId = 'cam1') {
+  if (camId === 'cam2') return DEFAULT_CAM2_SLOTS
+  if (camId === 'cam3') return DEFAULT_CAM3_SLOTS
+  return DEFAULT_CAM1_SLOTS
+}
+
+export function getSavedOrInitialSlots(camId = 'cam1') {
+  const fallback = getDefaultSlotsForCamera(camId)
+  if (typeof window === 'undefined') return fallback
+  const storageKey = `cpe_parking_slots_${camId}`
   try {
-    const raw = localStorage.getItem(SLOTS_STORAGE_KEY)
+    const raw = localStorage.getItem(storageKey)
     if (raw) {
       const parsed = JSON.parse(raw)
       if (Array.isArray(parsed) && parsed.length > 0) {
@@ -312,32 +582,71 @@ export function getSavedOrInitialSlots() {
       }
     }
   } catch (e) {
-    console.warn('Error reading saved slots from localStorage:', e)
+    console.warn(`Error reading saved slots for ${camId}:`, e)
   }
-  return DEFAULT_CAM1_SLOTS
+  return fallback
 }
 
-export function saveSlotsToStorage(slots) {
+export function saveSlotsToStorage(slots, camId = 'cam1') {
+  if (typeof window === 'undefined') return
+  const storageKey = `cpe_parking_slots_${camId}`
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(slots))
+    window.dispatchEvent(
+      new CustomEvent('cpe-slots-updated', {
+        detail: { cameraId: camId, slots }
+      })
+    )
+  } catch (e) {
+    console.warn(`Failed to save slots for ${camId}:`, e)
+  }
+}
+
+export function resetCameraSlots(camId = 'cam1') {
+  const defaults = getDefaultSlotsForCamera(camId)
+  saveSlotsToStorage(defaults, camId)
+  return defaults
+}
+
+export function getCameraImage(camId = 'cam1') {
+  if (typeof window === 'undefined') return null
+  try {
+    return localStorage.getItem(`cpe_camera_image_${camId}`)
+  } catch (e) {
+    return null
+  }
+}
+
+export function saveCameraImage(camId, imageUrlOrDataUrl) {
   if (typeof window === 'undefined') return
   try {
-    localStorage.setItem(SLOTS_STORAGE_KEY, JSON.stringify(slots))
-    window.dispatchEvent(new CustomEvent('cpe-slots-updated', { detail: slots }))
+    const key = `cpe_camera_image_${camId}`
+    if (imageUrlOrDataUrl) {
+      localStorage.setItem(key, imageUrlOrDataUrl)
+    } else {
+      localStorage.removeItem(key)
+    }
+    window.dispatchEvent(
+      new CustomEvent('cpe-camera-image-updated', {
+        detail: { cameraId: camId, imageUrl: imageUrlOrDataUrl }
+      })
+    )
   } catch (e) {
-    console.warn('Failed to save slots to storage:', e)
+    console.warn(`Failed to save camera image for ${camId}:`, e)
   }
 }
 
 export function calculateSlotCounts(slots) {
   const safeSlots = Array.isArray(slots) ? slots : []
-  const carSlots = safeSlots.filter(s => s.type !== 'motorcycle' && s.type !== 'bike')
-  const bikeSlots = safeSlots.filter(s => s.type === 'motorcycle' || s.type === 'bike')
+  const carSlots = safeSlots.filter((s) => s.type !== 'motorcycle' && s.type !== 'bike')
+  const bikeSlots = safeSlots.filter((s) => s.type === 'motorcycle' || s.type === 'bike')
 
   const totalCar = carSlots.length
-  const freeCar = carSlots.filter(s => !s.occupied).length
+  const freeCar = carSlots.filter((s) => !s.occupied).length
   const occupiedCar = totalCar - freeCar
 
   const totalBike = bikeSlots.length
-  const freeBike = bikeSlots.filter(s => !s.occupied).length
+  const freeBike = bikeSlots.filter((s) => !s.occupied).length
   const occupiedBike = totalBike - freeBike
 
   return {

@@ -15,8 +15,9 @@ import {
 } from 'lucide-react'
 import ParkingSetup from './ParkingSetup.jsx'
 
-export default function SetupView({ onNavigate }) {
+export default function SetupView({ onNavigate, initialCameraId = 'cam1' }) {
   const [activeTab, setActiveTab] = useState('cameras')
+  const [selectedSlotCam, setSelectedSlotCam] = useState(initialCameraId)
   const [saved, setSaved] = useState(false)
 
   // Initial state for 3 smartphone cameras
@@ -193,6 +194,17 @@ export default function SetupView({ onNavigate }) {
                     />
                   </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedSlotCam('cam1')
+                    setActiveTab('slots')
+                  }}
+                  className="w-full mt-3 py-1.5 px-3 rounded-lg text-xs font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span>✏️ วาดพิกัดช่องจอด ROI (CAM-01)</span>
+                </button>
               </div>
 
               {/* Camera 2 */}
@@ -242,6 +254,17 @@ export default function SetupView({ onNavigate }) {
                     />
                   </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedSlotCam('cam2')
+                    setActiveTab('slots')
+                  }}
+                  className="w-full mt-3 py-1.5 px-3 rounded-lg text-xs font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span>✏️ วาดพิกัดช่องจอด ROI (CAM-02)</span>
+                </button>
               </div>
 
               {/* Camera 3 */}
@@ -291,6 +314,17 @@ export default function SetupView({ onNavigate }) {
                     />
                   </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedSlotCam('cam3')
+                    setActiveTab('slots')
+                  }}
+                  className="w-full mt-3 py-1.5 px-3 rounded-lg text-xs font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span>✏️ วาดพิกัดช่องจอด ROI (CAM-03)</span>
+                </button>
               </div>
             </div>
           </div>
@@ -298,7 +332,11 @@ export default function SetupView({ onNavigate }) {
 
         {activeTab === 'slots' && (
           <div className="setup-section p-0">
-            <ParkingSetup embedded={true} onNavigate={onNavigate} />
+            <ParkingSetup
+              embedded={true}
+              onNavigate={onNavigate}
+              initialCameraId={selectedSlotCam}
+            />
           </div>
         )}
 

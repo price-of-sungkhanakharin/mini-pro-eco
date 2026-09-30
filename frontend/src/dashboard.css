@@ -2429,19 +2429,30 @@
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
+  background: rgba(255, 255, 255, 0.04);
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   transition: all 0.15s ease;
 }
 
+.occupancy-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #e2e8f0;
+}
+
 .occupancy-toggle-btn.vacant {
-  background: rgba(16, 185, 129, 0.12);
+  background: rgba(16, 185, 129, 0.18);
   color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.35);
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.15);
 }
 
 .occupancy-toggle-btn.occupied {
-  background: rgba(239, 68, 68, 0.12);
+  background: rgba(239, 68, 68, 0.18);
   color: #f87171;
-  border: 1px solid rgba(239, 68, 68, 0.35);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.15);
 }
 
 .coords-grid {

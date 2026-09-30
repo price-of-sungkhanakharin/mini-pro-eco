@@ -1197,22 +1197,29 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                 </div>
               </div>
 
-              {/* Edit Occupancy Status (ว่าง / ไม่ว่าง) */}
+              {/* Edit Occupancy Status (สถานะจำลอง / Test Override) */}
               <div className="inspector-field">
-                <label>สถานะช่องจอด:</label>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                  <label style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600 }}>สถานะจำลอง (Simulation):</label>
+                  <span style={{ fontSize: '0.65rem', color: '#64748b' }}>
+                    *ตรวจจับจริงด้วย AI YOLO
+                  </span>
+                </div>
                 <div className="flex gap-2 mb-2">
                   <button
                     type="button"
-                    className={`occupancy-toggle-btn ${!selectedSlot.occupied ? 'vacant' : 'opacity-50'}`}
+                    className={`occupancy-toggle-btn ${!selectedSlot.occupied ? 'vacant' : ''}`}
                     onClick={() => handleUpdateSlotField(selectedSlot.id, 'occupied', false)}
+                    title="ทดสอบจำลองเป็นช่องว่าง"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                     <span>ว่างพร้อมจอด (Vacant)</span>
                   </button>
                   <button
                     type="button"
-                    className={`occupancy-toggle-btn ${selectedSlot.occupied ? 'occupied' : 'opacity-50'}`}
+                    className={`occupancy-toggle-btn ${selectedSlot.occupied ? 'occupied' : ''}`}
                     onClick={() => handleUpdateSlotField(selectedSlot.id, 'occupied', true)}
+                    title="ทดสอบจำลองเป็นมีรถจอด"
                   >
                     <X className="w-3.5 h-3.5 text-rose-400" />
                     <span>มีรถจอด (Occupied)</span>

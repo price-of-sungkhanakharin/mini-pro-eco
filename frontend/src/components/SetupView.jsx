@@ -27,27 +27,27 @@ export default function SetupView({
   const [selectedSlotCam, setSelectedSlotCam] = useState(initialCameraId)
   const [saved, setSaved] = useState(false)
 
-  // Initial state for 3 smartphone cameras
+  // Initial state for 3 enterprise edge cameras
   const [camConfig, setCamConfig] = useState({
     cam1: {
-      name: 'ลานหน้าภาควิชาคอมพิวเตอร์',
-      ip: '192.168.1.101',
-      port: '8080',
-      interval: 5,
+      name: 'ลานหน้าภาค 1 (รถยนต์)',
+      ip: '172.30.91.44',
+      port: '5005',
+      interval: 15,
       enabled: true
     },
     cam2: {
-      name: 'ลานจอดรถในร่มข้างอาคาร',
-      ip: '192.168.1.102',
-      port: '8080',
-      interval: 5,
+      name: 'ลานหน้าภาค 2 (รถยนต์)',
+      ip: '172.30.92.108',
+      port: '5005',
+      interval: 15,
       enabled: true
     },
     cam3: {
-      name: 'ลานจอดด้านหลังภาควิชา',
-      ip: '192.168.1.103',
-      port: '8080',
-      interval: 5,
+      name: 'ลานข้างภาคคอม (มอเตอร์ไซค์)',
+      ip: '172.30.92.100',
+      port: '5005',
+      interval: 15,
       enabled: true
     }
   })

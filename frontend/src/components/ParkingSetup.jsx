@@ -20,7 +20,12 @@ import {
   CheckCircle2,
   Video,
   Camera,
-  Image as ImageIcon
+  Image as ImageIcon,
+  RefreshCw,
+  Save,
+  HardDrive,
+  Wifi,
+  Thermometer
 } from 'lucide-react'
 import {
   loadDumpMetadata,
@@ -34,10 +39,13 @@ import {
   getCameraImage,
   saveCameraImage,
   calculateSlotCounts,
-  formatTimestampThai
+  formatTimestampThai,
+  getIngestionApiBase,
+  saveRoiToServer,
+  fetchRoiFromServer
 } from '../utils/dumpData'
 
-// Native image resolution of the dump snapshot (cam1)
+// Native image resolution of the camera snapshot (1600x1200)
 const NATIVE_WIDTH = 1600
 const NATIVE_HEIGHT = 1200
 
@@ -48,8 +56,13 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
   })
   const activeCam = getCameraConfig(selectedCamId)
 
-  const [dumpRecords, setDumpRecords] = useState([])
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+  // Real live camera snapshots and metadata from Ingestion Server & MinIO
+  const [liveSnapshotKey, setLiveSnapshotKey] = useState(() => Date.now())
+  const [liveCameraMeta, setLiveCameraMeta] = useState(null)
+  const [recentFrames, setRecentFrames] = useState([])
+  const [selectedFrameIndex, setSelectedFrameIndex] = useState(-1) // -1 = live real-time snapshot
+  const [autoLivePolling, setAutoLivePolling] = useState(false)
+  const [isSyncingServer, setIsSyncingServer] = useState(false)
 
   // Custom uploaded/configured snapshot image for current camera
   const [customCamImage, setCustomCamImage] = useState(() => getCameraImage(selectedCamId))
@@ -74,7 +87,6 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
   const [bboxDragCurrent, setBboxDragCurrent] = useState(null)
 
   // Vertex or Shape dragging state
-  // dragging: { type: 'point', slotId: 'A01', pointIndex: 2 } or { type: 'shape', slotId: 'A01', startX, startY, initialPoints }
   const [dragging, setDragging] = useState(null)
 
   // Viewport display controls
@@ -91,19 +103,47 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
   const containerRef = useRef(null)
   const prevCamIdRef = useRef(selectedCamId)
 
-  // Load real dump records
-  useEffect(() => {
-    let mounted = true
-    loadDumpMetadata().then((data) => {
-      if (mounted && data && data.length > 0) {
-        setDumpRecords(data)
-        setSelectedImageIndex(0)
+  // Fetch real-time live camera information and recent MinIO snapshot frames
+  const fetchCameraLive = async (camId) => {
+    const apiBase = getIngestionApiBase()
+    const targetCam = camId || selectedCamId
+    try {
+      // 1. Fetch latest metadata & telemetry for this camera
+      const latestRes = await fetch(`${apiBase}/api/latest?camera_id=${targetCam}`)
+      if (latestRes.ok) {
+        const latestData = await latestRes.json()
+        setLiveCameraMeta(latestData)
       }
-    })
-    return () => {
-      mounted = false
+
+      // 2. Fetch latest historical frames list for this camera from MinIO/DB
+      const logsRes = await fetch(`${apiBase}/api/logs?camera_id=${targetCam}&limit=12`)
+      if (logsRes.ok) {
+        const logsData = await logsRes.json()
+        if (Array.isArray(logsData.records)) {
+          setRecentFrames(logsData.records)
+        }
+      }
+    } catch (err) {
+      console.warn('Could not fetch live camera info:', err)
     }
-  }, [])
+  }
+
+  // Load live camera feed on mount and when switching cameras
+  useEffect(() => {
+    fetchCameraLive(selectedCamId)
+    setSelectedFrameIndex(-1)
+    setLiveSnapshotKey(Date.now())
+  }, [selectedCamId])
+
+  // Real-time Auto-Polling (every 4 seconds for live snapshot updates)
+  useEffect(() => {
+    if (!autoLivePolling) return
+    const timer = setInterval(() => {
+      setLiveSnapshotKey(Date.now())
+      fetchCameraLive(selectedCamId)
+    }, 4000)
+    return () => clearInterval(timer)
+  }, [autoLivePolling, selectedCamId])
 
   // When initialCameraId prop changes externally
   useEffect(() => {
@@ -141,6 +181,8 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
     const loadedSlots = getSavedOrInitialSlots(newCamId)
     setSlots(loadedSlots)
     setCustomCamImage(getCameraImage(newCamId))
+    setSelectedFrameIndex(-1)
+    setLiveSnapshotKey(Date.now())
 
     // 3. Reset editor drawing & selection state
     setSelectedSlotId(null)
@@ -150,6 +192,19 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
     setDragging(null)
     setNextSlotPrefix(drawType === 'motorcycle' ? nextCam.defaultBikePrefix : nextCam.defaultCarPrefix)
     showToast(`สลับไปยัง ${nextCam.code} (${nextCam.name}) เรียบร้อย`)
+  }
+
+  // Handle save ROI to server & AI detection worker
+  const handleSaveRoiToServer = async () => {
+    setIsSyncingServer(true)
+    saveSlotsToStorage(slots, selectedCamId)
+    const ok = await saveRoiToServer(selectedCamId, slots)
+    setIsSyncingServer(false)
+    if (ok) {
+      showToast(`💾 บันทึกพิกัด ROI กล้อง ${activeCam.code} (${slots.length} ช่อง) ไปยัง Server & AI Worker สำเร็จ!`)
+    } else {
+      showToast(`บันทึกใน LocalStorage เรียบร้อย (Server ตอบกลับไม่สำเร็จ)`, 'info')
+    }
   }
 
   // Handle image upload from user device (ESP32-CAM snapshot or phone photo)
@@ -175,7 +230,9 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
   const handleResetImage = () => {
     saveCameraImage(selectedCamId, null)
     setCustomCamImage(null)
-    showToast(`คืนค่าภาพมาตรฐานของ ${activeCam.code} แล้ว`)
+    setSelectedFrameIndex(-1)
+    setLiveSnapshotKey(Date.now())
+    showToast(`คืนค่าภาพสดแบบเรียลไทม์ของ ${activeCam.code} แล้ว`)
   }
 
   // Quick helper to seed default motorcycle slots for the current camera
@@ -218,11 +275,13 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
   }
 
   // Compute active background image URL
+  const apiBase = getIngestionApiBase()
+  const currentSelectedFrame = selectedFrameIndex >= 0 ? recentFrames[selectedFrameIndex] : null
   const activeImageUrl =
     customCamImage ||
-    (selectedCamId === 'cam1' && dumpRecords.length > 0
-      ? dumpRecords[selectedImageIndex]?.image_url || activeCam.defaultImage
-      : activeCam.defaultImage)
+    (currentSelectedFrame
+      ? currentSelectedFrame.image_url
+      : `${apiBase}/api/latest?camera_id=${selectedCamId}&image=true&t=${liveSnapshotKey}`)
 
   // Current background image info for meta display
   const currentRecord = {
@@ -230,13 +289,28 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
     location_name: activeCam.name,
     filename: customCamImage
       ? 'custom_uploaded_snapshot.jpg'
-      : (selectedCamId === 'cam1' && dumpRecords.length > 0
-          ? dumpRecords[selectedImageIndex]?.filename
-          : activeCam.defaultImage.split('/').pop()),
-    local_time:
-      selectedCamId === 'cam1' && dumpRecords.length > 0
-        ? dumpRecords[selectedImageIndex]?.local_time
-        : '2026-09-22 18:00:00',
+      : currentSelectedFrame
+      ? currentSelectedFrame.filename
+      : liveCameraMeta?.stats?.latest_filename || `${selectedCamId}_live_stream.jpg`,
+    local_time: currentSelectedFrame
+      ? currentSelectedFrame.local_time
+      : liveCameraMeta?.stats?.latest_timestamp
+      ? liveCameraMeta.stats.latest_timestamp.replace('T', ' ').split('.')[0]
+      : 'ภาพสดเรียลไทม์ (Live)',
+    minio_url: currentSelectedFrame
+      ? currentSelectedFrame.minio_url
+      : liveCameraMeta?.stats?.minio_latest_path
+      ? `s3://raw-datasets/${liveCameraMeta.stats.minio_latest_path}`
+      : `s3://raw-datasets/dataset/${selectedCamId}/...`,
+    client_ip: currentSelectedFrame
+      ? currentSelectedFrame.client_ip
+      : liveCameraMeta?.telemetry?.client_ip || (selectedCamId === 'cam1' ? '172.30.91.44' : selectedCamId === 'cam2' ? '172.30.92.108' : '172.30.92.100'),
+    chip_temp: currentSelectedFrame
+      ? currentSelectedFrame.chip_temp_c
+      : liveCameraMeta?.telemetry?.telemetry?.chip_temp_c || liveCameraMeta?.telemetry?.chip_temp_c || 53.3,
+    wifi_rssi: currentSelectedFrame
+      ? currentSelectedFrame.wifi_rssi_dbm
+      : liveCameraMeta?.telemetry?.telemetry?.wifi_rssi_dbm || -80,
     image_url: activeImageUrl
   }
 
@@ -662,12 +736,24 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
 
           <button
             type="button"
+            onClick={handleSaveRoiToServer}
+            disabled={isSyncingServer}
+            className="btn-setup-export"
+            style={{ background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.35))', borderColor: 'rgba(16, 185, 129, 0.5)', color: '#6ee7b7' }}
+            title="บันทึกพิกัด ROI ไปยัง Server ให้ AI YOLO ใช้งานทันที"
+          >
+            <Save className={`w-4 h-4 text-emerald-400 ${isSyncingServer ? 'animate-spin' : ''}`} />
+            <span>{isSyncingServer ? 'กำลังบันทึก...' : '💾 บันทึก ROI ไปยัง Server'}</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setShowExportModal(true)}
             className="btn-setup-export"
             title="บันทึกและ Export พิกัดช่องจอดเป็น JSON"
           >
             <Download className="w-4 h-4" />
-            <span>Save / Export JSON</span>
+            <span>Export JSON</span>
           </button>
         </div>
       </div>
@@ -690,11 +776,11 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
           <div className="flex items-center gap-2">
             <Video className="w-4 h-4 text-emerald-400" />
             <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">
-              เลือกกล้องที่ต้องการวาดช่องจอด ({SYSTEM_CAMERAS.length} ตัว):
+              เลือกกล้องที่ต้องการวาดช่องจอด ({SYSTEM_CAMERAS.length} จุดติดตั้ง):
             </span>
           </div>
           <span className="text-[11px] text-slate-400">
-            คลิกสลับกล้องเพื่อวาดพิกัด ROI แยกแต่ละสถานที่ได้อิสระ
+            ดึงภาพสด Snapshot จากกล้อง ESP32 แต่ละตัวเพื่อวาดและปรับแต่งตำแหน่งช่องจอด
           </span>
         </div>
 
@@ -715,9 +801,13 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                 <div className="flex items-center justify-between w-full">
                   <span className="cam-switcher-code">{cam.code}</span>
                   <div className="flex items-center gap-1.5">
-                    {hasCustomImage && (
+                    {hasCustomImage ? (
                       <span className="cam-tab-custom-badge" title="มีภาพอัปโหลดเฉพาะของกล้องนี้">
-                        CUSTOM PHOTO
+                        CUSTOM
+                      </span>
+                    ) : (
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-mono">
+                        LIVE FEED
                       </span>
                     )}
                     <span className="cam-switcher-zone">{cam.zoneName}</span>
@@ -725,8 +815,9 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                 </div>
 
                 <div className="cam-switcher-name text-left">{cam.name}</div>
+                <div className="text-[10px] text-slate-400 text-left font-mono mt-0.5">{cam.device}</div>
 
-                <div className="cam-switcher-stats">
+                <div className="cam-switcher-stats mt-1">
                   <span className="stat-pill car">
                     🚗 รถยนต์: <strong>{counts.car.total}</strong> ({counts.car.free} ว่าง)
                   </span>
@@ -826,7 +917,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
               )}
             </div>
 
-            {/* Group 3: Camera Snapshot & Image Source */}
+            {/* Group 3: Real Camera Live Feed & MinIO Snapshots */}
             <div className="toolbar-group">
               <input
                 type="file"
@@ -835,42 +926,69 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                 accept="image/*"
                 onChange={handleFileUpload}
               />
+
               <button
                 type="button"
                 className="tool-btn highlight"
-                onClick={() => fileInputRef.current?.click()}
-                title={`อัปโหลดภาพถ่ายสถานที่จริงจากกล้อง ${activeCam.code}`}
+                onClick={() => {
+                  setSelectedFrameIndex(-1)
+                  setLiveSnapshotKey(Date.now())
+                  fetchCameraLive(selectedCamId)
+                  showToast(`ดึงภาพสดล่าสุดจากกล้อง ${activeCam.code} เรียบร้อย!`)
+                }}
+                title={`ดึงภาพ Snapshot สดล่าสุดจากกล้อง ${activeCam.code}`}
               >
-                <Upload className="w-3.5 h-3.5 text-cyan-400" />
-                <span>📸 อัปโหลดภาพ {activeCam.code}</span>
+                <RefreshCw className="w-3.5 h-3.5 text-emerald-400" />
+                <span>ดึงภาพสด (Live)</span>
               </button>
 
-              {customCamImage ? (
+              <button
+                type="button"
+                className={`tool-btn ${autoLivePolling ? 'active' : ''}`}
+                onClick={() => setAutoLivePolling(!autoLivePolling)}
+                title="เปิด/ปิด การดึงภาพสดอัตโนมัติทุก 4 วิ"
+              >
+                <span className={`w-2 h-2 rounded-full ${autoLivePolling ? 'bg-rose-400 animate-ping' : 'bg-slate-500'}`}></span>
+                <span>{autoLivePolling ? 'Live (4s)' : 'Auto'}</span>
+              </button>
+
+              {recentFrames.length > 0 && (
+                <select
+                  className="snapshot-select-input"
+                  value={selectedFrameIndex}
+                  onChange={(e) => setSelectedFrameIndex(Number(e.target.value))}
+                  title="เลือกภาพถ่ายในอดีตจาก MinIO"
+                >
+                  <option value={-1}>🔴 ภาพสดล่าสุด (Live Snapshot)</option>
+                  {recentFrames.map((r, i) => (
+                    <option key={r.id || i} value={i}>
+                      #{i + 1} • {r.local_time ? r.local_time.split(' ')[1] : r.filename}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              <button
+                type="button"
+                className="tool-btn"
+                onClick={() => fileInputRef.current?.click()}
+                title={`อัปโหลดภาพนิ่งจากอุปกรณ์สำหรับกล้อง ${activeCam.code}`}
+              >
+                <Upload className="w-3.5 h-3.5 text-cyan-400" />
+                <span>อัปโหลด</span>
+              </button>
+
+              {customCamImage && (
                 <button
                   type="button"
                   className="tool-btn"
                   onClick={handleResetImage}
-                  title="คืนค่ากลับเป็นภาพมาตรฐานของกล้องนี้"
+                  title="คืนค่ากลับเป็นภาพสดของกล้องนี้"
                 >
                   <RotateCcw className="w-3 h-3 text-amber-400" />
-                  <span>คืนค่าภาพเดิม</span>
+                  <span>คืนค่าภาพสด</span>
                 </button>
-              ) : selectedCamId === 'cam1' && dumpRecords.length > 0 ? (
-                <>
-                  <span className="toolbar-label">Frame:</span>
-                  <select
-                    className="snapshot-select-input"
-                    value={selectedImageIndex}
-                    onChange={(e) => setSelectedImageIndex(Number(e.target.value))}
-                  >
-                    {dumpRecords.map((r, i) => (
-                      <option key={r.id || i} value={i}>
-                        #{i + 1} • {r.local_time ? r.local_time.split(' ')[1] : r.filename}
-                      </option>
-                    ))}
-                  </select>
-                </>
-              ) : null}
+              )}
             </div>
 
             {/* Group 4: Quick Toggles & Reset */}
@@ -1045,7 +1163,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
 
             {/* Bottom Meta Status Bar inside Canvas */}
             <div className="viewport-status-footer">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <span className="badge-tag">
                   {activeCam.code} • {activeCam.name}
                 </span>
@@ -1053,7 +1171,13 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                   ไฟล์: <code className="text-cyan-400">{currentRecord.filename}</code>
                 </span>
                 <span className="text-slate-400">
-                  เวลา: <span className="text-emerald-400">{formatTimestampThai(currentRecord.local_time)}</span>
+                  เวลา: <span className="text-emerald-400">{currentRecord.local_time}</span>
+                </span>
+                <span className="text-slate-400">
+                  IP: <span className="text-slate-300 font-mono">{currentRecord.client_ip}</span>
+                </span>
+                <span className="text-slate-400">
+                  Temp: <span className="text-amber-400 font-mono">{currentRecord.chip_temp}°C</span>
                 </span>
               </div>
 

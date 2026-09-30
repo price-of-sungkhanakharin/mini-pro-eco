@@ -54,3 +54,10 @@ task-graph.md
 architecture.md
 skill-instructions.md
 handoff.md
+
+# Large Data Dumps & Raw Datasets
+data/dataset/
+data/raw_images/
+data/4camera/
+data/db/
+

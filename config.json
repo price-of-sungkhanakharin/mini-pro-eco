@@ -1,0 +1,58 @@
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 5005,
+    "upload_interval_sec": 15,
+    "max_content_length_mb": 16
+  },
+  "locations": {
+    "front_dept_1": {
+      "id": "front_dept_1",
+      "camera_id": "cam1",
+      "name": "หน้าภาค 1 (รถยนต์)",
+      "target": "car",
+      "capacity": 10,
+      "folder": "data/dataset/cam1",
+      "aliases": ["cam1", "front_dept_1", "front1", "front_dept"],
+      "rotation": 180,
+      "brightness": 0.82,
+      "contrast": 1.15,
+      "interval_sec": 15
+    },
+    "front_dept_2": {
+      "id": "front_dept_2",
+      "camera_id": "cam2",
+      "name": "หน้าภาค 2 (รถยนต์)",
+      "target": "car",
+      "capacity": 10,
+      "folder": "data/dataset/cam2",
+      "aliases": ["cam2", "front_dept_2", "front2"],
+      "rotation": 180,
+      "brightness": 0.82,
+      "contrast": 1.15,
+      "interval_sec": 15
+    },
+    "side_dept": {
+      "id": "side_dept",
+      "camera_id": "cam3",
+      "name": "ข้างภาคคอม (มอเตอร์ไซค์)",
+      "target": "motorcycle",
+      "capacity": 20,
+      "folder": "data/dataset/cam3",
+      "aliases": ["cam3", "cam4", "side_dept", "side_dept_1", "side_dept_2", "side", "side1", "side2"],
+      "rotation": 180,
+      "brightness": 0.80,
+      "contrast": 1.15,
+      "interval_sec": 15
+    }
+  },
+  "database": {
+    "type": "postgresql",
+    "host": "localhost",
+    "port": 5432,
+    "dbname": "drsum_parking",
+    "user": "parking_user",
+    "password": "parkingpass123",
+    "sqlite_path": "data/db/parking_analytics.db"
+  }
+}

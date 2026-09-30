@@ -422,6 +422,7 @@ function App() {
                 <SetupView
                   onNavigate={handleNavigate}
                   initialCameraId={setupCameraId}
+                  apiBase={API_BASE_URL}
                 />
               )}
               {currentView === 'live_cameras' && (
@@ -431,13 +432,20 @@ function App() {
                 />
               )}
               {currentView === 'slot_map' && (
-                <ParkingSetup
+                <SetupView
                   onNavigate={handleNavigate}
                   initialCameraId={setupCameraId}
+                  initialTab="slots"
+                  apiBase={API_BASE_URL}
                 />
               )}
               {currentView === 'roboflow' && (
-                <RoboflowStudio apiBase={API_BASE_URL} />
+                <SetupView
+                  onNavigate={handleNavigate}
+                  initialCameraId={setupCameraId}
+                  initialTab="roboflow"
+                  apiBase={API_BASE_URL}
+                />
               )}
               {currentView === 'ai_inference' && (
                 <DashboardView

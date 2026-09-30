@@ -410,7 +410,7 @@ export default function CameraModal({ camera, onClose, onNavigate }) {
                   </div>
                 </div>
 
-                <div className="modal-slots-scroll-list max-h-[140px]">
+                <div className="modal-slots-scroll-list max-h-[180px]">
                   {filteredSlots.length === 0 ? (
                     <div className="text-center py-4 text-xs text-slate-500">
                       ไม่มีช่องจอดตรงตามตัวกรอง
@@ -450,39 +450,6 @@ export default function CameraModal({ camera, onClose, onNavigate }) {
                   )}
                 </div>
               </div>
-            </div>
-
-            {/* Quick Action Navigation Buttons */}
-            <div className="modal-pane-footer">
-              {onNavigate && (
-                <button
-                  type="button"
-                  className="flex-1 btn-modal-action-primary"
-                  onClick={() => {
-                    onNavigate('parking-setup')
-                    onClose()
-                  }}
-                  title="เปิดหน้าวาดและจัดสรรผังช่องจอด ROI"
-                >
-                  <Sliders className="w-3.5 h-3.5" />
-                  <span>ปรับแต่งพิกัด ROI</span>
-                </button>
-              )}
-
-              {onNavigate && (
-                <button
-                  type="button"
-                  className="btn-modal-action-secondary"
-                  onClick={() => {
-                    onNavigate('ingestion-logs')
-                    onClose()
-                  }}
-                  title="ดูประวัติและภาพถ่ายดิบในหน้า Logs"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Logs</span>
-                </button>
-              )}
             </div>
           </div>
         </div>

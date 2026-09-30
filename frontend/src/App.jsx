@@ -6,6 +6,8 @@ import DashboardView from './components/DashboardView.jsx'
 import SetupView from './components/SetupView.jsx'
 import ParkingSetup from './components/ParkingSetup.jsx'
 import CameraModal from './components/CameraModal.jsx'
+import RoboflowStudio from './components/RoboflowStudio.jsx'
+import EcosystemView from './components/EcosystemView.jsx'
 import {
   getSavedOrInitialSlots,
   calculateSlotCounts,
@@ -434,6 +436,9 @@ function App() {
                   initialCameraId={setupCameraId}
                 />
               )}
+              {currentView === 'roboflow' && (
+                <RoboflowStudio apiBase={API_BASE_URL} />
+              )}
               {currentView === 'ai_inference' && (
                 <DashboardView
                   onOpenModal={(cam) => setSelectedCamera(cam)}
@@ -445,6 +450,9 @@ function App() {
                   onOpenModal={(cam) => setSelectedCamera(cam)}
                   onNavigate={handleNavigate}
                 />
+              )}
+              {currentView === 'ecosystem' && (
+                <EcosystemView />
               )}
             </main>
 

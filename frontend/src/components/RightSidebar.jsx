@@ -58,6 +58,14 @@ export default function RightSidebar({
       badgeColor: 'badge-amber'
     },
     {
+      id: 'roboflow',
+      label: 'Roboflow Project',
+      sublabel: 'โปรเจกต์ cctv-parking & Annotation',
+      icon: Layers,
+      badge: 'ROBO',
+      badgeColor: 'badge-indigo'
+    },
+    {
       id: 'ai_inference',
       label: 'AI & Prediction',
       sublabel: 'โมเดลทำนาย % โอกาสว่าง',
@@ -72,6 +80,14 @@ export default function RightSidebar({
       icon: MessageSquare,
       badge: 'BOT',
       badgeColor: 'badge-cyan'
+    },
+    {
+      id: 'ecosystem',
+      label: 'Ecosystem & MLflow',
+      sublabel: 'Grafana, MLflow, MinIO, Auth',
+      icon: Server,
+      badge: 'STACK',
+      badgeColor: 'badge-purple'
     }
   ]
 

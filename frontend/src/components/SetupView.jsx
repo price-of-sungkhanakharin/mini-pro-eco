@@ -11,12 +11,19 @@ import {
   HelpCircle,
   Sliders,
   Radio,
-  ExternalLink
+  ExternalLink,
+  Layers
 } from 'lucide-react'
 import ParkingSetup from './ParkingSetup.jsx'
+import RoboflowStudio from './RoboflowStudio.jsx'
 
-export default function SetupView({ onNavigate, initialCameraId = 'cam1' }) {
-  const [activeTab, setActiveTab] = useState('cameras')
+export default function SetupView({
+  onNavigate,
+  initialCameraId = 'cam1',
+  initialTab = 'cameras',
+  apiBase
+}) {
+  const [activeTab, setActiveTab] = useState(initialTab)
   const [selectedSlotCam, setSelectedSlotCam] = useState(initialCameraId)
   const [saved, setSaved] = useState(false)
 
@@ -131,6 +138,15 @@ export default function SetupView({ onNavigate, initialCameraId = 'cam1' }) {
         >
           <HardDrive className="w-4 h-4" />
           <span>MinIO & DB Connection</span>
+        </button>
+
+        <button
+          type="button"
+          className={`setup-tab-btn ${activeTab === 'roboflow' ? 'active' : ''}`}
+          onClick={() => setActiveTab('roboflow')}
+        >
+          <Layers className="w-4 h-4 text-indigo-400" />
+          <span>Roboflow Project</span>
         </button>
       </div>
 
@@ -391,6 +407,12 @@ export default function SetupView({ onNavigate, initialCameraId = 'cam1' }) {
                 <span className="font-mono text-slate-300">localhost:6379</span>
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'roboflow' && (
+          <div className="setup-section p-0">
+            <RoboflowStudio apiBase={apiBase} />
           </div>
         )}
       </div>

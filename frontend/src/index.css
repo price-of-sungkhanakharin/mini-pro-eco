@@ -53,10 +53,23 @@ body {
   justify-content: center;
 }
 
+html:has(.dashboard-app-shell),
+body:has(.dashboard-app-shell) {
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
 #root:has(.dashboard-app-shell) {
   max-width: 100%;
-  width: 100%;
+  width: 100vw;
+  height: 100vh;
+  max-height: 100vh;
   padding: 0;
+  margin: 0;
+  overflow: hidden;
   align-items: stretch;
   justify-content: flex-start;
 }

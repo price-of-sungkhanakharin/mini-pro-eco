@@ -2,19 +2,9 @@ import React from 'react'
 import {
   LayoutDashboard,
   Settings,
-  Video,
-  MapPin,
-  Cpu,
-  MessageSquare,
   Server,
-  Database,
-  HardDrive,
-  Layers,
   ChevronRight,
-  ChevronLeft,
-  Smartphone,
-  CheckCircle2,
-  AlertCircle
+  ChevronLeft
 } from 'lucide-react'
 
 export default function RightSidebar({
@@ -35,51 +25,11 @@ export default function RightSidebar({
     {
       id: 'setup',
       label: 'Setup',
-      sublabel: 'กำหนดค่าระบบ & จุดติดตั้งกล้อง',
+      sublabel: 'กำหนดค่าระบบ, ROI & Roboflow',
       icon: Settings,
       badge: 'CONFIG',
       badgeColor: 'badge-indigo',
       isSetup: true
-    },
-    {
-      id: 'live_cameras',
-      label: 'Live Streams',
-      sublabel: 'มุมมองเจาะลึก 3 กล้องสมาร์ทโฟน',
-      icon: Video,
-      badge: '3 CAM',
-      badgeColor: 'badge-blue'
-    },
-    {
-      id: 'slot_map',
-      label: 'Parking Slot ROI',
-      sublabel: 'ผังพิกัด Bounding Box ช่องจอด',
-      icon: MapPin,
-      badge: 'MAP',
-      badgeColor: 'badge-amber'
-    },
-    {
-      id: 'roboflow',
-      label: 'Roboflow Project',
-      sublabel: 'โปรเจกต์ cctv-parking & Annotation',
-      icon: Layers,
-      badge: 'ROBO',
-      badgeColor: 'badge-indigo'
-    },
-    {
-      id: 'ai_inference',
-      label: 'AI & Prediction',
-      sublabel: 'โมเดลทำนาย % โอกาสว่าง',
-      icon: Cpu,
-      badge: 'MODEL',
-      badgeColor: 'badge-purple'
-    },
-    {
-      id: 'line_bot',
-      label: 'LINE Advisory',
-      sublabel: 'จำลองคำตอบ Chatbot สำหรับ User',
-      icon: MessageSquare,
-      badge: 'BOT',
-      badgeColor: 'badge-cyan'
     },
     {
       id: 'ecosystem',
@@ -211,43 +161,7 @@ export default function RightSidebar({
         </div>
       )}
 
-      {/* Edge Camera Status (Smartphone 3 Nodes) */}
-      {!isCollapsed && (
-        <div className="sidebar-camera-box">
-          <div className="status-box-header">
-            <Smartphone className="w-3.5 h-3.5 text-blue-400" />
-            <span className="font-semibold text-xs text-slate-200">
-              PHONE CAMERAS (5s)
-            </span>
-          </div>
-          <div className="camera-status-list">
-            <div className="cam-status-item">
-              <div className="flex items-center gap-1.5">
-                <span className="camera-ping-dot"></span>
-                <span className="cam-item-id font-mono font-bold">CAM-01</span>
-                <span className="cam-item-name">ลานหน้าภาควิชา</span>
-              </div>
-              <span className="cam-item-ping font-mono text-[10px] text-emerald-400">42ms</span>
-            </div>
-            <div className="cam-status-item">
-              <div className="flex items-center gap-1.5">
-                <span className="camera-ping-dot"></span>
-                <span className="cam-item-id font-mono font-bold">CAM-02</span>
-                <span className="cam-item-name">ลานข้างตึกในร่ม</span>
-              </div>
-              <span className="cam-item-ping font-mono text-[10px] text-emerald-400">38ms</span>
-            </div>
-            <div className="cam-status-item">
-              <div className="flex items-center gap-1.5">
-                <span className="camera-ping-dot"></span>
-                <span className="cam-item-id font-mono font-bold">CAM-03</span>
-                <span className="cam-item-name">ลานหลังภาควิชา</span>
-              </div>
-              <span className="cam-item-ping font-mono text-[10px] text-emerald-400">46ms</span>
-            </div>
-          </div>
-        </div>
-      )}
     </aside>
   )
 }
+

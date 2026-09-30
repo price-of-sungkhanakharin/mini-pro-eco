@@ -93,11 +93,93 @@ export const FALLBACK_DUMP_RECORDS = [
   }
 ]
 
+export const getIngestionApiBase = () => {
+  if (typeof window !== 'undefined') {
+    return `http://${window.location.hostname}:5005`
+  }
+  return 'http://localhost:5005'
+}
+
 /**
- * Fetch and normalize all 30 metadata records from public/dump_data/metadata.json
+ * Fetch real live logs directly from the Ingestion Server / MinIO dataset
+ */
+export async function fetchRealServerLogs({
+  limit = 200,
+  page = 1,
+  camera_id = 'all',
+  date = 'all',
+  temp_filter = 'all',
+  search = '',
+  sort = 'desc',
+  source = 'db'
+} = {}) {
+  const apiBase = getIngestionApiBase()
+  const params = new URLSearchParams()
+  if (limit) params.set('limit', limit)
+  if (page) params.set('page', page)
+  if (camera_id && camera_id !== 'all') params.set('camera_id', camera_id)
+  if (date && date !== 'all') params.set('date', date)
+  if (temp_filter && temp_filter !== 'all') params.set('temp_filter', temp_filter)
+  if (search) params.set('search', search)
+  if (sort) params.set('sort', sort)
+  if (source) params.set('source', source)
+
+  try {
+    const res = await fetch(`${apiBase}/api/logs?${params.toString()}`)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json()
+    if (data && Array.isArray(data.records)) {
+      const records = data.records.map((rec) => ({
+        ...rec,
+        image_url: rec.image_url?.startsWith('http') ? rec.image_url : `${apiBase}${rec.image_url}`,
+        json_url: rec.json_url?.startsWith('http') ? rec.json_url : `${apiBase}${rec.json_url}`,
+      }))
+      return {
+        success: true,
+        records,
+        total: data.total ?? records.length,
+        available_dates: data.available_dates || [],
+        stats: data.stats || {},
+        page: data.page || 1,
+        pages: data.pages || 1
+      }
+    }
+  } catch (err) {
+    console.warn('Could not fetch from real ingestion server, attempting fallback:', err)
+  }
+
+  // Fallback to legacy dump
+  const fallback = await loadDumpMetadata()
+  return {
+    success: false,
+    records: fallback,
+    total: fallback.length,
+    available_dates: ['2026-09-22'],
+    stats: {
+      total_records: fallback.length,
+      avg_temp: 80.2,
+      high_temp_count: 5,
+      avg_heap: 153,
+      minio_bucket: 'raw-datasets',
+      minio_connected: true
+    },
+    page: 1,
+    pages: 1
+  }
+}
+
+/**
+ * Fetch and normalize records from Ingestion Server API, falling back to public/dump_data/metadata.json
  */
 export async function loadDumpMetadata() {
   try {
+    // Try real server first
+    const realResult = await fetchRealServerLogs({ limit: 100 })
+    if (realResult.success && realResult.records.length > 0) {
+      return realResult.records
+    }
+
+    // Secondary fallback
     const res = await fetch('/dump_data/metadata.json')
     if (!res.ok) {
       throw new Error(`Failed to load metadata.json: ${res.statusText}`)
@@ -120,8 +202,6 @@ export async function loadDumpMetadata() {
       const wifiRssi = item.wifi_rssi ?? sidecarTelemetry.wifi_rssi_dbm ?? -82
       const aecVal = item.light_aec_value ?? sidecarTelemetry.aec_value ?? 490
 
-      // Extract human-readable local time from filename or timestamp
-      // e.g. "2026-09-22_18-00-01_562.jpg" -> "2026-09-22 18:00:01"
       let localTime = '2026-09-22 18:00:00'
       const fnMatch = fn.match(/(\d{4}-\d{2}-\d{2})_(\d{2})-(\d{2})-(\d{2})/)
       if (fnMatch) {
@@ -521,46 +601,99 @@ export const SYSTEM_CAMERAS = [
   {
     id: 'cam1',
     code: 'CAM-01',
-    name: 'ลานหน้าภาควิชาคอมพิวเตอร์',
-    location: 'front_dept',
+    name: 'ลานหน้าภาค 1 (รถยนต์)',
+    location: 'front_dept_1',
+    target: 'car',
+    capacity: 10,
     zone: 'zone_a',
-    zoneName: 'Zone A - Main Front Gate',
-    device: 'Edge Node (ESP32-CAM / Cam1)',
+    zoneName: 'Zone A - หน้าภาค 1 (รถยนต์)',
+    device: 'ESP32-CAM (#1) • IP: 172.30.91.44',
     defaultCarPrefix: 'A',
     defaultBikePrefix: 'M',
-    defaultImage: '/dump_data/images/2026-09-22_18-00-01_562.jpg',
+    defaultImage: '/api/latest?camera_id=cam1&image=true',
     storageKey: 'cpe_parking_slots_cam1'
   },
   {
     id: 'cam2',
     code: 'CAM-02',
-    name: 'ลานจอดรถในร่มข้างอาคาร',
-    location: 'covered_lot',
+    name: 'ลานหน้าภาค 2 (รถยนต์)',
+    location: 'front_dept_2',
+    target: 'car',
+    capacity: 10,
     zone: 'zone_b',
-    zoneName: 'Zone B - Covered Lot',
-    device: 'Smartphone #2 (iPhone 13)',
+    zoneName: 'Zone B - หน้าภาค 2 (รถยนต์)',
+    device: 'ESP32-CAM (#2) • IP: 172.30.92.108',
     defaultCarPrefix: 'B',
     defaultBikePrefix: 'MB',
-    defaultImage: '/dump_data/images/2026-09-22_18-00-42_303.jpg',
+    defaultImage: '/api/latest?camera_id=cam2&image=true',
     storageKey: 'cpe_parking_slots_cam2'
   },
   {
     id: 'cam3',
     code: 'CAM-03',
-    name: 'ลานจอดด้านหลังภาควิชา',
-    location: 'rear_faculty',
+    name: 'ลานข้างภาคคอม (มอเตอร์ไซค์)',
+    location: 'side_dept',
+    target: 'motorcycle',
+    capacity: 20,
     zone: 'zone_c',
-    zoneName: 'Zone C - Rear Faculty Lot',
-    device: 'Smartphone #3 (iPhone 13)',
+    zoneName: 'Zone C - ข้างภาคคอม (มอเตอร์ไซค์)',
+    device: 'ESP32-CAM (#3) • IP: 172.30.92.100',
     defaultCarPrefix: 'C',
     defaultBikePrefix: 'MC',
-    defaultImage: '/dump_data/images/2026-09-22_18-01-33_173.jpg',
+    defaultImage: '/api/latest?camera_id=cam3&image=true',
     storageKey: 'cpe_parking_slots_cam3'
   }
 ]
 
 export function getCameraConfig(camId = 'cam1') {
   return SYSTEM_CAMERAS.find((c) => c.id === camId) || SYSTEM_CAMERAS[0]
+}
+
+/**
+ * Fetch saved ROI slots from backend Ingestion Server
+ */
+export async function fetchRoiFromServer(camId = null) {
+  const apiBase = getIngestionApiBase()
+  try {
+    const url = camId ? `${apiBase}/api/roi/${camId}` : `${apiBase}/api/roi`
+    const res = await fetch(url)
+    if (res.ok) {
+      return await res.json()
+    }
+  } catch (err) {
+    console.warn('Could not fetch ROI from server:', err)
+  }
+  return null
+}
+
+/**
+ * Sync drawn ROI slots to backend Ingestion Server and detection worker
+ */
+export async function saveRoiToServer(camId, slots, polygon = null) {
+  const apiBase = getIngestionApiBase()
+  try {
+    const payload = {
+      camera_id: camId,
+      name: getCameraConfig(camId)?.name || camId,
+      capacity: slots.length,
+      slots: slots,
+      polygon: polygon || [
+        [0, 0],
+        [1600, 0],
+        [1600, 1200],
+        [0, 1200]
+      ]
+    }
+    const res = await fetch(`${apiBase}/api/roi`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    return res.ok
+  } catch (err) {
+    console.warn('Could not save ROI to server:', err)
+    return false
+  }
 }
 
 export function getDefaultSlotsForCamera(camId = 'cam1') {

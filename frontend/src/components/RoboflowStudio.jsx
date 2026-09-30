@@ -8,28 +8,24 @@ import {
   AlertCircle,
   RefreshCw,
   Zap,
-  FolderTree,
   Database,
-  HardDrive,
-  FolderGit2,
-  Sun,
-  Filter,
   Archive,
   Play,
   Square,
   Sparkles,
-  ShieldCheck,
   Check,
-  Info
+  FolderGit2,
+  Tag,
+  ArrowUpRight
 } from 'lucide-react'
 
 const INTERVAL_SECONDS = 1800 // 30 Minutes
 
 const CAMERA_CHIPS = [
-  { id: 'all', name: 'ทุกกล้อง (All Cameras)', label: 'ทุกโซน', color: 'indigo' },
-  { id: 'cam1', name: 'CAM1 - ประตูทางเข้าหน้าภาค', label: 'หน้าภาค', color: 'blue' },
-  { id: 'cam2', name: 'CAM2 - ลานจอดในร่ม', label: 'ลานในร่ม', color: 'purple' },
-  { id: 'cam3', name: 'CAM3 - ลานจอดข้างภาค', label: 'ข้างภาค', color: 'cyan' },
+  { id: 'all', name: 'ทุกกล้อง (All Cameras)', shortName: 'ทุกกล้อง', desc: 'CAM-01, 02, 03' },
+  { id: 'cam1', name: 'CAM-01 (ประตูหน้าภาค)', shortName: 'CAM-01', desc: 'ประตูทางเข้าหลัก' },
+  { id: 'cam2', name: 'CAM-02 (ลานจอดในร่ม)', shortName: 'CAM-02', desc: 'ใต้อาคารเรียน' },
+  { id: 'cam3', name: 'CAM-03 (ลานจอดข้างภาค)', shortName: 'CAM-03', desc: 'ลานจอดกลางแจ้ง' },
 ]
 
 export default function RoboflowStudio({ apiBase }) {
@@ -162,84 +158,85 @@ export default function RoboflowStudio({ apiBase }) {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
   }
 
+  const getFileName = (path) => {
+    if (!path) return '-'
+    return path.split('/').pop()
+  }
+
   const projectUrl = syncStatus?.project_url || 'https://app.roboflow.com/kimbiew/cctv-parking/annotate'
 
   const filteredLogs = syncStatus?.recent_logs?.filter((item) => {
     if (tableCamFilter === 'all') return true
-    return item.camera_id === tableCamFilter
+    return item.camera_id?.toLowerCase() === tableCamFilter.toLowerCase()
   }) || []
 
-  const activeWindow = syncStatus?.active_window ?? true
   const job = bulkStatus?.job_progress
   const camCounts = bulkStatus?.camera_counts || { all: 3133, cam1: 1045, cam2: 1044, cam3: 1044 }
   const totalUploadedCount = job?.uploaded_images || syncStatus?.uploaded_count || 0
   const totalBacklog = bulkStatus?.total_all_cameras || 3168
 
   return (
-    <div className="setup-view-container">
+    <div className="rf-studio-container">
       {/* Toast Notification Banner */}
       {toast && (
-        <div
-          className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl backdrop-blur-md border transition-all animate-in fade-in slide-in-from-top-4 ${
-            toast.type === 'success'
-              ? 'bg-emerald-950/90 border-emerald-500/50 text-emerald-200'
-              : toast.type === 'error'
-              ? 'bg-rose-950/90 border-rose-500/50 text-rose-200'
-              : 'bg-indigo-950/90 border-indigo-500/50 text-indigo-200'
-          }`}
-          style={{ minWidth: '320px', maxWidth: '480px' }}
-        >
+        <div className={`rf-toast rf-toast-${toast.type}`}>
           {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />}
           {toast.type === 'error' && <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />}
           {toast.type === 'info' && <Sparkles className="w-5 h-5 text-indigo-400 shrink-0 animate-spin" />}
-          <span className="text-xs font-medium leading-relaxed flex-1">{toast.message}</span>
+          <span className="flex-1">{toast.message}</span>
         </div>
       )}
 
-      {/* 1. Header Banner - Unified Setup View Header */}
-      <div className="setup-header-banner">
-        <div className="flex items-center gap-3.5">
-          <div className="setup-icon-box">
+      {/* 1. Project Overview & Quick Actions */}
+      <div className="rf-overview-card">
+        <div className="rf-overview-main">
+          <div className="rf-icon-badge">
             <FolderGit2 className="w-6 h-6 text-indigo-400" />
           </div>
           <div>
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h2 className="text-base font-bold text-white tracking-wide">
-                Roboflow Annotation Platform
-              </h2>
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                kimbiew / {syncStatus?.project_name || 'cctv-parking'}
-              </span>
-              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+            <div className="rf-title-row">
+              <h2 className="rf-title">Roboflow Annotation Platform</h2>
+              <span className="rf-badge-active">
+                <span className="rf-pulse-dot"></span>
                 ACTIVE V1
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-1">
-              ระบบส่งภาพ CCTV อัตโนมัติทุก 30 นาที แยกกลุ่มตาม <strong>กล้อง (CAM1/CAM2/CAM3) / วัน / ชั่วโมง</strong> พร้อมระบบ Audit ใน PostgreSQL
+            <p className="rf-desc">
+              ระบบส่งภาพจากกล้อง CCTV สู่แพลตฟอร์ม Roboflow โดยอัตโนมัติทุก 30 นาที แยกกลุ่มตาม กล้อง / วัน / ชั่วโมง พร้อมระบบ Audit Log ใน PostgreSQL ป้องกันภาพซ้ำ
             </p>
+            <div className="rf-meta-tags">
+              <span className="rf-tag font-mono text-indigo-300">
+                Workspace: kimbiew / {syncStatus?.project_name || 'cctv-parking'}
+              </span>
+              <span className="rf-tag text-slate-400">
+                โหมด: 06:00 - 20:00 (Daylight Ingestion)
+              </span>
+              <span className="rf-tag text-slate-400">
+                Format: 15 ภาพ / รอบ
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Header Action Buttons */}
-        <div className="flex items-center gap-2.5">
+        {/* Action Buttons */}
+        <div className="rf-overview-actions">
           <button
             type="button"
             onClick={handleForceSync}
             disabled={triggering}
-            className="btn-platform btn-platform-primary"
+            className="rf-btn-sync-now"
             title="สั่งยิงรอบ 30 นาทีทันที (15 ภาพ)"
           >
             <Zap className={`w-4 h-4 text-amber-300 ${triggering ? 'animate-bounce' : ''}`} />
-            <span>{triggering ? 'กำลังส่ง...' : '⚡ Force Sync (30m)'}</span>
+            <span>{triggering ? 'กำลังส่งภาพ...' : 'ซิงค์ภาพทันที (Force Sync)'}</span>
           </button>
 
           <a
             href={projectUrl}
             target="_blank"
             rel="noreferrer"
-            className="btn-platform btn-platform-purple"
-            title="เปิดโปรเจกต์ cctv-parking บน Roboflow Studio"
+            className="rf-btn-cloud-open"
+            title="เปิดโปรเจกต์ kimbiew/cctv-parking บน Roboflow Studio"
           >
             <span>เปิด Roboflow Studio</span>
             <ExternalLink className="w-3.5 h-3.5" />
@@ -248,217 +245,207 @@ export default function RoboflowStudio({ apiBase }) {
           <button
             type="button"
             onClick={() => fetchStatus(true)}
-            className="btn-platform btn-platform-dark p-2"
-            title="รีเฟรชข้อมูล"
+            className="rf-btn-refresh-icon"
+            title="รีเฟรชข้อมูลสถานะ"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-indigo-400' : ''}`} />
           </button>
         </div>
       </div>
 
-      {/* 2. Top Metric Cards (4 Grid) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {/* Card 1: 30-Min Countdown */}
-        <div className="setup-content-card" style={{ padding: '1rem 1.15rem' }}>
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-            <span className="font-semibold uppercase tracking-wider text-[11px] text-indigo-300 flex items-center gap-1.5">
+      {/* 2. Key Metrics & Schedule Cards */}
+      <div className="rf-metrics-grid">
+        {/* Metric 1: 30-min Auto-Sync Countdown */}
+        <div className="rf-metric-box">
+          <div className="rf-metric-top">
+            <span className="flex items-center gap-1.5 text-indigo-400">
               <Clock className="w-3.5 h-3.5" />
               รอบส่งอัตโนมัติ (30m)
             </span>
-            <span className="font-mono text-[10px] text-slate-400">06:00-20:00</span>
+            <span className="font-mono text-[10px] text-slate-400">06:00 - 20:00</span>
           </div>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-bold font-mono text-white tracking-tight">
-              {formatTime(countdown)}
-            </span>
-            <span className="text-xs text-slate-400">นาที</span>
+          <div className="rf-metric-body">
+            <span className="rf-metric-num">{formatTime(countdown)}</span>
+            <span className="rf-metric-unit">นาที</span>
           </div>
-          <div className="w-full bg-slate-800 rounded-full h-1.5 mt-2.5 overflow-hidden border border-slate-700/50">
+          <div className="rf-progress-bar">
             <div
-              className="bg-indigo-500 h-1.5 rounded-full transition-all duration-1000 ease-linear"
+              className="rf-progress-fill"
               style={{ width: `${((INTERVAL_SECONDS - countdown) / INTERVAL_SECONDS) * 100}%` }}
             ></div>
           </div>
+          <span className="rf-metric-hint">นับถอยหลังสู่งวดถัดไป</span>
         </div>
 
-        {/* Card 2: Pending Queue */}
-        <div className="setup-content-card" style={{ padding: '1rem 1.15rem' }}>
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-            <span className="font-semibold uppercase tracking-wider text-[11px] text-amber-300 flex items-center gap-1.5">
+        {/* Metric 2: Pending Queue */}
+        <div className="rf-metric-box">
+          <div className="rf-metric-top">
+            <span className="flex items-center gap-1.5 text-amber-400">
               <Camera className="w-3.5 h-3.5" />
               คิวรอส่งรอบต่อไป
             </span>
-            <span className="font-mono text-[10px] text-amber-400">PostgreSQL</span>
+            <span className="font-mono text-[10px] text-amber-500">PostgreSQL</span>
           </div>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-bold font-mono text-amber-400">
-              {syncStatus?.pending_count ?? 120}
+          <div className="rf-metric-body">
+            <span className="rf-metric-num" style={{ color: '#fbbf24' }}>
+              {(syncStatus?.pending_count ?? 120).toLocaleString()}
             </span>
-            <span className="text-xs text-slate-400">รูป พร้อมส่ง</span>
+            <span className="rf-metric-unit">รูป พร้อมส่ง</span>
           </div>
-          <span className="text-[11px] text-slate-400 mt-2 block">คัดกรองเฉพาะภาพเวลากลางวัน</span>
+          <span className="rf-metric-hint">คัดกรองเฉพาะภาพเวลากลางวัน</span>
         </div>
 
-        {/* Card 3: Uploaded to Roboflow */}
-        <div className="setup-content-card" style={{ padding: '1rem 1.15rem' }}>
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-            <span className="font-semibold uppercase tracking-wider text-[11px] text-emerald-300 flex items-center gap-1.5">
+        {/* Metric 3: Uploaded to Roboflow Cloud */}
+        <div className="rf-metric-box">
+          <div className="rf-metric-top">
+            <span className="flex items-center gap-1.5 text-emerald-400">
               <CheckCircle2 className="w-3.5 h-3.5" />
               อัปโหลดสำเร็จแล้ว
             </span>
-            <span className="font-mono text-[10px] text-emerald-400">Roboflow Cloud</span>
+            <span className="font-mono text-[10px] text-emerald-500">Cloud Sync</span>
           </div>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-bold font-mono text-emerald-400">
+          <div className="rf-metric-body">
+            <span className="rf-metric-num" style={{ color: '#34d399' }}>
               {totalUploadedCount.toLocaleString()}
             </span>
-            <span className="text-xs text-slate-400">รูป ในระบบ</span>
+            <span className="rf-metric-unit">รูป ในระบบ</span>
           </div>
-          <span className="text-[11px] text-slate-400 mt-2 block">บันทึกรหัส Roboflow ID ครบถ้วน</span>
+          <span className="rf-metric-hint">บันทึก Roboflow Image ID ครบ</span>
         </div>
 
-        {/* Card 4: Historical Backlog */}
-        <div className="setup-content-card" style={{ padding: '1rem 1.15rem' }}>
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-            <span className="font-semibold uppercase tracking-wider text-[11px] text-purple-300 flex items-center gap-1.5">
+        {/* Metric 4: Historical Backlog Total */}
+        <div className="rf-metric-box">
+          <div className="rf-metric-top">
+            <span className="flex items-center gap-1.5 text-purple-400">
               <Archive className="w-3.5 h-3.5" />
-              ภาพประวัติทั้งหมด
+              ภาพประวัติสะสมทั้งหมด
             </span>
-            <span className="font-mono text-[10px] text-purple-400">3 กล้อง</span>
+            <span className="font-mono text-[10px] text-purple-400">3 จุดกล้อง</span>
           </div>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-bold font-mono text-purple-300">
+          <div className="rf-metric-body">
+            <span className="rf-metric-num" style={{ color: '#c084fc' }}>
               {totalBacklog.toLocaleString()}
             </span>
-            <span className="text-xs text-slate-400">รูป ทั้งหมด</span>
+            <span className="rf-metric-unit">รูป ทั้งหมด</span>
           </div>
-          <span className="text-[11px] text-slate-400 mt-2 block">CAM1, CAM2, CAM3</span>
+          <span className="rf-metric-hint">CAM-01, CAM-02, CAM-03</span>
         </div>
       </div>
 
       {/* 3. Camera Partitioned Historical Sync Control */}
-      <div className="setup-content-card">
-        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
+      <div className="rf-card-block">
+        <div className="rf-card-block-header">
           <div>
-            <h3 className="section-title-sm">
+            <h3 className="rf-block-title">
               <Archive className="w-4 h-4 text-purple-400" />
-              <span>Camera Partitioned Sync (ระบบส่งรูปย้อนหลังแยกตามกล้อง / วัน / ชั่วโมง)</span>
+              <span>ส่งภาพย้อนหลังแยกตามกล้อง (Partitioned Historical Backlog Sync)</span>
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              เลือกกล้องที่ต้องการส่ง หรือส่งทั้งหมดพร้อมกัน โดยระบบจะสร้าง Batch บน Roboflow เป็น <code>CAM1_2026-09-24_06h</code> ให้อัตโนมัติ ไม่ปนกัน
+            <p className="rf-block-desc">
+              ส่งภาพย้อนหลังทั้งหมดขึ้น Roboflow เพื่อเตรียม Dataset สำหรับ Train โดยระบบจะสร้าง Batch Name แยกตามกล้อง วัน และชั่วโมงอัตโนมัติ (เช่น <code>CAM1_2026-09-24_08h</code>)
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div>
             {job?.is_active ? (
               <button
                 type="button"
                 onClick={handleCancelBulk}
-                className="btn-platform btn-platform-rose"
+                className="rf-btn-cancel-job"
               >
                 <Square className="w-3.5 h-3.5 fill-current" />
-                <span>ยกเลิกงาน (Cancel)</span>
+                <span>ยกเลิกงาน (Cancel Job)</span>
               </button>
             ) : (
               <button
                 type="button"
                 onClick={handleStartBulk}
                 disabled={startingBulk}
-                className="btn-platform btn-platform-purple"
+                className="rf-btn-start-job"
               >
                 <Play className="w-3.5 h-3.5 fill-current" />
                 <span>
                   {startingBulk
                     ? 'กำลังเริ่มส่ง...'
-                    : `🚀 ส่งรูปย้อนหลัง (${selectedCam === 'all' ? 'ทุกกล้อง' : selectedCam.toUpperCase()})`}
+                    : `ส่งภาพย้อนหลัง (${selectedCam === 'all' ? 'ทุกกล้อง' : selectedCam.toUpperCase()})`}
                 </span>
               </button>
             )}
           </div>
         </div>
 
-        {/* Camera Selector Tab Chips */}
-        <div className="mt-3.5">
-          <div className="text-[11px] font-semibold text-slate-300 mb-2 flex items-center gap-1.5">
-            <Filter className="w-3.5 h-3.5 text-indigo-400" />
-            <span>เลือกกลุ่มกล้องที่ต้องการส่ง:</span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            {CAMERA_CHIPS.map((cam) => {
-              const count = camCounts[cam.id] || 0
-              const isSelected = selectedCam === cam.id
-              return (
-                <button
-                  key={cam.id}
-                  type="button"
-                  onClick={() => setSelectedCam(cam.id)}
-                  className={`p-3 rounded-xl text-left border transition-all cursor-pointer flex flex-col justify-between ${
-                    isSelected
-                      ? 'bg-indigo-950/80 border-indigo-500 shadow-lg shadow-indigo-500/20'
-                      : 'bg-slate-900/70 border-slate-800 hover:border-slate-700'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className={`text-xs font-bold ${isSelected ? 'text-indigo-300' : 'text-slate-300'}`}>
-                      {cam.name}
-                    </span>
-                    {isSelected && <Check className="w-3.5 h-3.5 text-indigo-400" />}
-                  </div>
-                  <div className="mt-2 flex items-baseline gap-1.5">
-                    <span className="text-lg font-bold font-mono text-white">
-                      {count.toLocaleString()}
-                    </span>
-                    <span className="text-[10px] text-slate-400">รูป</span>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
+        {/* Camera Selector Grid */}
+        <div className="rf-cam-grid">
+          {CAMERA_CHIPS.map((cam) => {
+            const count = camCounts[cam.id] || 0
+            const isSelected = selectedCam === cam.id
+            return (
+              <div
+                key={cam.id}
+                onClick={() => setSelectedCam(cam.id)}
+                className={`rf-cam-card ${isSelected ? 'selected' : ''}`}
+              >
+                <div className="rf-cam-card-top">
+                  <span>{cam.name}</span>
+                  {isSelected && <Check className="w-4 h-4 text-indigo-400" />}
+                </div>
+                <div className="rf-cam-card-bottom">
+                  <span className="rf-cam-num">{count.toLocaleString()}</span>
+                  <span className="rf-cam-unit">รูป</span>
+                </div>
+              </div>
+            )
+          })}
         </div>
 
-        {/* Batch Naming Structure Box */}
-        <div className="mt-3 p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-xs grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div>
-            <span className="text-slate-400 text-[11px] font-semibold block">รูปแบบ Batch Name บน Roboflow:</span>
-            <div className="text-xs font-mono font-bold text-sky-300 mt-1 bg-sky-950/50 px-2 py-1 rounded border border-sky-800/40">
-              {selectedCam === 'all' ? 'CAM1_YYYY-MM-DD_HHh, CAM2_...' : `${selectedCam.toUpperCase()}_YYYY-MM-DD_HHh`}
-            </div>
+        {/* Status & Partitioning Banner */}
+        <div className="rf-status-banner">
+          <div className="rf-status-item">
+            <span className="rf-status-item-label">โครงสร้าง Batch Name บน Roboflow</span>
+            <span className="rf-status-item-val font-mono text-sky-300">
+              {selectedCam === 'all'
+                ? 'CAM{1..3}_YYYY-MM-DD_HHh'
+                : `${selectedCam.toUpperCase()}_YYYY-MM-DD_HHh`}
+            </span>
           </div>
-          <div>
-            <span className="text-slate-400 text-[11px] font-semibold block">แท็กกำกับ (Roboflow Tags):</span>
-            <div className="text-xs font-mono text-purple-300 mt-1 flex flex-wrap gap-1">
-              <span className="px-1.5 py-0.5 rounded bg-purple-950/60 border border-purple-800/40">{selectedCam === 'all' ? 'cam1/cam2/cam3' : selectedCam}</span>
-              <span className="px-1.5 py-0.5 rounded bg-purple-950/60 border border-purple-800/40">2026-09-24</span>
-              <span className="px-1.5 py-0.5 rounded bg-purple-950/60 border border-purple-800/40">06:00 - 20:00</span>
-            </div>
+
+          <div className="rf-status-item">
+            <span className="rf-status-item-label">แท็กกำกับภาพ (Tags)</span>
+            <span className="rf-status-item-val font-mono text-purple-300">
+              {selectedCam === 'all' ? 'cam1, cam2, cam3' : selectedCam} • 2026-09-24 • 06:00-20:00
+            </span>
           </div>
-          <div>
-            <span className="text-slate-400 text-[11px] font-semibold block">สถานะงานปัจจุบัน:</span>
-            <div className="text-xs font-mono font-bold text-emerald-400 mt-1 flex items-center gap-1.5">
+
+          <div className="rf-status-item">
+            <span className="rf-status-item-label">สถานะ Worker</span>
+            <span className="rf-status-item-val flex items-center gap-1.5 font-mono text-emerald-400">
               <span className={`w-2 h-2 rounded-full ${job?.is_active ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`}></span>
               <span>{job?.status || 'IDLE'}</span>
               {job?.target_camera && (
-                <span className="text-[10px] text-indigo-300 bg-indigo-950/60 px-1 rounded">[{job.target_camera}]</span>
+                <span className="text-[10px] text-indigo-300 bg-indigo-950/60 px-1.5 py-0.5 rounded">[{job.target_camera}]</span>
               )}
-            </div>
-            <span className="text-[10px] text-slate-400 truncate block mt-0.5" title={job?.last_message}>
-              {job?.last_message || 'พร้อมส่งข้อมูล'}
+            </span>
+          </div>
+
+          <div className="rf-status-item" style={{ flex: '1 1 200px' }}>
+            <span className="rf-status-item-label">ข้อความล่าสุด</span>
+            <span className="rf-status-item-val text-slate-300 truncate" title={job?.last_message}>
+              {job?.last_message || 'พร้อมส่งข้อมูลย้อนหลัง'}
             </span>
           </div>
         </div>
 
-        {/* Live Progress Bar when Active */}
+        {/* Active Job Progress Bar */}
         {job?.is_active && job?.total_candidates > 0 && (
-          <div className="mt-3">
-            <div className="flex justify-between text-[11px] text-slate-300 mb-1">
-              <span>ความคืบหน้าการส่งข้อมูลย้อนหลัง:</span>
+          <div>
+            <div className="flex justify-between text-xs text-slate-300 mb-1.5">
+              <span>ความคืบหน้าการส่งข้อมูลภาพย้อนหลัง:</span>
               <span className="font-mono text-purple-300 font-bold">
                 {job?.processed_images} / {job?.total_candidates} รูป ({Math.round((job?.processed_images / job?.total_candidates) * 100)}%)
               </span>
             </div>
-            <div className="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden border border-purple-500/30">
+            <div className="rf-progress-bar-lg">
               <div
-                className="bg-gradient-to-r from-purple-500 to-indigo-500 h-2.5 rounded-full transition-all duration-300"
+                className="rf-progress-fill-purple"
                 style={{ width: `${(job?.processed_images / job?.total_candidates) * 100}%` }}
               ></div>
             </div>
@@ -467,103 +454,114 @@ export default function RoboflowStudio({ apiBase }) {
       </div>
 
       {/* 4. PostgreSQL Audit Table & Lifecycle Tracker */}
-      <div className="setup-content-card">
-        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
+      <div className="rf-card-block">
+        <div className="rf-card-block-header">
           <div>
-            <h3 className="section-title-sm">
+            <h3 className="rf-block-title">
               <Database className="w-4 h-4 text-emerald-400" />
-              <span>PostgreSQL Audit Tracking (`roboflow_image_uploads`)</span>
+              <span>ประวัติการส่งข้อมูลภาพ (Audit Logs - roboflow_image_uploads)</span>
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              ตารางบันทึกสถานะของแต่ละรูปในฐานข้อมูล ป้องกันการส่งซ้ำ 100%
+            <p className="rf-block-desc">
+              ตารางตรวจสอบสถานะการบันทึกและอัปโหลดของแต่ละรูปใน PostgreSQL ป้องกันการส่งซ้ำ 100%
             </p>
           </div>
 
-          {/* Camera Filter Chips for Table */}
-          <div className="flex items-center gap-1.5">
-            <Filter className="w-3.5 h-3.5 text-slate-400 mr-1" />
+          {/* Filter Buttons */}
+          <div className="rf-tab-filters">
             {['all', 'cam1', 'cam2', 'cam3'].map((cam) => (
               <button
                 key={cam}
                 type="button"
                 onClick={() => setTableCamFilter(cam)}
-                className={`px-3 py-1 rounded-lg text-[11px] font-mono font-semibold transition-all cursor-pointer ${
-                  tableCamFilter === cam
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/25'
-                    : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'
-                }`}
+                className={`rf-filter-btn ${tableCamFilter === cam ? 'active' : ''}`}
               >
-                {cam.toUpperCase()}
+                {cam === 'all' ? 'ALL CAMERAS' : cam.toUpperCase()}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Table View */}
-        <div className="overflow-x-auto rounded-xl border border-slate-700/60 max-h-[360px] overflow-y-auto mt-3">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-800/90 text-slate-300 font-semibold sticky top-0 border-b border-slate-700">
+        {/* Clean Data Table */}
+        <div className="rf-table-container">
+          <table className="rf-table">
+            <thead>
               <tr>
-                <th className="py-2.5 px-3">ID</th>
-                <th className="py-2.5 px-3">กล้อง</th>
-                <th className="py-2.5 px-3">โครงสร้าง Path ในระบบ</th>
-                <th className="py-2.5 px-3">เวลาที่บันทึก</th>
-                <th className="py-2.5 px-3">สถานะ</th>
-                <th className="py-2.5 px-3">เวลาที่ขึ้น Roboflow</th>
-                <th className="py-2.5 px-3">Roboflow ID</th>
+                <th style={{ width: '60px' }}>ID</th>
+                <th style={{ width: '90px' }}>กล้อง</th>
+                <th>ชื่อไฟล์ภาพ</th>
+                <th style={{ width: '150px' }}>เวลาที่บันทึก</th>
+                <th style={{ width: '110px' }}>สถานะ</th>
+                <th style={{ width: '130px' }}>เวลาส่ง Roboflow</th>
+                <th style={{ width: '130px' }}>Roboflow Image ID</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-700/50 text-slate-300 font-mono text-[11px]">
+            <tbody>
               {filteredLogs.length > 0 ? (
-                filteredLogs.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="py-2.5 px-3 text-slate-400">{item.id}</td>
-                    <td className="py-2.5 px-3">
-                      <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${
-                        item.camera_id === 'cam1'
-                          ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                          : item.camera_id === 'cam2'
-                          ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                          : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
-                      }`}>
-                        {item.camera_id.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3 text-slate-200 truncate max-w-[280px]" title={item.file_path}>
-                      {item.file_path}
-                    </td>
-                    <td className="py-2.5 px-3 text-slate-400">
-                      {item.captured_at ? new Date(item.captured_at).toLocaleString('th-TH') : '-'}
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] inline-flex items-center gap-1 ${
-                        item.status === 'UPLOADED'
-                          ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-                          : item.status === 'UPLOADING'
-                          ? 'bg-sky-500/15 text-sky-300 border border-sky-500/30 animate-pulse'
-                          : item.status === 'FAILED'
-                          ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
-                          : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${
-                          item.status === 'UPLOADED' ? 'bg-emerald-400' : item.status === 'FAILED' ? 'bg-rose-400' : 'bg-amber-400'
-                        }`}></span>
-                        {item.status}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3 text-slate-300">
-                      {item.uploaded_at ? new Date(item.uploaded_at).toLocaleTimeString('th-TH') : (
-                        <span className="text-slate-500 italic">รอรอบ 30 นาที</span>
-                      )}
-                    </td>
-                    <td className="py-2.5 px-3 text-indigo-300 font-mono truncate max-w-[120px]" title={item.roboflow_image_id || ''}>
-                      {item.roboflow_image_id || '-'}
-                    </td>
-                  </tr>
-                ))
+                filteredLogs.map((item) => {
+                  const camId = item.camera_id ? item.camera_id.toLowerCase() : 'cam1'
+                  const statusKey = item.status ? item.status.toLowerCase() : 'pending'
+                  const fileName = getFileName(item.file_path)
+
+                  return (
+                    <tr key={item.id} className="rf-table-row">
+                      <td className="font-mono text-slate-500">{item.id}</td>
+                      <td>
+                        <span className={`rf-cam-pill ${camId}`}>
+                          {item.camera_id ? item.camera_id.toUpperCase() : '-'}
+                        </span>
+                      </td>
+                      <td>
+                        <span
+                          className="font-mono text-slate-200 block truncate max-w-[260px]"
+                          title={item.file_path}
+                        >
+                          {fileName}
+                        </span>
+                      </td>
+                      <td className="text-slate-400 font-mono text-[11px]">
+                        {item.captured_at
+                          ? new Date(item.captured_at).toLocaleTimeString('th-TH', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit'
+                            })
+                          : '-'}
+                      </td>
+                      <td>
+                        <span className={`rf-badge-status ${statusKey}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            statusKey === 'uploaded' ? 'bg-emerald-400' :
+                            statusKey === 'uploading' ? 'bg-sky-400' :
+                            statusKey === 'failed' ? 'bg-rose-400' : 'bg-amber-400'
+                          }`}></span>
+                          {item.status || 'PENDING'}
+                        </span>
+                      </td>
+                      <td className="text-slate-400 font-mono text-[11px]">
+                        {item.uploaded_at ? (
+                          new Date(item.uploaded_at).toLocaleTimeString('th-TH', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit'
+                          })
+                        ) : (
+                          <span className="text-slate-500 italic">รอรอบ 30 นาที</span>
+                        )}
+                      </td>
+                      <td>
+                        <span
+                          className="font-mono text-indigo-300 block truncate max-w-[120px]"
+                          title={item.roboflow_image_id || ''}
+                        >
+                          {item.roboflow_image_id || '-'}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })
               ) : (
                 <tr>
-                  <td colSpan="7" className="py-8 text-center text-slate-500">
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>
                     ไม่มีรายการภาพในตัวกรองนี้
                   </td>
                 </tr>

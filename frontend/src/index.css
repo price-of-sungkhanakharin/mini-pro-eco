@@ -29,6 +29,15 @@
   padding: 0;
 }
 
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: inherit;
+  outline: none;
+}
+
 body {
   font-family: var(--font-family);
   background: var(--bg-gradient);

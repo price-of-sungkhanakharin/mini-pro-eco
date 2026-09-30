@@ -296,28 +296,6 @@ export default function CameraModal({ camera, onClose, onNavigate }) {
                 </div>
               </div>
             </div>
-
-            {/* Quick Link to Setup View */}
-            {onNavigate && (
-              <button
-                type="button"
-                onClick={() => {
-                  const targetCamId =
-                    camera.camId ||
-                    (camera.slotCode === 'CAM-02' || camera.id === 2
-                      ? 'cam2'
-                      : camera.slotCode === 'CAM-03' || camera.id === 3
-                      ? 'cam3'
-                      : 'cam1')
-                  onClose()
-                  onNavigate('slot_map', targetCamId)
-                }}
-                className="mt-3 w-full py-2.5 px-3 rounded-lg text-xs font-bold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_12px_rgba(16,185,129,0.15)]"
-              >
-                <MapPin className="w-3.5 h-3.5 text-emerald-400" />
-                <span>🔧 ปรับแต่งพิกัดช่องจอด ({camera.slotCode}) ในหน้า Setup ROI</span>
-              </button>
-            )}
           </div>
         </div>
       </div>

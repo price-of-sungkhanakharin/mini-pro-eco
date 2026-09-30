@@ -216,7 +216,7 @@ export default function SetupView({
                     setSelectedSlotCam('cam1')
                     setActiveTab('slots')
                   }}
-                  className="w-full mt-3 py-1.5 px-3 rounded-lg text-xs font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  className="btn-setup-draw-roi"
                 >
                   <MapPin className="w-3.5 h-3.5" />
                   <span>✏️ วาดพิกัดช่องจอด ROI (CAM-01)</span>
@@ -276,7 +276,7 @@ export default function SetupView({
                     setSelectedSlotCam('cam2')
                     setActiveTab('slots')
                   }}
-                  className="w-full mt-3 py-1.5 px-3 rounded-lg text-xs font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  className="btn-setup-draw-roi"
                 >
                   <MapPin className="w-3.5 h-3.5" />
                   <span>✏️ วาดพิกัดช่องจอด ROI (CAM-02)</span>
@@ -336,7 +336,7 @@ export default function SetupView({
                     setSelectedSlotCam('cam3')
                     setActiveTab('slots')
                   }}
-                  className="w-full mt-3 py-1.5 px-3 rounded-lg text-xs font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  className="btn-setup-draw-roi"
                 >
                   <MapPin className="w-3.5 h-3.5" />
                   <span>✏️ วาดพิกัดช่องจอด ROI (CAM-03)</span>

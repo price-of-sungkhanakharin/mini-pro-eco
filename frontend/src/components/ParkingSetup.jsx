@@ -1372,7 +1372,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                   <button
                     type="button"
                     onClick={handleCopyJson}
-                    className="px-4 py-2 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white flex items-center gap-1.5 transition-all"
+                    className="btn-secondary-action"
                   >
                     <Copy className="w-4 h-4 text-cyan-400" />
                     <span>Copy JSON</span>

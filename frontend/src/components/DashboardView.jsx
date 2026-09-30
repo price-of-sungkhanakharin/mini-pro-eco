@@ -742,56 +742,40 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="log-badge-pulse">Live Telemetry</span>
-              {onNavigate && (
-                <button
-                  type="button"
-                  onClick={() => onNavigate('logs')}
-                  className="text-xs bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 px-2.5 py-0.5 rounded border border-indigo-500/40 transition-all flex items-center gap-1 cursor-pointer"
-                  title="เปิดดูตารางประวัติ Log เต็มรูปแบบ"
-                >
-                  <span>ดูตาราง Logs เต็ม</span>
-                  <ExternalLink className="w-3 h-3" />
-                </button>
-              )}
-            </div>
+            <span className="log-badge-pulse">Live Telemetry</span>
           </div>
 
           <div className="logs-scroll-area">
             <div className="log-entry">
-              <span className="log-time">18:02:28</span>
-              <span className="log-badge log-ingest">DUMP</span>
+              <span className="log-time font-mono">
+                {currentRecord.local_time ? currentRecord.local_time.split(' ')[1] : '18:02:28'}
+              </span>
+              <span className="log-badge log-ingest">LATEST</span>
               <span className="log-desc">
-                [CAM-01] Snapshot <code>2026-09-22_18-02-28_966.jpg</code> • Chip: 81.1°C • Heap: 156.7KB
+                [CAM-01] Snapshot <code>{currentRecord.filename}</code> • Chip: <strong>{currentRecord.chip_temp_c}°C</strong> • Heap: {Math.round((currentRecord.free_heap || 156704) / 1024)}KB
               </span>
             </div>
             <div className="log-entry">
-              <span className="log-time">18:02:24</span>
+              <span className="log-time font-mono">
+                {cam1Live ? 'LIVE' : 'TELEMETRY'}
+              </span>
+              <span className="log-badge log-infer">STATUS</span>
+              <span className="log-desc">
+                ESP32 IP <code>{currentRecord.client_ip || '172.30.91.108'}</code> • WiFi RSSI: {currentRecord.wifi_rssi_dbm || -82}dBm • AEC Light: {currentRecord.light_aec_value || 490}
+              </span>
+            </div>
+            <div className="log-entry">
+              <span className="log-time font-mono">5s SYNC</span>
               <span className="log-badge log-infer">INFER</span>
               <span className="log-desc">
-                Inference Worker evaluated 5 ROI parking slots, 0.038s processing latency
+                AI Detection active on 3 Cameras (CAM-01, CAM-02, CAM-03), 0.038s processing latency
               </span>
             </div>
             <div className="log-entry">
-              <span className="log-time">18:02:19</span>
-              <span className="log-badge log-event">STATE</span>
-              <span className="log-desc">
-                Slot A-03 verified <strong>VACANT</strong> (Confidence 97.4%)
-              </span>
-            </div>
-            <div className="log-entry">
-              <span className="log-time">18:02:14</span>
+              <span className="log-time font-mono">MINIO</span>
               <span className="log-badge log-ingest">INGEST</span>
               <span className="log-desc">
-                [CAM-01] Frame ingested to MinIO bucket <code>raw-datasets/cam1</code> (257KB)
-              </span>
-            </div>
-            <div className="log-entry">
-              <span className="log-time">18:02:00</span>
-              <span className="log-badge log-ingest">INGEST</span>
-              <span className="log-desc">
-                [CAM-01] Snapshot captured by ESP32-CAM (172.30.91.108)
+                Snapshot ingested to MinIO bucket <code>raw-datasets/cam1/images</code> (Sidecar JSON sync)
               </span>
             </div>
           </div>

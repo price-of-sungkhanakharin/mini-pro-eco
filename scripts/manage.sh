@@ -7,7 +7,11 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WORKSPACE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+if [ -f "$SCRIPT_DIR/compose.yml" ]; then
+    WORKSPACE_DIR="$SCRIPT_DIR"
+else
+    WORKSPACE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+fi
 cd "$WORKSPACE_DIR"
 
 # Colors for terminal output

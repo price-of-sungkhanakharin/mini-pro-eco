@@ -11,24 +11,46 @@ import urllib.request
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from linebot.v3 import WebhookHandler
-from linebot.v3.exceptions import InvalidSignatureError
-from linebot.v3.messaging import (
-    ApiClient,
-    Configuration,
-    FlexBubble,
-    FlexBox,
-    FlexButton,
-    FlexComponent,
-    FlexContainer,
-    FlexMessage,
-    FlexText,
-    MessagingApi,
-    ReplyMessageRequest,
-    TextMessage,
-    URIAction,
-)
-from linebot.v3.webhooks import MessageEvent, TextMessageContent
+try:
+    from linebot.v3 import WebhookHandler
+    from linebot.v3.exceptions import InvalidSignatureError
+    from linebot.v3.messaging import (
+        ApiClient,
+        Configuration,
+        FlexBubble,
+        FlexBox,
+        FlexButton,
+        FlexComponent,
+        FlexContainer,
+        FlexMessage,
+        FlexText,
+        MessagingApi,
+        ReplyMessageRequest,
+        TextMessage,
+        URIAction,
+    )
+    from linebot.v3.webhooks import MessageEvent, TextMessageContent
+    HAS_LINEBOT = True
+except ImportError:
+    HAS_LINEBOT = False
+    class InvalidSignatureError(Exception):
+        pass
+    WebhookHandler = None
+    ApiClient = None
+    Configuration = None
+    FlexBubble = None
+    FlexBox = None
+    FlexButton = None
+    FlexComponent = None
+    FlexContainer = None
+    FlexMessage = None
+    FlexText = None
+    MessagingApi = None
+    ReplyMessageRequest = None
+    TextMessage = None
+    URIAction = None
+    MessageEvent = None
+    TextMessageContent = None
 
 from backend.app.core.config import settings
 
@@ -93,8 +115,8 @@ class LineBotService:
     def __init__(self):
         self.channel_secret = settings.line_channel_secret
         self.access_token = settings.line_channel_access_token
-        self.handler = WebhookHandler(self.channel_secret) if self.channel_secret else None
-        self.config = Configuration(access_token=self.access_token) if self.access_token else None
+        self.handler = WebhookHandler(self.channel_secret) if (HAS_LINEBOT and self.channel_secret and WebhookHandler) else None
+        self.config = Configuration(access_token=self.access_token) if (HAS_LINEBOT and self.access_token and Configuration) else None
 
     def query_dotblue_advisor(self, user_question: str) -> str:
         """Call dotBlue API (OpenAI Compatible) with openai/gpt-5.6-luna."""

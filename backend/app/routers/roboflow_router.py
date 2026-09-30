@@ -4,7 +4,7 @@ Includes endpoints for status, manual upload, dataset export, and the
 automated 2-minute periodic batch synchronization and tracking engine.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
@@ -38,32 +38,45 @@ async def trigger_periodic_sync_now(
 
 
 @router.get("/bulk/status")
-def get_bulk_sync_status(db: Session = Depends(get_db)) -> Dict[str, Any]:
-    """Get status and candidate count for bulk historical image uploads."""
-    candidates = bulk_sync_manager.scan_historical_candidates(db)
+def get_bulk_sync_status(
+    camera_id: Optional[str] = Query(None, description="Optional camera filter (e.g. cam1, cam2, cam3)"),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Get status and candidate count for bulk historical image uploads partitioned by camera."""
+    all_candidates = bulk_sync_manager.scan_historical_candidates(db, force_refresh=False)
+    filtered_candidates = bulk_sync_manager.scan_historical_candidates(db, camera_id=camera_id)
     progress = bulk_sync_manager.get_progress()
+    cam_counts = {
+        "all": len(all_candidates),
+        "cam1": sum(1 for c in all_candidates if c.get("camera_id") == "cam1"),
+        "cam2": sum(1 for c in all_candidates if c.get("camera_id") == "cam2"),
+        "cam3": sum(1 for c in all_candidates if c.get("camera_id") == "cam3"),
+    }
     return {
-        "pending_candidates": len(candidates),
+        "pending_candidates": len(filtered_candidates),
+        "total_all_cameras": len(all_candidates),
+        "camera_counts": cam_counts,
         "job_progress": progress,
     }
 
 
 @router.post("/bulk/start")
-def start_bulk_sync_job(
+async def start_bulk_sync_job(
     chunk_size: int = Query(300, ge=50, le=1000, description="Images per ZIP chunk"),
+    camera_id: Optional[str] = Query(None, description="Optional target camera (cam1, cam2, cam3, or all)"),
 ) -> Dict[str, Any]:
-    """Start packaging and chunked uploading of historical legacy images."""
-    started = bulk_sync_manager.start_job(chunk_size=chunk_size)
+    """Start packaging and chunked uploading of historical legacy images partitioned by camera/date/hour."""
+    started = bulk_sync_manager.start_job(chunk_size=chunk_size, camera_id=camera_id)
     if not started:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="A bulk upload job is already in progress.",
         )
-    return {"success": True, "message": "Bulk historical upload job started."}
+    return {"success": True, "message": f"Bulk historical upload job started for {camera_id or 'all cameras'}."}
 
 
 @router.post("/bulk/cancel")
-def cancel_bulk_sync_job() -> Dict[str, Any]:
+async def cancel_bulk_sync_job() -> Dict[str, Any]:
     """Cancel the active bulk historical upload job."""
     cancelled = bulk_sync_manager.cancel_job()
     return {"success": cancelled, "message": "Bulk job cancelled." if cancelled else "No active bulk job to cancel."}

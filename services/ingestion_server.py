@@ -151,6 +151,25 @@ except Exception as e:
     logger.error("Failed to initialize MinIO client: %s", e)
     minio_client = None
 
+# Redis In-Memory Client Configuration
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+
+redis_client = None
+try:
+    import redis
+    redis_client = redis.Redis(
+        host=REDIS_HOST,
+        port=REDIS_PORT,
+        decode_responses=True,
+        socket_connect_timeout=2,
+    )
+    redis_client.ping()
+    logger.info("Redis client connected successfully to %s:%d", REDIS_HOST, REDIS_PORT)
+except Exception as re_err:
+    logger.warning("Redis client initialization warning: %s (graceful fallback)", re_err)
+    redis_client = None
+
 # PostgreSQL Database Configuration
 DB_CONFIG = CONFIG.get("database", DEFAULT_CONFIG.get("database", {}))
 
@@ -581,6 +600,16 @@ def upload():
                 "OK" if minio_uploaded else "FAILED",
                 "OK" if postgres_recorded else "FAILED",
                 client_ip)
+
+    # Redis Heartbeat & Dynamic Health State (TTL 45s)
+    if redis_client:
+        try:
+            redis_client.set(f"camera:{cam_id}:heartbeat", "online", ex=45)
+            redis_client.set(f"camera:{loc}:heartbeat", "online", ex=45)
+            redis_client.set(f"camera:{cam_id}:latest_frame", str(dest_jpg), ex=120)
+            redis_client.set(f"camera:{cam_id}:telemetry", json.dumps(telemetry_payload, ensure_ascii=False), ex=300)
+        except Exception as re_err:
+            logger.debug("Redis heartbeat write warning: %s", re_err)
 
     # Hardware Deep Sleep & Interval Calculation:
     # Always include deep_sleep_sec = 15 regardless of day or night so ESP32-CAM enters hardware deep sleep

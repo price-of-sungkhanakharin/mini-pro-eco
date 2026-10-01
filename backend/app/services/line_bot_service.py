@@ -86,7 +86,47 @@ CURRENT_PARKING_STATE: Dict[str, Any] = {
 
 
 def get_current_parking_summary() -> str:
-    """Format the current parking occupancy from PostgreSQL park_status into a readable context for the AI."""
+    """Format the current parking occupancy from Redis cache or PostgreSQL park_status into a readable context for the AI."""
+    import json
+    import redis
+
+    # 1. Try instantaneous Redis cache (<0.5ms)
+    try:
+        r_client = redis.Redis(
+            host=settings.redis_host,
+            port=settings.redis_port,
+            decode_responses=True,
+            socket_connect_timeout=0.5,
+            socket_timeout=0.5,
+        )
+        cached_summary = r_client.get("parking:status:summary")
+        if cached_summary:
+            rows = json.loads(cached_summary)
+            if rows:
+                lines = ["[ข้อมูลสถานะลานจอดรถภาควิชาคอมพิวเตอร์ ณ ปัจจุบัน จากระบบ Real-time Cache (Redis)]:\n"]
+                for r in rows:
+                    avail_count = r.get("vacant_count", 0)
+                    total_count = r.get("total_capacity", 0)
+                    avail_slots = r.get("available_slot_ids", [])
+                    avail_str = ", ".join(avail_slots) if avail_slots else "ไม่มีช่องว่าง"
+                    slot_lines = []
+                    for s in (r.get("slots_detail") or []):
+                        s_name = s.get("vehicle_name") or ("ไม่ว่าง" if s.get("occupied") else "ว่างพร้อมจอด")
+                        s_type = "รถยนต์" if s.get("type") == "car" else "มอเตอร์ไซค์"
+                        slot_lines.append(f"    - ช่อง {s.get('id')}: {s_name} ({s_type})")
+                    details_str = "\n".join(slot_lines) if slot_lines else "    - ไม่พบรายละเอียดช่องจอด"
+                    lines.append(f"""- พื้นที่: {r.get('location_name')} (กล้อง {r.get('camera_id')}, ประเภท: {r.get('vehicle_type')})
+  * ความจุรวม: {total_count} ช่อง | ว่าง: {avail_count} ช่อง | ไม่ว่าง: {r.get('occupied_count', 0)} ช่อง (อัตราการจอด {r.get('occupancy_rate_pct', 0)}%)
+  * ช่องที่ว่างพร้อมจอด: {avail_str}
+  * สถานะรวม: {r.get('status_level', 'AVAILABLE')}
+  * รายละเอียดช่องจอด:
+{details_str}
+  * อัปเดตล่าสุด: {r.get('updated_at', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))}""")
+                return "\n".join(lines)
+    except Exception as re_err:
+        logger.debug("Redis cache miss or read error: %s, falling back to PostgreSQL", re_err)
+
+    # 2. Fallback to PostgreSQL
     from backend.db.database import SessionLocal
     from backend.app.models.parking_log import ParkStatusModel
 

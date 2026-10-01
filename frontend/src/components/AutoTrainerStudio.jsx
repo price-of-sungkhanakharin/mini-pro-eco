@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import {
   Cpu,
   Zap,
@@ -20,7 +20,12 @@ import {
   Award,
   Check,
   FileCode,
-  CheckSquare
+  Copy,
+  CheckCheck,
+  Maximize2,
+  Minimize2,
+  Search,
+  Trash2
 } from 'lucide-react'
 
 const BASE_MODELS = [
@@ -79,6 +84,9 @@ export default function AutoTrainerStudio({ apiBase }) {
   const [logs, setLogs] = useState([])
   const [isStarting, setIsStarting] = useState(false)
   const [autoScroll, setAutoScroll] = useState(true)
+  const [logSearch, setLogSearch] = useState('')
+  const [copied, setCopied] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
 
   // Model Registry State
   const [modelsList, setModelsList] = useState([])
@@ -192,7 +200,7 @@ export default function AutoTrainerStudio({ apiBase }) {
     if (autoScroll && terminalEndRef.current) {
       terminalEndRef.current.scrollTop = terminalEndRef.current.scrollHeight
     }
-  }, [logs, autoScroll])
+  }, [logs, autoScroll, logSearch])
 
   // Start Modal Cloud Training Handler
   const handleStartTraining = async () => {
@@ -269,6 +277,16 @@ export default function AutoTrainerStudio({ apiBase }) {
     }
   }
 
+  // Copy Logs to Clipboard
+  const handleCopyLogs = () => {
+    if (!logs.length) return
+    const text = logs.join('\n')
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    showToast('คัดลอกข้อความใน Terminal ทั้งหมดเรียบร้อยแล้ว', 'info', 3000)
+    setTimeout(() => setCopied(false), 2500)
+  }
+
   const isTrainingActive = currentJob && ['INITIALIZING', 'DOWNLOADING_DATASET', 'TRAINING'].includes(currentJob.status)
 
   const filteredModels = modelsList.filter((m) => {
@@ -277,6 +295,89 @@ export default function AutoTrainerStudio({ apiBase }) {
     if (modelFilter === 'standby') return !isActive
     return true
   })
+
+  // Filter logs by search query
+  const filteredLogs = useMemo(() => {
+    if (!logSearch.trim()) return logs
+    return logs.filter((line) => line.toLowerCase().includes(logSearch.toLowerCase()))
+  }, [logs, logSearch])
+
+  // Formatter for individual terminal log line
+  const renderHighlightedContent = (text) => {
+    // Highlight Epoch
+    if (text.startsWith('Epoch ')) {
+      const parts = text.split(' | ')
+      return (
+        <span>
+          {parts.map((part, idx) => {
+            if (part.startsWith('Epoch ')) {
+              return <span key={idx} className="font-bold text-sky-400 mr-2">[{part}]</span>
+            }
+            if (part.startsWith('GPU Mem:')) {
+              return <span key={idx} className="text-purple-300 mr-2">{part}</span>
+            }
+            if (part.includes('_loss:')) {
+              return <span key={idx} className="text-amber-300 mr-2">{part}</span>
+            }
+            if (part.startsWith('mAP50:')) {
+              return <span key={idx} className="font-bold text-emerald-400 mr-2">{part}</span>
+            }
+            return <span key={idx} className="text-slate-300 mr-2">{part}</span>
+          })}
+        </span>
+      )
+    }
+
+    if (text.includes('✓') || text.includes('Finished') || text.includes('Registered') || text.includes('🏆')) {
+      return <span className="text-emerald-400 font-semibold">{text}</span>
+    }
+    if (text.includes('⚠️') || text.includes('Warning') || text.includes('🛑')) {
+      return <span className="text-amber-400 font-semibold">{text}</span>
+    }
+    if (text.startsWith('🚀') || text.startsWith('🌐') || text.startsWith('📦') || text.startsWith('⬇️') || text.startsWith('🔥') || text.startsWith('⚡')) {
+      return <span className="text-indigo-300">{text}</span>
+    }
+
+    return <span className="text-slate-300">{text}</span>
+  }
+
+  const renderLogLine = (rawLog, index) => {
+    let timeStr = ''
+    let content = rawLog
+    const timeMatch = rawLog.match(/^\[(\d{2}:\d{2}:\d{2})\]\s*(.*)$/)
+    if (timeMatch) {
+      timeStr = timeMatch[1]
+      content = timeMatch[2]
+    }
+
+    const isSuccess = content.includes('✓') || content.includes('Finished') || content.includes('Registered') || content.includes('🏆')
+    const isWarn = content.includes('⚠️') || content.includes('Warning') || content.includes('🛑')
+    const isEpoch = content.includes('Epoch') || content.includes('Starting Epoch') || content.includes('Loading')
+
+    let tag = 'info'
+    let tagLabel = 'INFO'
+    if (isEpoch) {
+      tag = 'epoch'
+      tagLabel = 'EPOCH'
+    } else if (isSuccess) {
+      tag = 'success'
+      tagLabel = 'DONE'
+    } else if (isWarn) {
+      tag = 'warn'
+      tagLabel = 'WARN'
+    }
+
+    return (
+      <div key={index} className="rf-terminal-line">
+        <span className="rf-terminal-linenum">{(index + 1).toString().padStart(3, '0')}</span>
+        {timeStr && <span className="rf-terminal-time">{timeStr}</span>}
+        <span className={`rf-terminal-tag ${tag}`}>{tagLabel}</span>
+        <span className="rf-terminal-content">
+          {renderHighlightedContent(content)}
+        </span>
+      </div>
+    )
+  }
 
   return (
     <div className="rf-studio-container">
@@ -633,8 +734,8 @@ export default function AutoTrainerStudio({ apiBase }) {
         )}
       </div>
 
-      {/* 4. Cyberpunk Live Terminal Log Viewer */}
-      <div className="rf-card-block" style={{ background: 'rgba(8, 13, 25, 0.85)' }}>
+      {/* 4. High-Tech Real-Time Terminal Log Streamer */}
+      <div className="rf-card-block">
         <div className="rf-card-block-header">
           <div>
             <h3 className="rf-block-title">
@@ -646,74 +747,127 @@ export default function AutoTrainerStudio({ apiBase }) {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
+          <div className="flex items-center gap-2.5">
+            <span className={`text-[10px] font-mono px-2.5 py-1 rounded-md font-bold flex items-center gap-1.5 ${
               currentJob?.status === 'TRAINING'
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                 : currentJob?.status === 'COMPLETED'
                 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                : 'bg-slate-800 text-slate-400'
+                : 'bg-slate-800/80 text-slate-400 border border-slate-700/50'
             }`}>
-              STATUS: {currentJob?.status || 'IDLE'}
+              <span className={`w-2 h-2 rounded-full ${isTrainingActive ? 'bg-amber-400 animate-ping' : currentJob?.status === 'COMPLETED' ? 'bg-emerald-400' : 'bg-slate-500'}`}></span>
+              <span>LIVE SSE: {currentJob?.status || 'IDLE'}</span>
             </span>
-
-            <label className="text-xs text-slate-400 flex items-center gap-1.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={autoScroll}
-                onChange={(e) => setAutoScroll(e.target.checked)}
-                className="rounded bg-slate-900 border-slate-700 text-purple-600"
-              />
-              <span>Auto-scroll</span>
-            </label>
-
-            {logs.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setLogs([])}
-                className="rf-filter-btn"
-                title="ล้างข้อความในหน้าต่าง"
-              >
-                ล้าง Terminal
-              </button>
-            )}
           </div>
         </div>
 
-        {/* Terminal Screen */}
-        <div
-          ref={terminalEndRef}
-          className="bg-black/90 rounded-xl p-3.5 font-mono text-[11px] leading-relaxed text-slate-300 overflow-y-auto border border-slate-800/80 shadow-inner"
-          style={{ height: '260px' }}
-        >
-          {logs.length > 0 ? (
-            logs.map((log, index) => {
-              const isSuccess = log.includes('✓') || log.includes('Finished') || log.includes('Registered') || log.includes('successfully')
-              const isWarning = log.includes('⚠️') || log.includes('Warning')
-              const isEpoch = log.includes('Epoch') || log.includes('Starting Epoch')
-              return (
-                <div
-                  key={index}
-                  className={`whitespace-pre-wrap py-0.5 ${
-                    isSuccess
-                      ? 'text-emerald-400 font-semibold'
-                      : isWarning
-                      ? 'text-amber-400'
-                      : isEpoch
-                      ? 'text-sky-300 font-semibold'
-                      : 'text-slate-300'
-                  }`}
-                >
-                  {log}
-                </div>
-              )
-            })
-          ) : (
-            <div className="h-full flex flex-col items-center justify-center text-slate-600">
-              <FileCode className="w-8 h-8 mb-2 opacity-30" />
-              <span className="text-xs">ยังไม่มี Session การเทรนที่กำลังทำงาน กดปุ่ม 'สั่งเทรนโมเดล' เพื่อเริ่มต้นประมวลผลบน Cloud GPU</span>
+        {/* High-Tech Terminal Container */}
+        <div className="rf-terminal-container">
+          {/* Terminal Top Bar */}
+          <div className="rf-terminal-topbar">
+            <div className="flex items-center gap-3">
+              <div className="rf-terminal-dots">
+                <span className="rf-terminal-dot red" title="Close"></span>
+                <span className="rf-terminal-dot yellow" title="Minimize"></span>
+                <span className="rf-terminal-dot green" title="Maximize"></span>
+              </div>
+              <span className="rf-terminal-title">
+                <Terminal className="w-3.5 h-3.5 text-slate-400" />
+                <span>modal-node-gpu-01:~/ultralytics/runs/train (bash)</span>
+              </span>
             </div>
-          )}
+
+            {/* Terminal Actions */}
+            <div className="rf-terminal-actions">
+              {/* Search Log Input */}
+              <div className="relative flex items-center">
+                <Search className="w-3 h-3 text-slate-400 absolute left-2 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="ค้นหา Log..."
+                  value={logSearch}
+                  onChange={(e) => setLogSearch(e.target.value)}
+                  className="rf-terminal-search pl-7"
+                />
+              </div>
+
+              {/* Copy Button */}
+              <button
+                type="button"
+                onClick={handleCopyLogs}
+                disabled={!logs.length}
+                className="rf-terminal-btn"
+                title="คัดลอกข้อความ Log ทั้งหมด"
+              >
+                {copied ? <CheckCheck className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                <span>{copied ? 'คัดลอกแล้ว' : 'Copy'}</span>
+              </button>
+
+              {/* Clear Terminal Button */}
+              {logs.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setLogs([])}
+                  className="rf-terminal-btn"
+                  title="ล้างข้อความในหน้าต่าง"
+                >
+                  <Trash2 className="w-3 h-3 text-rose-400" />
+                  <span>Clear</span>
+                </button>
+              )}
+
+              {/* Auto Scroll Toggle */}
+              <label className="text-[11px] text-slate-400 flex items-center gap-1.5 cursor-pointer px-1">
+                <input
+                  type="checkbox"
+                  checked={autoScroll}
+                  onChange={(e) => setAutoScroll(e.target.checked)}
+                  className="rounded bg-slate-900 border-slate-700 text-purple-600"
+                />
+                <span>Auto-scroll</span>
+              </label>
+
+              {/* Expand Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="rf-terminal-btn"
+                title={isExpanded ? 'ย่อหน้าต่าง' : 'ขยายหน้าต่าง'}
+              >
+                {isExpanded ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Terminal Body */}
+          <div
+            ref={terminalEndRef}
+            className="rf-terminal-body"
+            style={{ height: isExpanded ? '460px' : '280px' }}
+          >
+            {filteredLogs.length > 0 ? (
+              <>
+                {filteredLogs.map((log, index) => renderLogLine(log, index))}
+                {isTrainingActive && (
+                  <div className="py-1 flex items-center text-sky-400 font-mono text-[11px]">
+                    <span className="text-slate-500 mr-2">[{new Date().toLocaleTimeString('th-TH')}]</span>
+                    <span>กำลังประมวลผลบน Cloud GPU...</span>
+                    <span className="rf-terminal-cursor"></span>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-slate-600 py-12">
+                <FileCode className="w-9 h-9 mb-2 opacity-30" />
+                <span className="text-xs text-slate-400">
+                  {logSearch ? 'ไม่พบข้อความ Log ที่ตรงกับคำค้นหา' : 'ยังไม่มี Session การเทรนที่กำลังทำงาน กดปุ่ม "สั่งเทรนโมเดล" เพื่อเริ่มงาน'}
+                </span>
+                <span className="text-[11px] text-slate-600 mt-1 font-mono">
+                  Listening for SSE events on /api/v1/training/modal/logs/...
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

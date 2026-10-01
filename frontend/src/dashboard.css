@@ -4688,6 +4688,165 @@
   align-items: center;
 }
 
+/* High-Tech Terminal Styling */
+.rf-terminal-container {
+  background: #040812;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.rf-terminal-topbar {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(0, 0, 0, 0.4) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 0.6rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.rf-terminal-dots {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.rf-terminal-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.rf-terminal-dot.red { background: #ef4444; box-shadow: 0 0 6px rgba(239, 68, 68, 0.5); }
+.rf-terminal-dot.yellow { background: #f59e0b; box-shadow: 0 0 6px rgba(245, 158, 11, 0.5); }
+.rf-terminal-dot.green { background: #10b981; box-shadow: 0 0 6px rgba(16, 185, 129, 0.5); }
+
+.rf-terminal-title {
+  font-family: monospace;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.rf-terminal-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.rf-terminal-search {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.72rem;
+  font-family: monospace;
+  color: #f1f5f9;
+  outline: none;
+  width: 160px;
+  transition: all 0.2s;
+}
+
+.rf-terminal-search:focus {
+  border-color: rgba(99, 102, 241, 0.5);
+  width: 200px;
+}
+
+.rf-terminal-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.7rem;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.rf-terminal-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.rf-terminal-body {
+  padding: 0.75rem 1rem;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  font-size: 0.73rem;
+  line-height: 1.6;
+  overflow-y: auto;
+  background: radial-gradient(circle at 50% 0%, rgba(30, 27, 75, 0.15), transparent 70%), #040812;
+}
+
+.rf-terminal-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.15rem 0;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+
+.rf-terminal-line:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.rf-terminal-linenum {
+  color: #475569;
+  user-select: none;
+  min-width: 32px;
+  text-align: right;
+  font-size: 0.68rem;
+}
+
+.rf-terminal-time {
+  color: #64748b;
+  font-size: 0.68rem;
+  min-width: 65px;
+}
+
+.rf-terminal-tag {
+  font-size: 0.65rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.rf-terminal-tag.epoch { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+.rf-terminal-tag.success { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+.rf-terminal-tag.warn { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+.rf-terminal-tag.info { background: rgba(148, 163, 184, 0.1); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.2); }
+
+.rf-terminal-content {
+  flex: 1;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.rf-terminal-cursor {
+  display: inline-block;
+  width: 7px;
+  height: 13px;
+  background: #38bdf8;
+  vertical-align: middle;
+  animation: rfBlink 1s infinite;
+  margin-left: 4px;
+}
+
+@keyframes rfBlink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
 
 /* ==========================================================================
    ESP32 Ingestion & Telemetry Logs View Styles (Executive High-Tech)

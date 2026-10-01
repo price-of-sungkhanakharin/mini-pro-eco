@@ -13,7 +13,8 @@ import {
   Wifi,
   Thermometer,
   MapPin,
-  ExternalLink
+  ExternalLink,
+  AlertTriangle
 } from 'lucide-react'
 import {
   loadDumpMetadata,
@@ -26,7 +27,8 @@ import {
   getCameraImage,
   SLOTS_STORAGE_KEY,
   syncAllSlotsFromServer,
-  getIngestionApiBase
+  getIngestionApiBase,
+  checkCameraOnlineStatus
 } from '../utils/dumpData'
 
 export default function DashboardView({ onOpenModal, onNavigate }) {
@@ -223,6 +225,11 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
   const cam2Live = liveData?.front_dept_2 || liveData?.cam2
   const cam3Live = liveData?.side_dept || liveData?.cam3
 
+  // Evaluate Online/Offline status based on 15-minute frame age threshold
+  const cam1Status = checkCameraOnlineStatus(cam1Live?.timestamp, 15)
+  const cam2Status = checkCameraOnlineStatus(cam2Live?.timestamp, 15)
+  const cam3Status = checkCameraOnlineStatus(cam3Live?.timestamp, 15)
+
   const cam1Image = cam1CustomImage || `${INGESTION_API}/api/latest?camera_id=cam1&image=true&t=${imgKey}`
   const cam2Image = cam2CustomImage || `${INGESTION_API}/api/latest?camera_id=cam2&image=true&t=${imgKey}`
   const cam3Image = cam3CustomImage || `${INGESTION_API}/api/latest?camera_id=cam3&image=true&t=${imgKey}`
@@ -239,12 +246,14 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
       zone: 'zone_a',
       ip: cam1Live?.client_ip || '172.30.91.44',
       minioKey: cam1Live?.minio_url ? `s3://raw-datasets/${cam1Live.minio_url}` : 's3://raw-datasets/dataset/cam1/latest.jpg',
-      fps: '0.2 fps (ทุก 5s)',
-      status: 'online',
-      latency: '28ms',
+      fps: cam1Status.isOnline ? '0.2 fps (ทุก 5s)' : '0.0 fps (ออฟไลน์)',
+      status: cam1Status.status,
+      isOnline: cam1Status.isOnline,
+      statusInfo: cam1Status,
+      latency: cam1Status.isOnline ? '28ms' : 'No Signal',
       isReal: true,
       imageUrl: cam1Image,
-      snapshotTimestamp: cam1Live?.timestamp ? cam1Live.timestamp.replace('T', ' ').substring(0, 19) : 'ภาพสดเรียลไทม์ (Live Stream)',
+      snapshotTimestamp: cam1Live?.timestamp ? cam1Live.timestamp.replace('T', ' ').substring(0, 19) : 'ไม่มีสัญญาณภาพ',
       realTelemetry: {
         chip_temp_c: cam1Live?.telemetry?.chip_temp_c ?? cam1Live?.chip_temp_c ?? 53.3,
         uptime_sec: cam1Live?.telemetry?.uptime_sec ?? 2139,
@@ -254,7 +263,7 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
         light_aec_value: cam1Live?.telemetry?.aec_value ?? 294,
         client_ip: cam1Live?.client_ip || '172.30.91.44',
         filename: cam1Live?.filename || 'cam1_live_stream.jpg',
-        status: 'ONLINE (LIVE STREAM)'
+        status: cam1Status.isOnline ? 'ONLINE (LIVE STREAM)' : `OFFLINE (${cam1Status.diffText})`
       },
       car: cam1Counts.car,
       bike: cam1Counts.bike,
@@ -263,15 +272,15 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
           ? Math.min(
               95,
               Math.max(
-                35,
-                Math.round(
-                  ((cam1Counts.car.free + cam1Counts.bike.free) /
-                    (cam1Counts.car.total + cam1Counts.bike.total)) *
-                    100
-                )
+              35,
+              Math.round(
+                ((cam1Counts.car.free + cam1Counts.bike.free) /
+                  (cam1Counts.car.total + cam1Counts.bike.total)) *
+                  100
               )
             )
-          : 85,
+          )
+        : 85,
       slots: cam1Slots
     },
     {
@@ -284,12 +293,14 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
       zone: 'zone_b',
       ip: cam2Live?.client_ip || '172.30.92.108',
       minioKey: cam2Live?.minio_url ? `s3://raw-datasets/${cam2Live.minio_url}` : 's3://raw-datasets/dataset/cam2/latest.jpg',
-      fps: '0.2 fps (ทุก 5s)',
-      status: 'online',
-      latency: '31ms',
+      fps: cam2Status.isOnline ? '0.2 fps (ทุก 5s)' : '0.0 fps (ออฟไลน์)',
+      status: cam2Status.status,
+      isOnline: cam2Status.isOnline,
+      statusInfo: cam2Status,
+      latency: cam2Status.isOnline ? '31ms' : 'No Signal',
       isReal: true,
       imageUrl: cam2Image,
-      snapshotTimestamp: cam2Live?.timestamp ? cam2Live.timestamp.replace('T', ' ').substring(0, 19) : 'ภาพสดเรียลไทม์ (Live Stream)',
+      snapshotTimestamp: cam2Live?.timestamp ? cam2Live.timestamp.replace('T', ' ').substring(0, 19) : 'ไม่มีสัญญาณภาพ',
       realTelemetry: {
         chip_temp_c: cam2Live?.telemetry?.chip_temp_c ?? cam2Live?.chip_temp_c ?? 54.1,
         uptime_sec: cam2Live?.telemetry?.uptime_sec ?? 1840,
@@ -299,7 +310,7 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
         light_aec_value: cam2Live?.telemetry?.aec_value ?? 196,
         client_ip: cam2Live?.client_ip || '172.30.92.108',
         filename: cam2Live?.filename || 'cam2_live_stream.jpg',
-        status: 'ONLINE (LIVE STREAM)'
+        status: cam2Status.isOnline ? 'ONLINE (LIVE STREAM)' : `OFFLINE (${cam2Status.diffText})`
       },
       car: cam2Counts.car,
       bike: cam2Counts.bike,
@@ -308,15 +319,15 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
           ? Math.min(
               95,
               Math.max(
-                35,
-                Math.round(
-                  ((cam2Counts.car.free + cam2Counts.bike.free) /
-                    (cam2Counts.car.total + cam2Counts.bike.total)) *
-                    100
-                )
+              35,
+              Math.round(
+                ((cam2Counts.car.free + cam2Counts.bike.free) /
+                  (cam2Counts.car.total + cam2Counts.bike.total)) *
+                  100
               )
             )
-          : 78,
+          )
+        : 78,
       slots: cam2Slots
     },
     {
@@ -329,12 +340,14 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
       zone: 'zone_c',
       ip: cam3Live?.client_ip || '172.30.92.100',
       minioKey: cam3Live?.minio_url ? `s3://raw-datasets/${cam3Live.minio_url}` : 's3://raw-datasets/dataset/cam3/latest.jpg',
-      fps: '0.2 fps (ทุก 5s)',
-      status: 'online',
-      latency: '36ms',
+      fps: cam3Status.isOnline ? '0.2 fps (ทุก 5s)' : '0.0 fps (ออฟไลน์)',
+      status: cam3Status.status,
+      isOnline: cam3Status.isOnline,
+      statusInfo: cam3Status,
+      latency: cam3Status.isOnline ? '36ms' : 'No Signal',
       isReal: true,
       imageUrl: cam3Image,
-      snapshotTimestamp: cam3Live?.timestamp ? cam3Live.timestamp.replace('T', ' ').substring(0, 19) : 'ภาพสดเรียลไทม์ (Live Stream)',
+      snapshotTimestamp: cam3Live?.timestamp ? cam3Live.timestamp.replace('T', ' ').substring(0, 19) : 'ไม่มีสัญญาณภาพ',
       realTelemetry: {
         chip_temp_c: cam3Live?.telemetry?.chip_temp_c ?? cam3Live?.chip_temp_c ?? 51.7,
         uptime_sec: cam3Live?.telemetry?.uptime_sec ?? 1920,
@@ -344,7 +357,7 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
         light_aec_value: cam3Live?.telemetry?.aec_value ?? 490,
         client_ip: cam3Live?.client_ip || '172.30.92.100',
         filename: cam3Live?.filename || 'cam3_live_stream.jpg',
-        status: 'ONLINE (LIVE STREAM)'
+        status: cam3Status.isOnline ? 'ONLINE (LIVE STREAM)' : `OFFLINE (${cam3Status.diffText})`
       },
       car: cam3Counts.car,
       bike: cam3Counts.bike,
@@ -353,15 +366,15 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
           ? Math.min(
               95,
               Math.max(
-                35,
-                Math.round(
-                  ((cam3Counts.car.free + cam3Counts.bike.free) /
-                    (cam3Counts.car.total + cam3Counts.bike.total)) *
-                    100
-                )
+              35,
+              Math.round(
+                ((cam3Counts.car.free + cam3Counts.bike.free) /
+                  (cam3Counts.car.total + cam3Counts.bike.total)) *
+                  100
               )
             )
-          : 60,
+          )
+        : 60,
       slots: cam3Slots
     }
   ]
@@ -387,7 +400,7 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
               </span>
             </div>
             <span className="control-sub">
-              มอนิเตอร์ภาพกล้องสดทุก 5s • Ingestion ข้อมูลจริงจากโฟลเดอร์ <code>images/</code> และ <code>metadata.json</code>
+              มอนิเตอร์ภาพกล้องสดทุก 5s • ตรวจจับสถานะออนไลน์อัตโนมัติ (เกิน 15 นาทีถือว่าออฟไลน์)
             </span>
           </div>
         </div>
@@ -449,16 +462,26 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
         {filteredCameras.map((cam) => (
           <div
             key={cam.id}
-            className="camera-card-tile group"
+            className={`camera-card-tile group ${!cam.isOnline ? 'offline' : ''}`}
             onClick={() => onOpenModal && onOpenModal(cam)}
           >
             {/* Visual Feed Area (Uncropped 4:3 view - Shows ALL cars and road completely!) */}
-            <div className="camera-viewport">
+            <div className="camera-viewport relative">
               <img
                 src={cam.imageUrl}
                 alt={cam.name}
                 className="camera-feed-img"
               />
+
+              {/* Offline Warning Banner when last frame > 15m */}
+              {!cam.isOnline && (
+                <div className="cam-offline-banner">
+                  <AlertTriangle className="w-4 h-4 text-rose-300 shrink-0 animate-pulse" />
+                  <span className="truncate">
+                    กล้องออฟไลน์ • ภาพล่าสุด {cam.statusInfo?.diffText || 'เกิน 15 นาที'}
+                  </span>
+                </div>
+              )}
 
               {/* Live ROI SVG Overlay for any camera */}
               {showRoiOverlay && cam.slots && cam.slots.length > 0 && (
@@ -506,18 +529,27 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
               {/* Viewport Header Overlay */}
               <div className="viewport-overlay-top">
                 <div className="cam-code-tag flex items-center gap-1.5">
-                  <span className="font-bold text-emerald-400">
+                  <span className={`font-bold ${cam.isOnline ? 'text-emerald-400' : 'text-rose-400'}`}>
                     {cam.slotCode}
                   </span>
                   <span className="device-tag">{cam.device}</span>
                 </div>
 
-                <div className="cam-live-indicator">
-                  <span className="live-ping"></span>
-                  <span className="live-dot"></span>
-                  <span className="live-text">
-                    {cam.isReal ? 'ONLINE • 5s' : 'ACTIVE'}
-                  </span>
+                <div className={`cam-live-indicator ${cam.isOnline ? 'online' : 'offline'}`}>
+                  {cam.isOnline ? (
+                    <>
+                      <span className="live-ping"></span>
+                      <span className="live-dot"></span>
+                      <span className="live-text">ONLINE • 5s</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="offline-dot"></span>
+                      <span className="live-text font-bold">
+                        OFFLINE ({cam.statusInfo?.diffMinutes < 60 ? `${cam.statusInfo?.diffMinutes}m` : `${Math.floor(cam.statusInfo?.diffMinutes/60)}h`})
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -526,7 +558,7 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
                 <div className="cam-name-info">
                   <span className="cam-title-text">{cam.name}</span>
                   <span className="cam-sub-text">
-                    {cam.subtitle} • {formatTimestampThai(cam.snapshotTimestamp)}
+                    {cam.subtitle} • {cam.isOnline ? formatTimestampThai(cam.snapshotTimestamp) : `ภาพล่าสุด: ${cam.snapshotTimestamp} (${cam.statusInfo?.diffText})`}
                   </span>
                 </div>
 

@@ -260,6 +260,96 @@ export function formatTimestampThai(localTimeStr) {
   return localTimeStr
 }
 
+/**
+ * Evaluates whether a camera is online based on its last frame/telemetry timestamp.
+ * If timestamp is older than maxAgeMinutes (default 15 minutes), mark as offline.
+ */
+export function checkCameraOnlineStatus(timestampStr, maxAgeMinutes = 15) {
+  if (!timestampStr) {
+    return {
+      isOnline: false,
+      diffMinutes: 999,
+      diffSeconds: 99999,
+      status: 'offline',
+      statusText: 'OFFLINE (ไม่มีสัญญาณ)',
+      diffText: 'ไม่พบสัญญาณ',
+      lastSeenText: '-',
+      badgeClass: 'offline'
+    }
+  }
+
+  let recordTime = null
+  try {
+    const cleanStr = timestampStr.includes('T') ? timestampStr : timestampStr.replace(' ', 'T')
+    recordTime = new Date(cleanStr)
+    if (isNaN(recordTime.getTime())) {
+      recordTime = new Date(timestampStr)
+    }
+  } catch (e) {
+    recordTime = null
+  }
+
+  if (!recordTime || isNaN(recordTime.getTime())) {
+    return {
+      isOnline: false,
+      diffMinutes: 999,
+      diffSeconds: 99999,
+      status: 'offline',
+      statusText: 'OFFLINE (เวลาไม่ถูกต้อง)',
+      diffText: 'เวลาไม่ถูกต้อง',
+      lastSeenText: '-',
+      badgeClass: 'offline'
+    }
+  }
+
+  const now = new Date()
+  const diffMs = now.getTime() - recordTime.getTime()
+  const diffSeconds = Math.floor(diffMs / 1000)
+  const diffMinutes = Math.floor(diffMs / 60000)
+
+  const lastSeenText = recordTime.toLocaleTimeString('th-TH', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
+
+  let diffText = ''
+  if (diffMinutes < 1) {
+    diffText = `${Math.max(0, diffSeconds)} วินาทีที่แล้ว`
+  } else if (diffMinutes < 60) {
+    diffText = `${diffMinutes} นาทีที่แล้ว`
+  } else {
+    const hours = Math.floor(diffMinutes / 60)
+    const mins = diffMinutes % 60
+    diffText = `${hours} ชม. ${mins} น. ที่แล้ว`
+  }
+
+  // If age exceeds maxAgeMinutes (15 mins)
+  if (diffMinutes > maxAgeMinutes) {
+    return {
+      isOnline: false,
+      diffMinutes: Math.max(0, diffMinutes),
+      diffSeconds: Math.max(0, diffSeconds),
+      status: 'offline',
+      statusText: `OFFLINE (${diffText})`,
+      diffText,
+      lastSeenText,
+      badgeClass: 'offline'
+    }
+  }
+
+  return {
+    isOnline: true,
+    diffMinutes: Math.max(0, diffMinutes),
+    diffSeconds: Math.max(0, diffSeconds),
+    status: 'online',
+    statusText: 'ONLINE • 5s',
+    diffText,
+    lastSeenText,
+    badgeClass: 'online'
+  }
+}
+
 export function formatUptime(seconds) {
   if (!seconds || seconds <= 0) return '0s'
   const m = Math.floor(seconds / 60)

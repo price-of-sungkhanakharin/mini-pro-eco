@@ -109,10 +109,19 @@ export default function CameraModal({ camera, onClose, onNavigate }) {
               </button>
             )}
 
-            <span className="modal-live-tag">
-              <span className="live-ping"></span>
-              <span className="live-dot"></span>
-              <span>{isRealCam ? 'ONLINE • 5s SYNC' : 'LIVE FEED'}</span>
+            <span className={`modal-live-tag ${camera.isOnline !== false ? 'online' : 'offline'}`}>
+              {camera.isOnline !== false ? (
+                <>
+                  <span className="live-ping"></span>
+                  <span className="live-dot"></span>
+                  <span>{isRealCam ? 'ONLINE • 5s SYNC' : 'LIVE FEED'}</span>
+                </>
+              ) : (
+                <>
+                  <span className="offline-dot"></span>
+                  <span className="text-rose-300 font-bold">OFFLINE ({camera.statusInfo?.diffText || 'ภาพล่าสุดเกิน 15 นาที'})</span>
+                </>
+              )}
             </span>
 
             <button
@@ -138,6 +147,16 @@ export default function CameraModal({ camera, onClose, onNavigate }) {
                     alt={camera.name}
                     className="modal-feed-img"
                   />
+
+                  {/* Offline HUD Alert */}
+                  {camera.isOnline === false && (
+                    <div className="cam-offline-banner">
+                      <AlertTriangle className="w-4 h-4 text-rose-300 shrink-0 animate-pulse" />
+                      <span>
+                        กล้องออฟไลน์ • ภาพล่าสุด {camera.statusInfo?.diffText || 'เกิน 15 นาที'}
+                      </span>
+                    </div>
+                  )}
 
                   {/* SVG ROI Vector Overlay */}
                   {showRoi && slots.length > 0 && (
@@ -189,8 +208,8 @@ export default function CameraModal({ camera, onClose, onNavigate }) {
 
                   {/* High-Tech HUD Badges on image */}
                   <div className="modal-hud-badge-top">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                    <span>1600 × 1200 UXGA • Native Resolution</span>
+                    <span className={`w-2 h-2 rounded-full ${camera.isOnline !== false ? 'bg-emerald-400 animate-ping' : 'bg-rose-400'}`}></span>
+                    <span>1600 × 1200 UXGA • {camera.isOnline !== false ? 'Native Resolution' : 'OFFLINE ARCHIVE'}</span>
                   </div>
 
                   {camera.snapshotTimestamp && (
@@ -217,9 +236,22 @@ export default function CameraModal({ camera, onClose, onNavigate }) {
                   <span className="hidden sm:inline">ไฟล์: <span className="text-emerald-400 font-medium font-mono">{telemetry.filename}</span></span>
                 )}
               </div>
-              <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1.5 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{telemetry.status || 'ONLINE (HEALTHY)'}</span>
+              <span className={`text-xs font-semibold flex items-center gap-1.5 px-2.5 py-1 rounded-md border ${
+                camera.isOnline !== false
+                  ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+                  : 'text-rose-300 bg-rose-500/20 border-rose-500/40'
+              }`}>
+                {camera.isOnline !== false ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{telemetry.status || 'ONLINE (HEALTHY)'}</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
+                    <span>OFFLINE (ภาพล่าสุดเกิน 15 นาที)</span>
+                  </>
+                )}
               </span>
             </div>
           </div>

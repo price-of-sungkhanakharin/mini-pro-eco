@@ -872,6 +872,61 @@
   background: #10b981;
 }
 
+.cam-live-indicator.offline {
+  background: rgba(136, 19, 55, 0.85);
+  border: 1px solid rgba(244, 63, 94, 0.5);
+  color: #fecdd3;
+  box-shadow: 0 0 10px rgba(244, 63, 94, 0.25);
+}
+
+.offline-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f43f5e;
+  box-shadow: 0 0 8px #f43f5e;
+}
+
+.cam-offline-banner {
+  position: absolute;
+  top: 2.35rem;
+  left: 0.6rem;
+  right: 0.6rem;
+  background: linear-gradient(135deg, rgba(136, 19, 55, 0.92) 0%, rgba(88, 28, 135, 0.88) 100%);
+  border: 1px solid rgba(244, 63, 94, 0.6);
+  border-radius: 6px;
+  padding: 0.35rem 0.65rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+  z-index: 15;
+  backdrop-filter: blur(8px);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.camera-card-tile.offline {
+  border-color: rgba(244, 63, 94, 0.35);
+}
+
+.camera-card-tile.offline:hover {
+  border-color: rgba(244, 63, 94, 0.6);
+}
+
+.camera-card-tile.offline .camera-viewport img {
+  filter: grayscale(35%) brightness(0.85);
+}
+
+.modal-live-tag.offline {
+  background: rgba(136, 19, 55, 0.85);
+  border: 1px solid rgba(244, 63, 94, 0.5);
+  color: #fecdd3;
+  box-shadow: 0 0 10px rgba(244, 63, 94, 0.25);
+}
+
 .viewport-overlay-bottom {
   position: absolute;
   bottom: 0.5rem;

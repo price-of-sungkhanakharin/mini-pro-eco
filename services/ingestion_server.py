@@ -24,7 +24,7 @@ import logging
 import os
 import shutil
 import socket
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from flask import Flask, request, jsonify, send_file, render_template_string
 from minio import Minio
@@ -951,6 +951,159 @@ def get_parking_live_status(cam_id=None):
     if status_data is None:
         return jsonify({"error": "No status data available"}), 404
     return jsonify(status_data)
+
+def is_business_operating_hours(dt=None):
+    """Check if time is within business operating hours (08:00 - 18:00 Bangkok time)."""
+    if dt is None:
+        bkk_tz = timezone(timedelta(hours=7))
+        dt = datetime.now(bkk_tz)
+    minute_of_day = dt.hour * 60 + dt.minute
+    return (8 * 60) <= minute_of_day <= (18 * 60)
+
+def db_get_latest_forecast(cam_id):
+    """Retrieve latest SARIMAX forecast and current occupancy for a camera."""
+    conn = get_pg_connection()
+    if not conn:
+        return None
+    try:
+        with conn.cursor() as cur:
+            # 1. Get latest forecast
+            cur.execute("""
+                SELECT forecast_time, predicted_occupancy_pct, vacancy_chance_pct,
+                       ci_low, ci_high, model, created_at
+                FROM forecasts
+                WHERE cam = %s
+                ORDER BY id DESC LIMIT 1;
+            """, (cam_id,))
+            fc_row = cur.fetchone()
+
+            if not fc_row:
+                return None
+
+            # 2. Get latest current occupancy from detections
+            cur.execute("""
+                SELECT occupancy_pct
+                FROM detections
+                WHERE cam = %s
+                ORDER BY ts DESC LIMIT 1;
+            """, (cam_id,))
+            det_row = cur.fetchone()
+            current_occ = round(float(det_row[0]), 1) if det_row and det_row[0] is not None else None
+
+            # Format forecast target timestamp to ISO 8601 string (with +07:00 offset)
+            fc_time_dt = fc_row[0]
+            if fc_time_dt:
+                bkk_tz = timezone(timedelta(hours=7))
+                fc_time_iso = fc_time_dt.astimezone(bkk_tz).isoformat()
+            else:
+                fc_time_iso = None
+
+            return {
+                "camera_id": cam_id,
+                "status": "OPEN",
+                "is_operating_hours": True,
+                "forecast_horizon_minutes": 15,
+                "current_occupancy_pct": current_occ,
+                "predicted_occupancy_pct": round(float(fc_row[1]), 1) if fc_row[1] is not None else None,
+                "vacancy_chance_pct": round(float(fc_row[2]), 1) if fc_row[2] is not None else None,
+                "confidence_interval": {
+                    "lower": round(float(fc_row[3]), 1) if fc_row[3] is not None else None,
+                    "upper": round(float(fc_row[4]), 1) if fc_row[4] is not None else None,
+                },
+                "model": fc_row[5],
+                "timestamp": fc_time_iso,
+            }
+    except Exception as e:
+        logger.error("Error reading forecast from PostgreSQL: %s", e)
+        return None
+    finally:
+        conn.close()
+
+@app.route("/api/forecast", methods=["GET"])
+@app.route("/api/forecast/<cam_id>", methods=["GET"])
+def get_camera_forecast(cam_id=None):
+    """Retrieve SARIMAX forecast predictions for a camera with Business Hours status."""
+    bkk_tz = timezone(timedelta(hours=7))
+    now_bkk = datetime.now(bkk_tz)
+
+    # Support mock_time query param for automated testing/verification (e.g. ?mock_time=21:00 or ?mock_time=14:00)
+    mock_time_str = request.args.get("mock_time")
+    if mock_time_str:
+        try:
+            parts = mock_time_str.split(":")
+            mock_h = int(parts[0])
+            mock_m = int(parts[1]) if len(parts) > 1 else 0
+            now_bkk = now_bkk.replace(hour=mock_h, minute=mock_m, second=0)
+        except Exception:
+            pass
+
+    is_open = is_business_operating_hours(now_bkk)
+
+    target_cam = cam_id or request.args.get("camera_id") or request.args.get("location")
+    if not target_cam:
+        results = {}
+        for c in ["cam1", "cam2", "cam3"]:
+            if not is_open:
+                results[c] = {
+                    "camera_id": c,
+                    "status": "CLOSED",
+                    "is_operating_hours": False,
+                    "message": "ลานจอดปิดให้บริการ (เปิดทำการ 08:00 - 18:00 น.)",
+                    "forecast_horizon_minutes": 15,
+                    "current_occupancy_pct": 0.0,
+                    "predicted_occupancy_pct": None,
+                    "vacancy_chance_pct": 100.0,
+                    "confidence_interval": {"lower": None, "upper": None},
+                    "model": "SARIMAX",
+                    "timestamp": now_bkk.isoformat()
+                }
+            else:
+                fc = db_get_latest_forecast(c)
+                if fc:
+                    results[c] = fc
+        return jsonify(results)
+
+    loc = resolve_location(target_cam, target_cam)
+    c_key = LOCATIONS.get(loc, {}).get("camera_id", target_cam.lower())
+
+    if not is_open:
+        return jsonify({
+            "camera_id": c_key,
+            "status": "CLOSED",
+            "is_operating_hours": False,
+            "message": "ลานจอดปิดให้บริการ (เปิดทำการ 08:00 - 18:00 น.)",
+            "forecast_horizon_minutes": 15,
+            "current_occupancy_pct": 0.0,
+            "predicted_occupancy_pct": None,
+            "vacancy_chance_pct": 100.0,
+            "confidence_interval": {
+                "lower": None,
+                "upper": None
+            },
+            "model": "SARIMAX",
+            "timestamp": now_bkk.isoformat()
+        }), 200
+
+    fc_data = db_get_latest_forecast(c_key)
+    if fc_data is None:
+        return jsonify({
+            "camera_id": c_key,
+            "status": "OPEN",
+            "is_operating_hours": True,
+            "forecast_horizon_minutes": 15,
+            "current_occupancy_pct": None,
+            "predicted_occupancy_pct": None,
+            "vacancy_chance_pct": None,
+            "confidence_interval": {
+                "lower": None,
+                "upper": None
+            },
+            "model": None,
+            "timestamp": None,
+            "error": f"No forecast data available for {c_key}"
+        }), 404
+
+    return jsonify(fc_data), 200
 
 @app.route("/api/settings", methods=["GET", "POST"])
 def settings():

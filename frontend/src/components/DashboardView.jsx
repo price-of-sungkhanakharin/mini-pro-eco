@@ -25,10 +25,12 @@ import {
   calculateSlotCounts,
   getCameraImage,
   SLOTS_STORAGE_KEY,
-  syncAllSlotsFromServer
+  syncAllSlotsFromServer,
+  getIngestionApiBase
 } from '../utils/dumpData'
 
 export default function DashboardView({ onOpenModal, onNavigate }) {
+  const INGESTION_API = getIngestionApiBase()
   const [selectedZone, setSelectedZone] = useState('all')
   const [countdown, setCountdown] = useState(5)
   const [isRefreshing, setIsRefreshing] = useState(false)

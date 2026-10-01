@@ -1,32 +1,884 @@
 {
   "cam1": {
     "camera_id": "cam1",
-    "name": "หน้าภาค 1 (รถยนต์)",
-    "capacity": 2,
+    "name": "ลานหน้าภาค 1 (รถยนต์)",
+    "capacity": 18,
     "slots": [
       {
         "id": "A01",
         "type": "car",
+        "shape": "polygon",
+        "occupied": true,
+        "vehicle_name": "ว่างพร้อมจอด",
+        "points": [
+          {
+            "x": 92,
+            "y": 1010
+          },
+          {
+            "x": 473,
+            "y": 1032
+          },
+          {
+            "x": 755,
+            "y": 911
+          },
+          {
+            "x": 343,
+            "y": 882
+          }
+        ],
+        "bbox": {
+          "x": 92,
+          "y": 882,
+          "width": 663,
+          "height": 150
+        }
+      },
+      {
+        "id": "A02",
+        "type": "car",
+        "shape": "polygon",
+        "occupied": true,
+        "vehicle_name": "ว่างพร้อมจอด",
+        "points": [
+          {
+            "x": 359,
+            "y": 873
+          },
+          {
+            "x": 775,
+            "y": 907
+          },
+          {
+            "x": 966,
+            "y": 817
+          },
+          {
+            "x": 554,
+            "y": 802
+          }
+        ],
+        "bbox": {
+          "x": 359,
+          "y": 802,
+          "width": 607,
+          "height": 105
+        }
+      },
+      {
+        "id": "A03",
+        "type": "car",
+        "shape": "polygon",
+        "occupied": true,
+        "vehicle_name": "ว่างพร้อมจอด",
+        "points": [
+          {
+            "x": 576,
+            "y": 795
+          },
+          {
+            "x": 979,
+            "y": 808
+          },
+          {
+            "x": 1120,
+            "y": 723
+          },
+          {
+            "x": 820,
+            "y": 721
+          }
+        ],
+        "bbox": {
+          "x": 576,
+          "y": 721,
+          "width": 544,
+          "height": 87
+        }
+      },
+      {
+        "id": "A04",
+        "type": "car",
+        "shape": "polygon",
+        "occupied": true,
+        "vehicle_name": "ว่างพร้อมจอด",
+        "points": [
+          {
+            "x": 852,
+            "y": 714
+          },
+          {
+            "x": 1154,
+            "y": 716
+          },
+          {
+            "x": 1320,
+            "y": 651
+          },
+          {
+            "x": 997,
+            "y": 647
+          }
+        ],
+        "bbox": {
+          "x": 852,
+          "y": 647,
+          "width": 468,
+          "height": 69
+        }
+      },
+      {
+        "id": "A05",
+        "type": "car",
+        "shape": "polygon",
+        "occupied": true,
+        "vehicle_name": "ว่างพร้อมจอด",
+        "points": [
+          {
+            "x": 1026,
+            "y": 640
+          },
+          {
+            "x": 1345,
+            "y": 651
+          },
+          {
+            "x": 1490,
+            "y": 575
+          },
+          {
+            "x": 1212,
+            "y": 560
+          }
+        ],
+        "bbox": {
+          "x": 1026,
+          "y": 560,
+          "width": 464,
+          "height": 91
+        }
+      },
+      {
+        "id": "A06",
+        "type": "car",
+        "shape": "polygon",
+        "occupied": true,
+        "vehicle_name": "ว่างพร้อมจอด",
+        "points": [
+          {
+            "x": 1232,
+            "y": 553
+          },
+          {
+            "x": 1515,
+            "y": 571
+          },
+          {
+            "x": 1596,
+            "y": 501
+          },
+          {
+            "x": 1414,
+            "y": 477
+          }
+        ],
+        "bbox": {
+          "x": 1232,
+          "y": 477,
+          "width": 364,
+          "height": 94
+        }
+      },
+      {
+        "id": "A07",
+        "type": "motorcycle",
+        "shape": "polygon",
+        "occupied": false,
+        "vehicle_name": "ว่างพร้อมจอด",
+        "points": [
+          {
+            "x": 61,
+            "y": 867
+          },
+          {
+            "x": 159,
+            "y": 893
+          },
+          {
+            "x": 199,
+            "y": 869
+          },
+          {
+            "x": 112,
+            "y": 844
+          }
+        ],
+        "bbox": {
+          "x": 61,
+          "y": 844,
+          "width": 138,
+          "height": 49
+        }
+      },
+      {
+        "id": "A08",
+        "type": "motorcycle",
+        "shape": "polygon",
+        "occupied": false,
+        "vehicle_name": "ว่างพร้อมจอด",
+        "points": [
+          {
+            "x": 125,
+            "y": 837
+          },
+          {
+            "x": 213,
+            "y": 864
+          },
+          {
+            "x": 264,
+            "y": 840
+          },
+          {
+            "x": 177,
+            "y": 815
+          }
+        ],
+        "bbox": {
+          "x": 125,
+          "y": 815,
+          "width": 139,
+          "height": 49
+        }
+      },
+      {
+        "id": "A09",
+        "type": "motorcycle",
+        "shape": "polygon",
+        "occupied": false,
+        "vehicle_name": "ว่างพร้อมจอด",
+        "points": [
+          {
+            "x": 197,
+            "y": 806
+          },
+          {
+            "x": 278,
+            "y": 835
+          },
+          {
+            "x": 320,
+            "y": 813
+          },
+          {
+            "x": 251,
+            "y": 786
+          }
+        ],
+        "bbox": {
+          "x": 197,
+          "y": 786,
+          "width": 123,
+          "height": 49
+        }
+      },
+      {
+        "id": "A10",
+        "type": "motorcycle",
+        "shape": "polygon",
+        "occupied": false,
+        "vehicle_name": "ว่างพร้อมจอด",
+        "points": [
+          {
+            "x": 262,
+            "y": 784
+          },
+          {
+            "x": 341,
+            "y": 813
+          },
+          {
+            "x": 372,
+            "y": 795
+          },
+          {
+            "x": 300,
+            "y": 772
+          }
+        ],
+        "bbox": {
+          "x": 262,
+          "y": 772,
+          "width": 110,
+          "height": 41
+        }
+      },
+      {
+        "id": "A11",
+        "type": "motorcycle",
+        "shape": "polygon",
+        "occupied": false,
+        "vehicle_name": "ว่างพร้อมจอด",
+        "points": [
+          {
+            "x": 415,
+            "y": 779
+          },
+          {
+            "x": 388,
+            "y": 797
+          },
+          {
+            "x": 311,
+            "y": 768
+          },
+          {
+            "x": 359,
+            "y": 741
+          }
+        ],
+        "bbox": {
+          "x": 311,
+          "y": 741,
+          "width": 104,
+          "height": 56
+        }
+      },
+      {
+        "id": "A12",
+        "type": "motorcycle",
+        "shape": "polygon",
+        "occupied": false,
+        "vehicle_name": "ว่างพร้อมจอด",
+        "points": [
+          {
+            "x": 475,
+            "y": 759
+          },
+          {
+            "x": 428,
+            "y": 770
+          },
+          {
+            "x": 372,
+            "y": 741
+          },
+          {
+            "x": 415,
+            "y": 725
+          }
+        ],
+        "bbox": {
+          "x": 372,
+          "y": 725,
+          "width": 103,
+          "height": 45
+        }
+      },
+      {
+        "id": "A13",
+        "type": "motorcycle",
+        "shape": "polygon",
+        "occupied": false,
+        "vehicle_name": "ว่างพร้อมจอด",
+        "points": [
+          {
+            "x": 527,
+            "y": 743
+          },
+          {
+            "x": 482,
+            "y": 759
+          },
+          {
+            "x": 435,
+            "y": 721
+          },
+          {
+            "x": 468,
+            "y": 699
+          }
+        ],
+        "bbox": {
+          "x": 435,
+          "y": 699,
+          "width": 92,
+          "height": 60
+        }
+      },
+      {
+        "id": "A14",
+        "type": "motorcycle",
+        "shape": "polygon",
+        "occupied": false,
+        "vehicle_name": "ว่างพร้อมจอด",
+        "points": [
+          {
+            "x": 480,
+            "y": 705
+          },
+          {
+            "x": 540,
+            "y": 739
+          },
+          {
+            "x": 580,
+            "y": 721
+          },
+          {
+            "x": 524,
+            "y": 694
+          }
+        ],
+        "bbox": {
+          "x": 480,
+          "y": 694,
+          "width": 100,
+          "height": 45
+        }
+      },
+      {
+        "id": "A15",
+        "type": "motorcycle",
+        "shape": "polygon",
+        "occupied": false,
+        "vehicle_name": "ว่างพร้อมจอด",
+        "points": [
+          {
+            "x": 540,
+            "y": 687
+          },
+          {
+            "x": 601,
+            "y": 716
+          },
+          {
+            "x": 645,
+            "y": 703
+          },
+          {
+            "x": 580,
+            "y": 667
+          }
+        ],
+        "bbox": {
+          "x": 540,
+          "y": 667,
+          "width": 105,
+          "height": 49
+        }
+      },
+      {
+        "id": "A16",
+        "type": "motorcycle",
+        "shape": "polygon",
+        "occupied": false,
+        "vehicle_name": "ว่างพร้อมจอด",
+        "points": [
+          {
+            "x": 598,
+            "y": 667
+          },
+          {
+            "x": 659,
+            "y": 703
+          },
+          {
+            "x": 701,
+            "y": 683
+          },
+          {
+            "x": 636,
+            "y": 651
+          }
+        ],
+        "bbox": {
+          "x": 598,
+          "y": 651,
+          "width": 103,
+          "height": 52
+        }
+      },
+      {
+        "id": "A17",
+        "type": "motorcycle",
+        "shape": "polygon",
+        "occupied": false,
+        "vehicle_name": "ว่างพร้อมจอด",
+        "points": [
+          {
+            "x": 681,
+            "y": 634
+          },
+          {
+            "x": 744,
+            "y": 667
+          },
+          {
+            "x": 719,
+            "y": 681
+          },
+          {
+            "x": 650,
+            "y": 649
+          }
+        ],
+        "bbox": {
+          "x": 650,
+          "y": 634,
+          "width": 94,
+          "height": 47
+        }
+      },
+      {
+        "id": "A18",
+        "type": "motorcycle",
+        "shape": "polygon",
+        "occupied": false,
+        "vehicle_name": "ว่างพร้อมจอด",
+        "points": [
+          {
+            "x": 695,
+            "y": 627
+          },
+          {
+            "x": 762,
+            "y": 663
+          },
+          {
+            "x": 816,
+            "y": 649
+          },
+          {
+            "x": 751,
+            "y": 618
+          }
+        ],
+        "bbox": {
+          "x": 695,
+          "y": 618,
+          "width": 121,
+          "height": 45
+        }
+      }
+    ],
+    "polygon": [
+      [
+        0,
+        0
+      ],
+      [
+        1600,
+        0
+      ],
+      [
+        1600,
+        1200
+      ],
+      [
+        0,
+        1200
+      ]
+    ]
+  },
+  "_updated_at": "2026-10-01T14:47:16.129161",
+  "cam3": {
+    "camera_id": "cam3",
+    "name": "ลานข้างภาคคอม (มอเตอร์ไซค์)",
+    "capacity": 7,
+    "slots": [
+      {
+        "id": "C01",
+        "type": "car",
+        "shape": "polygon",
+        "occupied": true,
+        "vehicle_name": "Sedan น้ำเงิน (อาจารย์ 1)",
+        "points": [
+          {
+            "x": 250,
+            "y": 480
+          },
+          {
+            "x": 480,
+            "y": 480
+          },
+          {
+            "x": 460,
+            "y": 700
+          },
+          {
+            "x": 230,
+            "y": 700
+          }
+        ],
+        "bbox": {
+          "x": 230,
+          "y": 480,
+          "width": 250,
+          "height": 220
+        }
+      },
+      {
+        "id": "C02",
+        "type": "car",
+        "shape": "polygon",
+        "occupied": true,
+        "vehicle_name": "SUV ขาว (อาจารย์ 2)",
+        "points": [
+          {
+            "x": 520,
+            "y": 480
+          },
+          {
+            "x": 750,
+            "y": 480
+          },
+          {
+            "x": 730,
+            "y": 700
+          },
+          {
+            "x": 500,
+            "y": 700
+          }
+        ],
+        "bbox": {
+          "x": 500,
+          "y": 480,
+          "width": 250,
+          "height": 220
+        }
+      },
+      {
+        "id": "C03",
+        "type": "car",
+        "shape": "polygon",
+        "occupied": true,
+        "vehicle_name": "Sedan เทา (เจ้าหน้าที่)",
+        "points": [
+          {
+            "x": 790,
+            "y": 480
+          },
+          {
+            "x": 1020,
+            "y": 480
+          },
+          {
+            "x": 1000,
+            "y": 700
+          },
+          {
+            "x": 770,
+            "y": 700
+          }
+        ],
+        "bbox": {
+          "x": 770,
+          "y": 480,
+          "width": 250,
+          "height": 220
+        }
+      },
+      {
+        "id": "C04",
+        "type": "car",
+        "shape": "polygon",
+        "occupied": false,
+        "vehicle_name": "ว่างพร้อมจอด",
+        "points": [
+          {
+            "x": 1060,
+            "y": 480
+          },
+          {
+            "x": 1290,
+            "y": 480
+          },
+          {
+            "x": 1270,
+            "y": 700
+          },
+          {
+            "x": 1040,
+            "y": 700
+          }
+        ],
+        "bbox": {
+          "x": 1040,
+          "y": 480,
+          "width": 250,
+          "height": 220
+        }
+      },
+      {
+        "id": "C05",
+        "type": "car",
+        "shape": "polygon",
+        "occupied": false,
+        "vehicle_name": "ว่างพร้อมจอด",
+        "points": [
+          {
+            "x": 1330,
+            "y": 480
+          },
+          {
+            "x": 1560,
+            "y": 480
+          },
+          {
+            "x": 1540,
+            "y": 700
+          },
+          {
+            "x": 1310,
+            "y": 700
+          }
+        ],
+        "bbox": {
+          "x": 1310,
+          "y": 480,
+          "width": 250,
+          "height": 220
+        }
+      },
+      {
+        "id": "MC01",
+        "type": "motorcycle",
+        "shape": "polygon",
+        "occupied": true,
+        "vehicle_name": "Honda Click ดำ",
         "points": [
           {
             "x": 100,
-            "y": 100
+            "y": 500
           },
           {
             "x": 200,
-            "y": 100
+            "y": 500
           },
           {
-            "x": 200,
-            "y": 200
+            "x": 190,
+            "y": 620
           },
+          {
+            "x": 90,
+            "y": 620
+          }
+        ],
+        "bbox": {
+          "x": 90,
+          "y": 500,
+          "width": 110,
+          "height": 120
+        }
+      },
+      {
+        "id": "MC02",
+        "type": "motorcycle",
+        "shape": "polygon",
+        "occupied": false,
+        "vehicle_name": "ว่างพร้อมจอด",
+        "points": [
           {
             "x": 100,
-            "y": 200
+            "y": 650
+          },
+          {
+            "x": 200,
+            "y": 650
+          },
+          {
+            "x": 190,
+            "y": 770
+          },
+          {
+            "x": 90,
+            "y": 770
           }
-        ]
+        ],
+        "bbox": {
+          "x": 90,
+          "y": 650,
+          "width": 110,
+          "height": 120
+        }
       }
+    ],
+    "polygon": [
+      [
+        0,
+        0
+      ],
+      [
+        1600,
+        0
+      ],
+      [
+        1600,
+        1200
+      ],
+      [
+        0,
+        1200
+      ]
     ]
   },
-  "_updated_at": "2026-10-01T00:45:39.791721"
+  "cam2": {
+    "camera_id": "cam2",
+    "name": "ลานหน้าภาค 2 (รถยนต์)",
+    "capacity": 1,
+    "slots": [
+      {
+        "id": "B01",
+        "type": "car",
+        "shape": "polygon",
+        "occupied": false,
+        "vehicle_name": "ว่างพร้อมจอด",
+        "points": [
+          {
+            "x": 807,
+            "y": 641
+          },
+          {
+            "x": 1128,
+            "y": 661
+          },
+          {
+            "x": 991,
+            "y": 745
+          },
+          {
+            "x": 645,
+            "y": 705
+          }
+        ],
+        "bbox": {
+          "x": 645,
+          "y": 641,
+          "width": 483,
+          "height": 104
+        }
+      }
+    ],
+    "polygon": [
+      [
+        0,
+        0
+      ],
+      [
+        1600,
+        0
+      ],
+      [
+        1600,
+        1200
+      ],
+      [
+        0,
+        1200
+      ]
+    ]
+  }
 }

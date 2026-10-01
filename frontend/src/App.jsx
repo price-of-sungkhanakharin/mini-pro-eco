@@ -395,7 +395,7 @@ function App() {
                 onClick={handleQuickAdminDemo}
                 className="w-full py-2 px-3 rounded-lg text-xs font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 transition-all flex items-center justify-center gap-2"
               >
-                <span>⚡ Quick Access: เข้าสู่หน้า Admin Dashboard</span>
+                <span>Quick Access: เข้าสู่หน้า Admin Dashboard</span>
               </button>
             </div>
           </main>

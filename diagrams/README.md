@@ -4,14 +4,14 @@ The `diagrams` directory holds architectural visual diagrams, vector flowcharts,
 
 ---
 
-## 🎨 Diagram Files
+## Diagram Files
 
 - **`overviews.drawio`**: Draw.io diagram source file containing complete system component overview, microservice interactions, S3 object storage data flow, and background worker queue pipeline.
 - **`training_worker_architecture.drawio`**: Draw.io diagram for scheduled Token Classification trainer worker pipeline showing Client Request (`Add train queue time`), FastAPI Gateway, Redis Queue (`arq:queue`), Hugging Face Dataset ingestion, MinIO Object Storage (`datasets` and `models` buckets), and Trainer Worker asynchronous execution flow.
 
 ---
 
-## 🛠️ View & Edit Instructions
+## View & Edit Instructions
 
 1. Open [Draw.io (app.diagrams.net)](https://app.diagrams.net/).
 2. Select **Open Existing Diagram** and upload `overviews.drawio`.

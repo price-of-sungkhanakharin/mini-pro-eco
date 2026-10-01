@@ -4,7 +4,7 @@ The `tests` directory contains automated unit, integration, and component tests 
 
 ---
 
-## 📁 Directory Structure & Tests
+## Directory Structure & Tests
 
 ```text
 tests/
@@ -22,7 +22,7 @@ tests/
 
 ---
 
-## 🧪 Running Tests
+## Running Tests
 
 Execute all tests using Pytest:
 ```bash

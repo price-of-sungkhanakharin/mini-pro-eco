@@ -4,7 +4,7 @@ The `models` directory contains SQLAlchemy object-relational mapping (ORM) entit
 
 ---
 
-## 🗄️ Model Schema & Tables
+## Model Schema & Tables
 
 ### 1. User Model (`user.py`)
 - **Table Name:** `users`

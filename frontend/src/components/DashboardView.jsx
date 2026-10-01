@@ -491,7 +491,7 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
                           textAnchor="middle"
                           className="slot-label-text text-[11px]"
                         >
-                          {isBike ? '🏍️ ' : '🚗 '}{s.id}
+                          {s.id}
                         </text>
                       </g>
                     )
@@ -620,7 +620,7 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
               <div className="zone-progress-header">
                 <span className="font-medium text-xs text-white">Zone A (ลานหน้าตึก)</span>
                 <span className="text-xs text-emerald-400 font-bold">
-                  🚗 {cam1Counts.car.free}/{cam1Counts.car.total} • 🏍️ {cam1Counts.bike.free}/{cam1Counts.bike.total} ว่าง (
+                  รถยนต์: {cam1Counts.car.free}/{cam1Counts.car.total} | มอเตอร์ไซค์: {cam1Counts.bike.free}/{cam1Counts.bike.total} ว่าง (
                   {cam1Counts.car.total + cam1Counts.bike.total > 0
                     ? Math.round(
                         ((cam1Counts.car.occupied + cam1Counts.bike.occupied) /
@@ -652,7 +652,7 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
               <div className="zone-progress-header">
                 <span className="font-medium text-xs text-white">Zone B (ลานในร่มข้างตึก)</span>
                 <span className="text-xs text-amber-400 font-bold">
-                  🚗 {cam2Counts.car.free}/{cam2Counts.car.total} • 🏍️ {cam2Counts.bike.free}/{cam2Counts.bike.total} ว่าง (
+                  รถยนต์: {cam2Counts.car.free}/{cam2Counts.car.total} | มอเตอร์ไซค์: {cam2Counts.bike.free}/{cam2Counts.bike.total} ว่าง (
                   {cam2Counts.car.total + cam2Counts.bike.total > 0
                     ? Math.round(
                         ((cam2Counts.car.occupied + cam2Counts.bike.occupied) /
@@ -684,7 +684,7 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
               <div className="zone-progress-header">
                 <span className="font-medium text-xs text-white">Zone C (ลานหลังตึกบุคลากร)</span>
                 <span className="text-xs text-blue-400 font-bold">
-                  🚗 {cam3Counts.car.free}/{cam3Counts.car.total} • 🏍️ {cam3Counts.bike.free}/{cam3Counts.bike.total} ว่าง (
+                  รถยนต์: {cam3Counts.car.free}/{cam3Counts.car.total} | มอเตอร์ไซค์: {cam3Counts.bike.free}/{cam3Counts.bike.total} ว่าง (
                   {cam3Counts.car.total + cam3Counts.bike.total > 0
                     ? Math.round(
                         ((cam3Counts.car.occupied + cam3Counts.bike.occupied) /

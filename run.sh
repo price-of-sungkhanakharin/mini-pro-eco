@@ -16,5 +16,5 @@ HOST="${HOST:-0.0.0.0}"
 PORT="${PORT:-8000}"
 RELOAD="${RELOAD:---reload}"
 
-echo "🚀 Starting FastAPI AI Ecosystem Gateway Server on http://$HOST:$PORT..."
+echo "Starting FastAPI AI Ecosystem Gateway Server on http://$HOST:$PORT..."
 exec uvicorn backend.main:app --host "$HOST" --port "$PORT" $RELOAD

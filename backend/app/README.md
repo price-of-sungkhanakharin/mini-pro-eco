@@ -4,7 +4,7 @@ The `app` directory contains the application domain modules for the FastAPI AI E
 
 ---
 
-## 📂 Submodule Architecture
+## Submodule Architecture
 
 ```text
 backend/app/
@@ -19,7 +19,7 @@ backend/app/
 
 ---
 
-## 🏛️ Architectural Principles
+## Architectural Principles
 
 1. **Clean Separation of Concerns:** Routers delegate domain logic to services and database operations to models.
 2. **Strict Request/Response Validation:** Pydantic models in `schemas/` ensure type safety and standard API contracts.

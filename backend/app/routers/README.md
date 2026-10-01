@@ -4,7 +4,7 @@ The `routers` directory contains all HTTP API endpoint route handlers for the ba
 
 ---
 
-## 📋 Router Module Catalog
+## Router Module Catalog
 
 | Module | Prefix | Tags | Description & Key Endpoints |
 | :--- | :--- | :--- | :--- |
@@ -17,6 +17,6 @@ The `routers` directory contains all HTTP API endpoint route handlers for the ba
 
 ---
 
-## 🛠️ Usage Patterns
+## Usage Patterns
 
 All routers use FastAPI's `APIRouter()` and are registered centrally in `backend/main.py`. Protected routes declare security dependencies via `Depends(get_current_user)`.

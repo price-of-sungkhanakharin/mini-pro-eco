@@ -13,25 +13,25 @@ An end-to-end modern AI platform combining a high-performance FastAPI backend mi
 
 ---
 
-## ⚡ Background Service Management (ระบบสั่งการรัน/หยุดเบื้องหลัง)
+## Background Service Management (ระบบสั่งการรัน/หยุดเบื้องหลัง)
 
 จัดการเปิด, ปิด, รีสตาร์ท หรือดูสถานะของทุก Services ในระบบแบบเบื้องหลัง (Background Daemon) ได้ง่ายๆ ด้วยคำสั่งเดียวผ่านสคริปต์ `./scripts/manage` (หรือ `./manage`):
 
 ```bash
-# 🚀 เริ่มต้นทำงานทุก Service พร้อมกันในเบื้องหลัง (Docker Containers + Frontend)
+# เริ่มต้นทำงานทุก Service พร้อมกันในเบื้องหลัง (Docker Containers + Frontend)
 ./scripts/manage start all
 
-# 📊 ตรวจสอบสถานะการทำงานของทุก Service
+# ตรวจสอบสถานะการทำงานของทุก Service
 ./scripts/manage status
 
-# ⏹️ สั่งหยุดการทำงานของทุก Service
+# ⏹ สั่งหยุดการทำงานของทุก Service
 ./scripts/manage stop all
 
-# 🔄 รีสตาร์ททุก Service ทั้งระบบ
+# รีสตาร์ททุก Service ทั้งระบบ
 ./scripts/manage restart all
 ```
 
-### 📌 คำสั่งควบคุมแยกตาม Service:
+### คำสั่งควบคุมแยกตาม Service:
 
 | Service ที่ต้องการจัดการ | คำสั่ง Start (รันเบื้องหลัง) | คำสั่ง Stop (หยุด) | คำสั่ง Restart | ดู Log สด |
 | :--- | :--- | :--- | :--- | :--- |
@@ -45,7 +45,7 @@ An end-to-end modern AI platform combining a high-performance FastAPI backend mi
 | **MinIO Object Storage** | `./scripts/manage start minio` | `./scripts/manage stop minio` | `./scripts/manage restart minio` | `./scripts/manage logs minio` |
 | **Label Studio Annotation** | `./scripts/manage start label-studio` | `./scripts/manage stop label-studio` | `./scripts/manage restart label-studio` | `./scripts/manage logs label-studio` |
 
-> 💡 **Tip:** สามารถเรียกผ่าน Shortcut สั้นๆ จาก Root Directory ได้เช่นกัน เช่น `./manage status` หรือ `./manage restart all`
+>  **Tip:** สามารถเรียกผ่าน Shortcut สั้นๆ จาก Root Directory ได้เช่นกัน เช่น `./manage status` หรือ `./manage restart all`
 
 ---
 

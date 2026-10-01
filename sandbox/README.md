@@ -4,7 +4,7 @@ The `sandbox` directory serves as an isolated playground for experimental script
 
 ---
 
-## 📁 Folder Contents
+## Folder Contents
 
 - **`sandbox/minio/`**: Experimental scripts for testing bucket operations, presigned links, and versioning.
 - **`sandbox/test_logger.py`**: Quick script to verify structured JSON log entries before integrating into routers.

@@ -61,20 +61,20 @@ def add_image_placeholder(doc, title, command, image_desc):
     
     p1 = cell.paragraphs[0]
     p1.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    run1 = p1.add_run(f"📷 [{title}]")
+    run1 = p1.add_run(f"[{title}]")
     run1.bold = True
     run1.font.size = Pt(11)
     run1.font.color.rgb = RGBColor(0, 51, 102)
     
     p2 = cell.add_paragraph()
     p2.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    run2 = p2.add_run(f"💻 คำสั่งสำหรับเตรียมข้อมูล/รันระบบ:\n   {command}")
+    run2 = p2.add_run(f"คำสั่งสำหรับเตรียมข้อมูล/รันระบบ:\n   {command}")
     run2.font.size = Pt(10)
     run2.font.color.rgb = RGBColor(34, 34, 34)
     
     p3 = cell.add_paragraph()
     p3.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    run3 = p3.add_run(f"🖼️ รายละเอียดภาพที่ต้องแคปใส่ตรงนี้: {image_desc}")
+    run3 = p3.add_run(f"รายละเอียดภาพที่ต้องแคปใส่ตรงนี้: {image_desc}")
     run3.font.size = Pt(9.5)
     run3.font.italic = True
     run3.font.color.rgb = RGBColor(100, 100, 100)
@@ -437,7 +437,7 @@ def build_assignment_report():
     # Save output
     output_path = "/home/kimbiaw/ai-eco/Assignment_Report_AIECO.docx"
     doc.save(output_path)
-    print(f"✅ Successfully generated docx report: {output_path}")
+    print(f"Successfully generated docx report: {output_path}")
 
 
 if __name__ == "__main__":

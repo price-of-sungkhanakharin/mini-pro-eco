@@ -179,7 +179,7 @@ export default function CameraModal({ camera, onClose, onNavigate }) {
                               textAnchor="middle"
                               className="slot-label-text"
                             >
-                              {isBike ? '🏍️ ' : '🚗 '}{slot.id}
+                              {slot.id}
                             </text>
                           </g>
                         )
@@ -251,7 +251,7 @@ export default function CameraModal({ camera, onClose, onNavigate }) {
                     </div>
                     <div className="tile-footer-status">
                       <span className={`tile-badge ${isHighTemp ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'}`}>
-                        {isHighTemp ? '⚠️ ความร้อนสูง' : 'ปกติ (Safe)'}
+                        {isHighTemp ? 'ความร้อนสูง (High)' : 'ปกติ (Safe)'}
                       </span>
                     </div>
                   </div>

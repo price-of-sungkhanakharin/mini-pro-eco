@@ -201,7 +201,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
     const ok = await saveRoiToServer(selectedCamId, slots)
     setIsSyncingServer(false)
     if (ok) {
-      showToast(`💾 บันทึกพิกัด ROI กล้อง ${activeCam.code} (${slots.length} ช่อง) ไปยัง Server & AI Worker สำเร็จ!`)
+      showToast(`บันทึกพิกัด ROI กล้อง ${activeCam.code} (${slots.length} ช่อง) ไปยัง Server & AI Worker สำเร็จ!`)
     } else {
       showToast(`บันทึกใน LocalStorage เรียบร้อย (Server ตอบกลับไม่สำเร็จ)`, 'info')
     }
@@ -743,7 +743,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
             title="บันทึกพิกัด ROI ไปยัง Server ให้ AI YOLO ใช้งานทันที"
           >
             <Save className={`w-4 h-4 text-emerald-400 ${isSyncingServer ? 'animate-spin' : ''}`} />
-            <span>{isSyncingServer ? 'กำลังบันทึก...' : '💾 บันทึก ROI ไปยัง Server'}</span>
+            <span>{isSyncingServer ? 'กำลังบันทึก...' : 'บันทึก ROI ไปยัง Server'}</span>
           </button>
 
           <button
@@ -819,10 +819,10 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
 
                 <div className="cam-switcher-stats mt-1">
                   <span className="stat-pill car">
-                    🚗 รถยนต์: <strong>{counts.car.total}</strong> ({counts.car.free} ว่าง)
+                    รถยนต์: <strong>{counts.car.total}</strong> ({counts.car.free} ว่าง)
                   </span>
                   <span className="stat-pill bike">
-                    🏍️ มอเตอร์ไซค์: <strong>{counts.bike.total}</strong> ({counts.bike.free} ว่าง)
+                    มอเตอร์ไซค์: <strong>{counts.bike.total}</strong> ({counts.bike.free} ว่าง)
                   </span>
                 </div>
               </button>
@@ -959,7 +959,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                   onChange={(e) => setSelectedFrameIndex(Number(e.target.value))}
                   title="เลือกภาพถ่ายในอดีตจาก MinIO"
                 >
-                  <option value={-1}>🔴 ภาพสดล่าสุด (Live Snapshot)</option>
+                  <option value={-1}>ภาพสดล่าสุด (Live Snapshot)</option>
                   {recentFrames.map((r, i) => (
                     <option key={r.id || i} value={i}>
                       #{i + 1} • {r.local_time ? r.local_time.split(' ')[1] : r.filename}
@@ -1106,7 +1106,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                           textAnchor="middle"
                           className="slot-label-text"
                         >
-                          {isBike ? '🏍️ ' : '🚗 '}{slot.id}
+                          {slot.id}
                         </text>
                       </g>
                     )}
@@ -1142,7 +1142,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                         className={`draft-point-circle ${drawType === 'motorcycle' ? 'bike-point' : 'car-point'}`}
                       />
                       <text x={pt.x + 12} y={pt.y - 8} className="draft-point-label">
-                        {drawType === 'motorcycle' ? '🏍️' : '🚗'} จุดที่ {idx + 1}
+                        จุดที่ {idx + 1}
                       </text>
                     </g>
                   ))}
@@ -1216,10 +1216,10 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
               </div>
               <div className="flex gap-2">
                 <span className="mini-chip bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  🚗 รถยนต์: {slots.filter((s) => s.type !== 'motorcycle' && s.type !== 'bike').length}
+                  รถยนต์: {slots.filter((s) => s.type !== 'motorcycle' && s.type !== 'bike').length}
                 </span>
                 <span className="mini-chip bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                  🏍️ มอเตอร์ไซค์: {slots.filter((s) => s.type === 'motorcycle' || s.type === 'bike').length}
+                  มอเตอร์ไซค์: {slots.filter((s) => s.type === 'motorcycle' || s.type === 'bike').length}
                 </span>
               </div>
             </div>
@@ -1410,7 +1410,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                       {slot.id}
                     </span>
                     <span className={`slot-type-chip ${slot.type === 'motorcycle' || slot.type === 'bike' ? 'bike' : 'car'}`}>
-                      {slot.type === 'motorcycle' || slot.type === 'bike' ? '🏍️ มอเตอร์ไซค์' : '🚗 รถยนต์'}
+                      {slot.type === 'motorcycle' || slot.type === 'bike' ? 'มอเตอร์ไซค์' : 'รถยนต์'}
                     </span>
                     <span className={`slot-status-chip ${slot.occupied ? 'occupied' : 'vacant'}`}>
                       {slot.occupied ? 'มีรถ' : 'ว่าง'}

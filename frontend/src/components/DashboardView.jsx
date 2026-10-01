@@ -24,7 +24,8 @@ import {
   getSavedOrInitialSlots,
   calculateSlotCounts,
   getCameraImage,
-  SLOTS_STORAGE_KEY
+  SLOTS_STORAGE_KEY,
+  syncAllSlotsFromServer
 } from '../utils/dumpData'
 
 export default function DashboardView({ onOpenModal, onNavigate }) {
@@ -50,14 +51,16 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
   const [liveData, setLiveData] = useState(null)
   const [imgKey, setImgKey] = useState(() => Date.now())
 
-  const INGESTION_API =
-    typeof window !== 'undefined'
-      ? `http://${window.location.hostname}:5005`
-      : 'http://localhost:5005'
-
   const fetchLiveTelemetry = async () => {
     try {
-      const res = await fetch(`${INGESTION_API}/api/telemetry`)
+      let res = await fetch('/api/telemetry')
+      if (!res.ok) {
+        const fallback =
+          typeof window !== 'undefined'
+            ? `http://${window.location.hostname}:5005/api/telemetry`
+            : 'http://localhost:5005/api/telemetry'
+        res = await fetch(fallback)
+      }
       if (res.ok) {
         const data = await res.json()
         setLiveData(data)
@@ -73,6 +76,31 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
     fetchLiveTelemetry()
     const liveTimer = setInterval(fetchLiveTelemetry, 3000)
     return () => clearInterval(liveTimer)
+  }, [])
+
+  // Synchronize and poll parking slots from central server so all connected machines display identical ROI
+  useEffect(() => {
+    let isMounted = true
+
+    const syncServerRoi = async () => {
+      try {
+        const synced = await syncAllSlotsFromServer()
+        if (synced && isMounted) {
+          if (synced.cam1) setCam1Slots(synced.cam1)
+          if (synced.cam2) setCam2Slots(synced.cam2)
+          if (synced.cam3) setCam3Slots(synced.cam3)
+        }
+      } catch (err) {
+        // Fallback silently
+      }
+    }
+
+    syncServerRoi()
+    const roiTimer = setInterval(syncServerRoi, 3000)
+    return () => {
+      isMounted = false
+      clearInterval(roiTimer)
+    }
   }, [])
 
   // Listen for real-time slots and images updates from ParkingSetup ROI Editor
@@ -491,7 +519,7 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
                           textAnchor="middle"
                           className="slot-label-text text-[11px]"
                         >
-                          {isBike ? '🏍️ ' : '🚗 '}{s.id}
+                          {s.id}
                         </text>
                       </g>
                     )
@@ -620,7 +648,7 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
               <div className="zone-progress-header">
                 <span className="font-medium text-xs text-white">Zone A (ลานหน้าตึก)</span>
                 <span className="text-xs text-emerald-400 font-bold">
-                  🚗 {cam1Counts.car.free}/{cam1Counts.car.total} • 🏍️ {cam1Counts.bike.free}/{cam1Counts.bike.total} ว่าง (
+                  รถยนต์: {cam1Counts.car.free}/{cam1Counts.car.total} | มอเตอร์ไซค์: {cam1Counts.bike.free}/{cam1Counts.bike.total} ว่าง (
                   {cam1Counts.car.total + cam1Counts.bike.total > 0
                     ? Math.round(
                         ((cam1Counts.car.occupied + cam1Counts.bike.occupied) /
@@ -652,7 +680,7 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
               <div className="zone-progress-header">
                 <span className="font-medium text-xs text-white">Zone B (ลานในร่มข้างตึก)</span>
                 <span className="text-xs text-amber-400 font-bold">
-                  🚗 {cam2Counts.car.free}/{cam2Counts.car.total} • 🏍️ {cam2Counts.bike.free}/{cam2Counts.bike.total} ว่าง (
+                  รถยนต์: {cam2Counts.car.free}/{cam2Counts.car.total} | มอเตอร์ไซค์: {cam2Counts.bike.free}/{cam2Counts.bike.total} ว่าง (
                   {cam2Counts.car.total + cam2Counts.bike.total > 0
                     ? Math.round(
                         ((cam2Counts.car.occupied + cam2Counts.bike.occupied) /
@@ -684,7 +712,7 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
               <div className="zone-progress-header">
                 <span className="font-medium text-xs text-white">Zone C (ลานหลังตึกบุคลากร)</span>
                 <span className="text-xs text-blue-400 font-bold">
-                  🚗 {cam3Counts.car.free}/{cam3Counts.car.total} • 🏍️ {cam3Counts.bike.free}/{cam3Counts.bike.total} ว่าง (
+                  รถยนต์: {cam3Counts.car.free}/{cam3Counts.car.total} | มอเตอร์ไซค์: {cam3Counts.bike.free}/{cam3Counts.bike.total} ว่าง (
                   {cam3Counts.car.total + cam3Counts.bike.total > 0
                     ? Math.round(
                         ((cam3Counts.car.occupied + cam3Counts.bike.occupied) /

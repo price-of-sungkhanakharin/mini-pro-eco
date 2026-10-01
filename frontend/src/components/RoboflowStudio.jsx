@@ -105,14 +105,14 @@ export default function RoboflowStudio({ apiBase }) {
       if (res.ok) {
         const result = await res.json()
         await fetchStatus()
-        showToast(`✓ สำเร็จ! อัปโหลดภาพ ${result.uploaded || 15} รูปขึ้น Roboflow เรียบร้อยแล้ว`, 'success', 6000)
+        showToast(`สำเร็จ: อัปโหลดภาพ ${result.uploaded || 15} รูปขึ้น Roboflow เรียบร้อยแล้ว`, 'success', 6000)
       } else {
         const err = await res.json().catch(() => ({}))
-        showToast(`✗ ส่งไม่สำเร็จ: ${err.detail || 'เกิดข้อผิดพลาดในการเชื่อมต่อ'}`, 'error', 6000)
+        showToast(`ไม่สำเร็จ: ${err.detail || 'เกิดข้อผิดพลาดในการเชื่อมต่อ'}`, 'error', 6000)
       }
     } catch (err) {
       console.error('Force sync error:', err)
-      showToast('✗ การเชื่อมต่อ API ขัดข้อง กรุณาตรวจสอบสถานะเซิร์ฟเวอร์', 'error', 6000)
+      showToast('การเชื่อมต่อ API ขัดข้อง กรุณาตรวจสอบสถานะเซิร์ฟเวอร์', 'error', 6000)
     } finally {
       setTriggering(false)
     }
@@ -121,7 +121,7 @@ export default function RoboflowStudio({ apiBase }) {
   const handleStartBulk = async () => {
     setStartingBulk(true)
     const targetLabel = selectedCam === 'all' ? 'ทุกกล้อง (CAM1, CAM2, CAM3)' : selectedCam.toUpperCase()
-    showToast(`🚀 เริ่มจัดส่งภาพย้อนหลังแยกตามกล้อง/วัน/ชั่วโมง (${targetLabel})...`, 'info', 6000)
+    showToast(`เริ่มจัดส่งภาพย้อนหลังแยกตามกล้อง/วัน/ชั่วโมง (${targetLabel})...`, 'info', 6000)
     try {
       const camParam = selectedCam === 'all' ? '' : `&camera_id=${selectedCam}`
       const res = await fetch(`${effectiveApiBase}/api/v1/roboflow/bulk/start?chunk_size=300${camParam}`, {
@@ -129,14 +129,14 @@ export default function RoboflowStudio({ apiBase }) {
       })
       if (res.ok) {
         await fetchStatus()
-        showToast(`✓ เริ่มส่งภาพย้อนหลัง ${targetLabel} เรียบร้อย! ระบบแบ่ง Batch ตามกล้อง วัน และชั่วโมงอัตโนมัติ`, 'success', 6000)
+        showToast(`เริ่มส่งภาพย้อนหลัง ${targetLabel} เรียบร้อย! ระบบแบ่ง Batch ตามกล้อง วัน และชั่วโมงอัตโนมัติ`, 'success', 6000)
       } else {
         const err = await res.json().catch(() => ({}))
-        showToast(`✗ ไม่สามารถเริ่มงานได้: ${err.detail || 'มีงานค้างอยู่แล้ว'}`, 'error', 6000)
+        showToast(`ไม่สามารถเริ่มงานได้: ${err.detail || 'มีงานค้างอยู่แล้ว'}`, 'error', 6000)
       }
     } catch (err) {
       console.error('Start bulk error:', err)
-      showToast('✗ ส่งคำสั่งไม่สำเร็จ กรุณาลองใหม่อีกครั้ง', 'error', 6000)
+      showToast('ส่งคำสั่งไม่สำเร็จ กรุณาลองใหม่อีกครั้ง', 'error', 6000)
     } finally {
       setStartingBulk(false)
     }

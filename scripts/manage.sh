@@ -31,7 +31,7 @@ is_port_in_use() {
 # Print CLI Header
 print_header() {
     echo -e "${BOLD}${CYAN}======================================================================${RESET}"
-    echo -e "${BOLD}${CYAN}   🚀 AI Ecosystem Unified Management CLI (manage.sh)   ${RESET}"
+    echo -e "${BOLD}${CYAN}   AI Ecosystem Unified Management CLI (manage.sh)   ${RESET}"
     echo -e "${BOLD}${CYAN}======================================================================${RESET}"
 }
 
@@ -68,24 +68,24 @@ cmd_run() {
     echo -e "${BLUE}▶ Checking requested backend port: $PORT...${RESET}"
 
     if is_port_in_use "$PORT"; then
-        echo -e "${YELLOW}⚠️  Warning: Port $PORT is currently occupied by another process!${RESET}"
+        echo -e "${YELLOW}Warning: Port $PORT is currently occupied by another process!${RESET}"
         SUGGESTED_PORT=$((PORT + 1))
         while is_port_in_use "$SUGGESTED_PORT" && [ "$SUGGESTED_PORT" -lt 65535 ]; do
             SUGGESTED_PORT=$((SUGGESTED_PORT + 1))
         done
 
         if [ -t 0 ]; then
-            read -r -p "👉 Enter an alternate port [press Enter for $SUGGESTED_PORT]: " USER_PORT
+            read -r -p "Enter an alternate port [press Enter for $SUGGESTED_PORT]: " USER_PORT
             PORT="${USER_PORT:-$SUGGESTED_PORT}"
         else
-            echo -e "${GREEN}👉 Auto-switching to free port: $SUGGESTED_PORT${RESET}"
+            echo -e "${GREEN}Auto-switching to free port: $SUGGESTED_PORT${RESET}"
             PORT="$SUGGESTED_PORT"
         fi
     fi
 
-    echo -e "${GREEN}✓ Launching FastAPI Gateway on http://$HOST:$PORT${RESET}"
-    echo -e "📖 Swagger Docs: ${BOLD}http://localhost:$PORT/docs${RESET}"
-    echo -e "📚 ReDoc:        ${BOLD}http://localhost:$PORT/redoc${RESET}"
+    echo -e "${GREEN}[OK] Launching FastAPI Gateway on http://$HOST:$PORT${RESET}"
+    echo -e "Swagger Docs: ${BOLD}http://localhost:$PORT/docs${RESET}"
+    echo -e "ReDoc:        ${BOLD}http://localhost:$PORT/redoc${RESET}"
     echo ""
 
     if command -v uv >/dev/null 2>&1; then
@@ -107,7 +107,7 @@ cmd_frontend() {
         npm install
     fi
 
-    echo -e "${GREEN}✓ Opening Frontend at http://localhost:$PORT${RESET}"
+    echo -e "${GREEN}[OK] Opening Frontend at http://localhost:$PORT${RESET}"
     exec npm run dev -- --port "$PORT"
 }
 
@@ -172,7 +172,7 @@ cmd_openapi() {
     else
         python scripts/export_openapi_snapshot.py
     fi
-    echo -e "${GREEN}✓ Exported snapshots: openapi_snapshot.csv, openapi_snapshot.xlsx, openapi.json${RESET}"
+    echo -e "${GREEN}[OK] Exported snapshots: openapi_snapshot.csv, openapi_snapshot.xlsx, openapi.json${RESET}"
 }
 
 # Command: Generate DOCX Report

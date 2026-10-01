@@ -17,9 +17,9 @@ def run_migration():
     print("▶ Running migration: Creating 'roboflow_image_uploads' table...")
     try:
         Base.metadata.create_all(bind=engine)
-        print("✓ Migration complete: 'roboflow_image_uploads' table is ready in PostgreSQL.")
+        print("[OK] Migration complete: 'roboflow_image_uploads' table is ready in PostgreSQL.")
     except Exception as exc:
-        print(f"✗ Migration failed: {exc}", file=sys.stderr)
+        print(f"[ERROR] Migration failed: {exc}", file=sys.stderr)
         sys.exit(1)
 
 

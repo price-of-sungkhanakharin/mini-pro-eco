@@ -9,7 +9,7 @@ The `backend` workspace houses the FastAPI AI Ecosystem Gateway API. It serves a
 
 ---
 
-## 🏗️ Directory Overview
+## Directory Overview
 
 ```text
 backend/
@@ -28,7 +28,7 @@ backend/
 
 ---
 
-## 🚀 Running the Backend Server
+## Running the Backend Server
 
 ### Using Launcher Script (Root)
 From the project root directory:
@@ -44,7 +44,7 @@ uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 
 ---
 
-## 📡 Essential Endpoints Overview
+## Essential Endpoints Overview
 
 - **Swagger UI Interactive Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
 - **ReDoc Documentation:** [http://localhost:8000/redoc](http://localhost:8000/redoc)
@@ -52,7 +52,7 @@ uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 
 ---
 
-## 🔒 Security & Middleware
+## Security & Middleware
 
 - **JWT Authentication:** OAuth2 Password Bearer flow with stateless JSON Web Tokens.
 - **Password Security:** Password hashing via Passlib and Bcrypt algorithm.

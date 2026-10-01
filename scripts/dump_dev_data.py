@@ -236,7 +236,7 @@ def main():
         out_zip = os.path.expanduser(f"~/dev_dump_{target_date}.zip")
 
     print(f"═══════════════════════════════════════════════════════════════")
-    print(f"  📦 Dev-Data Dump for Device Management Frontend")
+    print(f"  Dev-Data Dump for Device Management Frontend")
     print(f"  Date:  {target_date}" + (f"  Hour: {target_hour}:00" if target_hour else ""))
     print(f"  Limit: {limit}")
     print(f"  Output: {out_zip}")
@@ -275,9 +275,9 @@ def main():
         data = download_object_bytes(mc, obj_name)
         if data:
             image_data[basename] = data
-            print(f"{progress} ✓ {basename} ({len(data) // 1024} KB)")
+            print(f"{progress} [OK] {basename} ({len(data) // 1024} KB)")
         else:
-            print(f"{progress} ✗ {basename} FAILED")
+            print(f"{progress} [FAILED] {basename}")
 
         # Download companion JSON sidecar
         json_obj = infer_json_sidecar(obj_name)
@@ -326,11 +326,11 @@ def main():
 
     zip_size = os.path.getsize(out_zip)
     print(f"\n═══════════════════════════════════════════════════════════════")
-    print(f"  ✅ Done!  {out_zip}")
+    print(f"  Done!  {out_zip}")
     print(f"     Size:  {zip_size / (1024*1024):.1f} MB")
     print(f"     Images: {len(image_data)} | JSON sidecars: {len(json_sidecar_data)} | DB rows: {len(rows)}")
     print(f"═══════════════════════════════════════════════════════════════")
-    print(f"\n  📥 To download to your Mac:")
+    print(f"\n  To download to your Mac:")
     print(f"     scp r211admin@<server-ip>:{out_zip} ~/Downloads/")
     print()
 

@@ -219,7 +219,7 @@ export default function SetupView({
                   className="btn-setup-draw-roi"
                 >
                   <MapPin className="w-3.5 h-3.5" />
-                  <span>✏️ วาดพิกัดช่องจอด ROI (CAM-01)</span>
+                  <span>วาดพิกัดช่องจอด ROI (CAM-01)</span>
                 </button>
               </div>
 
@@ -279,7 +279,7 @@ export default function SetupView({
                   className="btn-setup-draw-roi"
                 >
                   <MapPin className="w-3.5 h-3.5" />
-                  <span>✏️ วาดพิกัดช่องจอด ROI (CAM-02)</span>
+                  <span>วาดพิกัดช่องจอด ROI (CAM-02)</span>
                 </button>
               </div>
 
@@ -339,7 +339,7 @@ export default function SetupView({
                   className="btn-setup-draw-roi"
                 >
                   <MapPin className="w-3.5 h-3.5" />
-                  <span>✏️ วาดพิกัดช่องจอด ROI (CAM-03)</span>
+                  <span>วาดพิกัดช่องจอด ROI (CAM-03)</span>
                 </button>
               </div>
             </div>

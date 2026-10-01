@@ -123,7 +123,7 @@ class LineBotService:
         parking_context = get_current_parking_summary()
 
         system_prompt = f"""คุณคือ "น้องจ๊อด หาที่จอดรถ" บอตผู้ช่วยอัจฉริยะประจำลานจอดรถภาควิชาวิศวกรรมคอมพิวเตอร์ คณะวิศวกรรมศาสตร์ มหาวิทยาลัยสงขลานครินทร์ (ม.อ.)
-บุคลิก: สุภาพ ร่าเริง ให้ข้อมูลกระชับ ชัดเจน ตอบคำถามตรงจุด และใช้ภาษาไทยเป็นมิตร (ลงท้ายด้วย ครับ/จ้า หรือ อิโมจิที่เหมาะสม 🚗🅿️)
+บุคลิก: สุภาพ ร่าเริง ให้ข้อมูลกระชับ ชัดเจน ตอบคำถามตรงจุด และใช้ภาษาไทยทางการและสุภาพ (ลงท้ายด้วย ครับ)
 
 {parking_context}
 
@@ -165,7 +165,7 @@ class LineBotService:
         except Exception as e:
             logger.error("Failed to query dotBlue AI: %s", e)
             avail_slots = ", ".join(CURRENT_PARKING_STATE["available_slots"])
-            return f"ขออภัยครับ ระบบ AI เกิดขัดข้องชั่วคราว ⚠️ แต่สถานะล่าสุดขณะนี้มีช่องว่าง {len(CURRENT_PARKING_STATE['available_slots'])} ช่อง ได้แก่ [{avail_slots}] ครับ 🚗"
+            return f"ขออภัยครับ ระบบ AI เกิดขัดข้องชั่วคราว แต่สถานะล่าสุดขณะนี้มีช่องว่าง {len(CURRENT_PARKING_STATE['available_slots'])} ช่อง ได้แก่ [{avail_slots}] ครับ"
 
     def handle_webhook_event(self, body: str, signature: str):
         """Process LINE webhook event payload and verify signature."""

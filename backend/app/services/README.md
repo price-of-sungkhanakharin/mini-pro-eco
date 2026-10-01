@@ -4,7 +4,7 @@ The `services` directory houses business logic integrations for object storage, 
 
 ---
 
-## 🛠️ Service Modules
+## Service Modules
 
 ### 1. `minio_service.py`
 - Implements S3 object storage operations using MinIO SDK (`minio.Minio`).

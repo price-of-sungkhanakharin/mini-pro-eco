@@ -25,7 +25,8 @@ import {
   Save,
   HardDrive,
   Wifi,
-  Thermometer
+  Thermometer,
+  CloudUpload
 } from 'lucide-react'
 import {
   loadDumpMetadata,
@@ -42,7 +43,9 @@ import {
   formatTimestampThai,
   getIngestionApiBase,
   saveRoiToServer,
-  fetchRoiFromServer
+  saveAllCamerasRoiToServer,
+  fetchRoiFromServer,
+  isDummyTestSlot
 } from '../utils/dumpData'
 
 // Native image resolution of the camera snapshot (1600x1200)
@@ -152,10 +155,48 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
     }
   }, [initialCameraId])
 
-  // Auto-save to localStorage & notify ecosystem listeners whenever slots change
+  // Fetch real ROI slots from server when camera changes or on mount
+  useEffect(() => {
+    let isMounted = true
+    const loadServerRoi = async () => {
+      try {
+        const roiData = await fetchRoiFromServer(selectedCamId)
+        if (!isMounted) return
+        const serverCam = roiData ? (roiData[selectedCamId] || roiData[activeCam.location]) : null
+        if (serverCam && Array.isArray(serverCam.slots) && serverCam.slots.length > 0) {
+          if (!isDummyTestSlot(serverCam.slots)) {
+            setSlots(serverCam.slots)
+            saveSlotsToStorage(serverCam.slots, selectedCamId, false)
+          } else {
+            // Server has dummy test slot: if this client has real custom slots, push to server!
+            const localSlots = getSavedOrInitialSlots(selectedCamId)
+            if (!isDummyTestSlot(localSlots)) {
+              saveRoiToServer(selectedCamId, localSlots)
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Could not load server ROI for', selectedCamId, e)
+      }
+    }
+    loadServerRoi()
+    return () => {
+      isMounted = false
+    }
+  }, [selectedCamId])
+
+  // Auto-save to localStorage & debounced sync to server whenever slots change
   useEffect(() => {
     if (prevCamIdRef.current === selectedCamId) {
       saveSlotsToStorage(slots, selectedCamId)
+
+      // Debounced auto-sync to central server (1.5s after editing)
+      if (slots.length > 0) {
+        const timer = setTimeout(() => {
+          saveRoiToServer(selectedCamId, slots)
+        }, 1500)
+        return () => clearTimeout(timer)
+      }
     } else {
       prevCamIdRef.current = selectedCamId
     }
@@ -201,9 +242,22 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
     const ok = await saveRoiToServer(selectedCamId, slots)
     setIsSyncingServer(false)
     if (ok) {
-      showToast(`💾 บันทึกพิกัด ROI กล้อง ${activeCam.code} (${slots.length} ช่อง) ไปยัง Server & AI Worker สำเร็จ!`)
+      showToast(`บันทึกพิกัด ROI กล้อง ${activeCam.code} (${slots.length} ช่อง) ไปยัง Server สำเร็จ! ทุกเครื่องจะเห็นตรงกันทันที`)
     } else {
       showToast(`บันทึกใน LocalStorage เรียบร้อย (Server ตอบกลับไม่สำเร็จ)`, 'info')
+    }
+  }
+
+  // Handle save and sync all 3 cameras ROI to server at once
+  const handleSaveAllCamerasToServer = async () => {
+    setIsSyncingServer(true)
+    saveSlotsToStorage(slots, selectedCamId)
+    const ok = await saveAllCamerasRoiToServer()
+    setIsSyncingServer(false)
+    if (ok) {
+      showToast(`ซิงค์พิกัด ROI ทั้ง 3 กล้องขึ้น Server กลางสำเร็จ! ทุกเครื่องจะเห็นตรงกันทันที`, 'success')
+    } else {
+      showToast(`บันทึกใน LocalStorage แล้ว แต่การเชื่อมต่อ Server ขัดข้อง`, 'info')
     }
   }
 
@@ -740,10 +794,22 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
             disabled={isSyncingServer}
             className="btn-setup-export"
             style={{ background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.35))', borderColor: 'rgba(16, 185, 129, 0.5)', color: '#6ee7b7' }}
-            title="บันทึกพิกัด ROI ไปยัง Server ให้ AI YOLO ใช้งานทันที"
+            title={`บันทึกพิกัด ROI ของกล้อง ${activeCam.code} ไปยัง Server ให้ทุกเครื่องเห็นตรงกันทันที`}
           >
             <Save className={`w-4 h-4 text-emerald-400 ${isSyncingServer ? 'animate-spin' : ''}`} />
-            <span>{isSyncingServer ? 'กำลังบันทึก...' : '💾 บันทึก ROI ไปยัง Server'}</span>
+            <span>{isSyncingServer ? 'กำลังบันทึก...' : `บันทึก ROI (${activeCam.code})`}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleSaveAllCamerasToServer}
+            disabled={isSyncingServer}
+            className="btn-setup-export"
+            style={{ background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(79, 70, 229, 0.35))', borderColor: 'rgba(99, 102, 241, 0.5)', color: '#c7d2fe' }}
+            title="ซิงค์พิกัดช่องจอดของทั้ง 3 กล้องขึ้น Server กลางทันที เพื่อให้ทุกเครื่องเห็นตรงกัน 100%"
+          >
+            <CloudUpload className={`w-4 h-4 text-indigo-300 ${isSyncingServer ? 'animate-spin' : ''}`} />
+            <span>ซิงค์ทั้ง 3 กล้อง</span>
           </button>
 
           <button
@@ -819,10 +885,10 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
 
                 <div className="cam-switcher-stats mt-1">
                   <span className="stat-pill car">
-                    🚗 รถยนต์: <strong>{counts.car.total}</strong> ({counts.car.free} ว่าง)
+                    รถยนต์: <strong>{counts.car.total}</strong> ({counts.car.free} ว่าง)
                   </span>
                   <span className="stat-pill bike">
-                    🏍️ มอเตอร์ไซค์: <strong>{counts.bike.total}</strong> ({counts.bike.free} ว่าง)
+                    มอเตอร์ไซค์: <strong>{counts.bike.total}</strong> ({counts.bike.free} ว่าง)
                   </span>
                 </div>
               </button>
@@ -959,7 +1025,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                   onChange={(e) => setSelectedFrameIndex(Number(e.target.value))}
                   title="เลือกภาพถ่ายในอดีตจาก MinIO"
                 >
-                  <option value={-1}>🔴 ภาพสดล่าสุด (Live Snapshot)</option>
+                  <option value={-1}>ภาพสดล่าสุด (Live Snapshot)</option>
                   {recentFrames.map((r, i) => (
                     <option key={r.id || i} value={i}>
                       #{i + 1} • {r.local_time ? r.local_time.split(' ')[1] : r.filename}
@@ -1106,7 +1172,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                           textAnchor="middle"
                           className="slot-label-text"
                         >
-                          {isBike ? '🏍️ ' : '🚗 '}{slot.id}
+                          {slot.id}
                         </text>
                       </g>
                     )}
@@ -1142,7 +1208,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                         className={`draft-point-circle ${drawType === 'motorcycle' ? 'bike-point' : 'car-point'}`}
                       />
                       <text x={pt.x + 12} y={pt.y - 8} className="draft-point-label">
-                        {drawType === 'motorcycle' ? '🏍️' : '🚗'} จุดที่ {idx + 1}
+                        จุดที่ {idx + 1}
                       </text>
                     </g>
                   ))}
@@ -1216,10 +1282,10 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
               </div>
               <div className="flex gap-2">
                 <span className="mini-chip bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  🚗 รถยนต์: {slots.filter((s) => s.type !== 'motorcycle' && s.type !== 'bike').length}
+                  รถยนต์: {slots.filter((s) => s.type !== 'motorcycle' && s.type !== 'bike').length}
                 </span>
                 <span className="mini-chip bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                  🏍️ มอเตอร์ไซค์: {slots.filter((s) => s.type === 'motorcycle' || s.type === 'bike').length}
+                  มอเตอร์ไซค์: {slots.filter((s) => s.type === 'motorcycle' || s.type === 'bike').length}
                 </span>
               </div>
             </div>
@@ -1410,7 +1476,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                       {slot.id}
                     </span>
                     <span className={`slot-type-chip ${slot.type === 'motorcycle' || slot.type === 'bike' ? 'bike' : 'car'}`}>
-                      {slot.type === 'motorcycle' || slot.type === 'bike' ? '🏍️ มอเตอร์ไซค์' : '🚗 รถยนต์'}
+                      {slot.type === 'motorcycle' || slot.type === 'bike' ? 'มอเตอร์ไซค์' : 'รถยนต์'}
                     </span>
                     <span className={`slot-status-chip ${slot.occupied ? 'occupied' : 'vacant'}`}>
                       {slot.occupied ? 'มีรถ' : 'ว่าง'}

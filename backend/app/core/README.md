@@ -4,7 +4,7 @@ The `core` directory provides centralized configuration management and applicati
 
 ---
 
-## ⚙️ Modules Overview
+## Modules Overview
 
 ### 1. `config.py`
 - Utilizes `pydantic-settings` (`BaseSettings`) to load and validate environment variables from `.env`.

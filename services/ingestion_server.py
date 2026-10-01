@@ -1223,12 +1223,12 @@ GALLERY_HTML = """
 <body>
   <div class="header">
     <div>
-      <h1>🚗 Dr. Sum Smart Campus Parking — 3-Camera Live Platform</h1>
+      <h1>Dr. Sum Smart Campus Parking — 3-Camera Live Platform</h1>
       <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 4px;">Time-Partitioned Storage Structure: <code>dataset/&lt;camera&gt;/&lt;date&gt;/&lt;hour&gt;/[images|json]/</code></p>
     </div>
     <div class="meta">
       <div class="badge"><span class="pulse"></span> 3 CAMERAS ONLINE</div>
-      <div class="badge" style="border-color: #3b82f6; color: #60a5fa; background: rgba(59, 130, 246, 0.15);">🐘 Postgres Active</div>
+      <div class="badge" style="border-color: #3b82f6; color: #60a5fa; background: rgba(59, 130, 246, 0.15);">Postgres Active</div>
       <a href="http://172.30.228.51:9001" target="_blank" class="btn" style="background: #e11d48; color: #fff;">MinIO Console</a>
       <a href="/api/telemetry" target="_blank" class="btn" style="background: #8b5cf6; color: #fff;">Telemetry API</a>
       <a href="/status" target="_blank" class="btn">JSON Status</a>
@@ -1239,14 +1239,14 @@ GALLERY_HTML = """
     <!-- Camera 1: front_dept_1 -->
     <div class="card">
       <div class="card-header">
-        <div class="card-title">🚗 หน้าภาค 1 (cam1 / front_dept_1)</div>
+        <div class="card-title">หน้าภาค 1 (cam1 / front_dept_1)</div>
         <div class="card-stats" id="front1-stats">กำลังโหลด...</div>
       </div>
       <div class="image-box">
         <img id="front1-img" src="/api/latest?location=front_dept_1&image=true" alt="Front 1 Camera">
       </div>
       <div class="telemetry-bar" id="front1-telemetry">
-        <span>📡 Telemetry: กำลังอ่านค่า...</span>
+        <span>Telemetry: กำลังอ่านค่า...</span>
       </div>
       <div class="card-footer" style="flex-wrap: wrap; gap: 8px;">
         <span id="front1-meta">Target: รถยนต์ | 10 ช่องจอด</span>
@@ -1263,14 +1263,14 @@ GALLERY_HTML = """
     <!-- Camera 2: front_dept_2 -->
     <div class="card">
       <div class="card-header">
-        <div class="card-title">🚗 หน้าภาค 2 (cam2 / front_dept_2)</div>
+        <div class="card-title">หน้าภาค 2 (cam2 / front_dept_2)</div>
         <div class="card-stats" id="front2-stats">กำลังโหลด...</div>
       </div>
       <div class="image-box">
         <img id="front2-img" src="/api/latest?location=front_dept_2&image=true" alt="Front 2 Camera">
       </div>
       <div class="telemetry-bar" id="front2-telemetry">
-        <span>📡 Telemetry: กำลังอ่านค่า...</span>
+        <span>Telemetry: กำลังอ่านค่า...</span>
       </div>
       <div class="card-footer" style="flex-wrap: wrap; gap: 8px;">
         <span id="front2-meta">Target: รถยนต์ | 10 ช่องจอด</span>
@@ -1287,14 +1287,14 @@ GALLERY_HTML = """
     <!-- Camera 3: side_dept -->
     <div class="card">
       <div class="card-header">
-        <div class="card-title">🛵 ข้างภาคคอม (cam3 / side_dept)</div>
+        <div class="card-title">ข้างภาคคอม (cam3 / side_dept)</div>
         <div class="card-stats" id="side-stats">กำลังโหลด...</div>
       </div>
       <div class="image-box">
         <img id="side-img" src="/api/latest?location=side_dept&image=true" alt="Side Camera">
       </div>
       <div class="telemetry-bar" id="side-telemetry">
-        <span>📡 Telemetry: กำลังอ่านค่า...</span>
+        <span>Telemetry: กำลังอ่านค่า...</span>
       </div>
       <div class="card-footer" style="flex-wrap: wrap; gap: 8px;">
         <span id="side-meta">Target: มอเตอร์ไซค์ | 20 ช่องจอด</span>
@@ -1332,11 +1332,11 @@ GALLERY_HTML = """
       }
       const tel = t.telemetry || t;
       document.getElementById(elId).innerHTML =
-        `<span>⚡ Batt: <b>${tel.battery_percent || 'AC'}%</b></span> ` +
-        `<span>🌡️ Temp: <b>${tel.chip_temp_c || tel.temp_c || tel.temperature || '-'}°C</b></span> ` +
-        `<span>📶 RSSI: <b>${tel.wifi_rssi_dbm || tel.rssi || '-'} dBm</b></span> ` +
-        `<span>👁️ AEC: <b>${tel.aec_value || 'auto'}</b></span> ` +
-        `<span>⏱️ Uptime: <b>${tel.uptime_sec ? tel.uptime_sec + 's' : '-'}</b></span>`;
+        `<span>Batt: <b>${tel.battery_percent || 'AC'}%</b></span> ` +
+        `<span>Temp: <b>${tel.chip_temp_c || tel.temp_c || tel.temperature || '-'}°C</b></span> ` +
+        `<span>RSSI: <b>${tel.wifi_rssi_dbm || tel.rssi || '-'} dBm</b></span> ` +
+        `<span>AEC: <b>${tel.aec_value || 'auto'}</b></span> ` +
+        `<span>Uptime: <b>${tel.uptime_sec ? tel.uptime_sec + 's' : '-'}</b></span>`;
     }
 
     function renderStats(elId, metaId, s) {

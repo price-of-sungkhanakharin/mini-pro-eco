@@ -4,7 +4,7 @@ The `db` directory manages database connectivity, session pooling, and ORM initi
 
 ---
 
-## 🗄️ Database Session Lifecycle (`database.py`)
+## Database Session Lifecycle (`database.py`)
 
 - **Engine Initialization:** Initializes SQLAlchemy engine (`create_engine`) configured with connection pooling (`pool_pre_ping=True`).
 - **Session Local:** Creates `sessionmaker(autocommit=False, autoflush=False, bind=engine)`.

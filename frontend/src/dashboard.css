@@ -4590,6 +4590,104 @@
   border: 1px solid rgba(245, 158, 11, 0.35);
 }
 
+/* Training Configuration Form Controls */
+.rf-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.85rem;
+}
+
+.rf-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.rf-form-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.rf-form-select, .rf-form-input {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.78rem;
+  color: #f1f5f9;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.rf-form-select:focus, .rf-form-input:focus {
+  border-color: rgba(129, 140, 248, 0.6);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
+}
+
+.rf-form-select option {
+  background: #0f172a;
+  color: #f1f5f9;
+}
+
+/* Model Registry Card Grid */
+.rf-models-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.rf-model-card {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1rem;
+  transition: all 0.2s ease;
+}
+
+.rf-model-card:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+  transform: translateY(-2px);
+}
+
+.rf-model-card.active {
+  background: linear-gradient(145deg, rgba(6, 78, 59, 0.25) 0%, rgba(13, 19, 31, 0.85) 100%);
+  border-color: rgba(16, 185, 129, 0.55);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.15);
+}
+
+.rf-model-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.rf-model-name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #ffffff;
+  font-family: monospace;
+}
+
+.rf-model-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.74rem;
+  color: #94a3b8;
+}
+
+.rf-model-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 
 /* ==========================================================================
    ESP32 Ingestion & Telemetry Logs View Styles (Executive High-Tech)

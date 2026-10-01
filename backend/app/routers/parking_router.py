@@ -6,12 +6,18 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
-from backend.app.models.parking_log import ParkingOccupancyModel
+from backend.app.models.parking_log import (
+    ParkingOccupancyModel,
+    ParkingTemplateModel,
+    ParkStatusModel,
+)
 from backend.app.schemas.parking_schema import (
     ParkingLocationSummary,
     ParkingLogCreate,
     ParkingLogResponse,
     ParkingSummaryResponse,
+    ParkingTemplateResponse,
+    ParkStatusResponse,
 )
 from backend.db.database import get_db
 
@@ -141,3 +147,27 @@ def get_time_series_history(
 
     records = query.order_by(desc(ParkingOccupancyModel.timestamp)).limit(limit).all()
     return records
+
+
+@router.get("/templates", response_model=List[ParkingTemplateResponse])
+def get_parking_templates(
+    camera_id: Optional[str] = Query(None, description="Optional filter by camera_id (e.g. cam1)"),
+    db: Session = Depends(get_db),
+):
+    """Retrieve all or specific camera ROI parking templates from PostgreSQL."""
+    query = db.query(ParkingTemplateModel).filter(ParkingTemplateModel.is_active.is_(True))
+    if camera_id:
+        query = query.filter(ParkingTemplateModel.camera_id == camera_id)
+    return query.order_by(ParkingTemplateModel.camera_id).all()
+
+
+@router.get("/status", response_model=List[ParkStatusResponse])
+def get_live_park_status(
+    camera_id: Optional[str] = Query(None, description="Optional filter by camera_id (e.g. cam1)"),
+    db: Session = Depends(get_db),
+):
+    """Retrieve real-time parking status for all or specific camera from PostgreSQL."""
+    query = db.query(ParkStatusModel)
+    if camera_id:
+        query = query.filter(ParkStatusModel.camera_id == camera_id)
+    return query.order_by(ParkStatusModel.camera_id).all()

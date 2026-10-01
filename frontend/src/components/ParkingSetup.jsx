@@ -26,7 +26,9 @@ import {
   HardDrive,
   Wifi,
   Thermometer,
-  CloudUpload
+  CloudUpload,
+  ArrowRight,
+  ArrowLeft
 } from 'lucide-react'
 import {
   loadDumpMetadata,
@@ -46,12 +48,14 @@ import {
   saveAllCamerasRoiToServer,
   fetchRoiFromServer,
   isDummyTestSlot,
-  getSavedOrInitialZone,
-  saveZoneToStorage,
+  getSavedOrInitialZones,
+  saveZonesToStorage,
   resetCameraZone,
   getDefaultZoneForCamera,
   formatPolygonForServer,
-  parsePolygonFromServer
+  parsePolygonFromServer,
+  isDummyTestZone,
+  normalizeZones
 } from '../utils/dumpData'
 
 // Native image resolution of the camera snapshot (1600x1200)
@@ -73,10 +77,11 @@ function calculatePolygonArea(points) {
 
 export default function ParkingSetup({ onNavigate, embedded = false, initialCameraId = 'cam1' }) {
   // Active Camera Selection State (cam1, cam2, cam3)
-  const [selectedCamId, setSelectedCamId] = useState(() => {
-    return initialCameraId || 'cam1'
-  })
+  const [selectedCamId, setSelectedCamId] = useState(() => initialCameraId || 'cam1')
   const activeCam = getCameraConfig(selectedCamId)
+
+  // Step 1: Draw Parking Zones | Step 2: Draw Individual Slots
+  const [setupStep, setSetupStep] = useState(1)
 
   // Real live camera snapshots and metadata from Ingestion Server & MinIO
   const [liveSnapshotKey, setLiveSnapshotKey] = useState(() => Date.now())
@@ -89,23 +94,25 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
   // Custom uploaded/configured snapshot image for current camera
   const [customCamImage, setCustomCamImage] = useState(() => getCameraImage(selectedCamId))
 
-  // Drawing Tools: 'select', 'bbox' (drag rectangle), 'polygon' (4 points or multi-point)
+  // Step 2 Drawing Tools: 'select', 'polygon' (4 points), 'bbox' (drag rectangle)
   const [currentTool, setCurrentTool] = useState('polygon')
-  // Drawing Mode: 'car' (individual car slot), 'motorcycle' (bike slot), or 'zone' (overall parking area mask)
+  // Drawing Vehicle Type: 'car' or 'motorcycle'
   const [drawType, setDrawType] = useState('car')
 
   // Slots state - synchronized with shared localStorage for active camera
   const [slots, setSlots] = useState(() => getSavedOrInitialSlots(selectedCamId))
 
-  // Zone Area Polygon state (AI pixel mask / overall parking lot boundary)
-  const [zonePolygon, setZonePolygon] = useState(() => getSavedOrInitialZone(selectedCamId))
-  const [showZoneOverlay, setShowZoneOverlay] = useState(true)
+  // Multi-Zone Area Polygons state (AI pixel masks / parking lot boundaries per camera)
+  const [zones, setZones] = useState(() => getSavedOrInitialZones(selectedCamId))
+  const [selectedZoneId, setSelectedZoneId] = useState(null)
+  const [zoneDrawType, setZoneDrawType] = useState('car') // 'car' or 'motorcycle'
   const [zoneDraft, setZoneDraft] = useState([])
+  const [showZoneOverlay, setShowZoneOverlay] = useState(true)
 
   const [selectedSlotId, setSelectedSlotId] = useState(null)
   const [nextSlotPrefix, setNextSlotPrefix] = useState(activeCam.defaultCarPrefix)
 
-  // Active Polygon drawing state (for 4-point clicks)
+  // Active Polygon drawing state for individual slot (for 4-point clicks)
   const [polygonDraft, setPolygonDraft] = useState([])
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 })
 
@@ -179,7 +186,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
     }
   }, [initialCameraId])
 
-  // Fetch real ROI slots and zone from server when camera changes or on mount
+  // Fetch real ROI slots and zones from server when camera changes or on mount
   useEffect(() => {
     let isMounted = true
     const loadServerRoi = async () => {
@@ -192,18 +199,18 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
             setSlots(serverCam.slots)
             saveSlotsToStorage(serverCam.slots, selectedCamId, false)
           } else {
-            // Server has dummy test slot: if this client has real custom slots, push to server!
             const localSlots = getSavedOrInitialSlots(selectedCamId)
             if (!isDummyTestSlot(localSlots)) {
-              saveRoiToServer(selectedCamId, localSlots, zonePolygon)
+              saveRoiToServer(selectedCamId, localSlots, zones)
             }
           }
         }
-        if (serverCam && Array.isArray(serverCam.polygon) && serverCam.polygon.length >= 3) {
-          const parsed = parsePolygonFromServer(serverCam.polygon)
-          if (parsed) {
-            setZonePolygon(parsed)
-            saveZoneToStorage(parsed, selectedCamId, false)
+        if (serverCam && (serverCam.zones || serverCam.polygon)) {
+          const rawZones = serverCam.zones || serverCam.polygon
+          const normalized = normalizeZones(rawZones)
+          if (normalized.length > 0) {
+            setZones(normalized)
+            saveZonesToStorage(normalized, selectedCamId, false)
           }
         }
       } catch (e) {
@@ -216,23 +223,23 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
     }
   }, [selectedCamId])
 
-  // Auto-save slots and zone to localStorage & debounced sync to server whenever slots or zone change
+  // Auto-save slots and zones to localStorage & debounced sync to server whenever slots or zones change
   useEffect(() => {
     if (prevCamIdRef.current === selectedCamId) {
       saveSlotsToStorage(slots, selectedCamId)
-      saveZoneToStorage(zonePolygon, selectedCamId)
+      saveZonesToStorage(zones, selectedCamId)
 
       // Debounced auto-sync to central server (1.5s after editing)
-      if (slots.length > 0 || zonePolygon.length > 0) {
+      if (slots.length > 0 || zones.length > 0) {
         const timer = setTimeout(() => {
-          saveRoiToServer(selectedCamId, slots, zonePolygon)
+          saveRoiToServer(selectedCamId, slots, zones)
         }, 1500)
         return () => clearTimeout(timer)
       }
     } else {
       prevCamIdRef.current = selectedCamId
     }
-  }, [slots, zonePolygon, selectedCamId])
+  }, [slots, zones, selectedCamId])
 
   const showToast = (msg, type = 'success') => {
     setNotification({ msg, type })
@@ -244,18 +251,19 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
   // Handle switching active camera
   const handleSwitchCamera = (newCamId) => {
     if (newCamId === selectedCamId) return
-    // 1. Save current camera's slots and zone before switching
+    // 1. Save current camera's slots and zones before switching
     saveSlotsToStorage(slots, selectedCamId)
-    saveZoneToStorage(zonePolygon, selectedCamId)
+    saveZonesToStorage(zones, selectedCamId)
 
     // 2. Load target camera
     const nextCam = getCameraConfig(newCamId)
     setSelectedCamId(newCamId)
     prevCamIdRef.current = newCamId
     const loadedSlots = getSavedOrInitialSlots(newCamId)
-    const loadedZone = getSavedOrInitialZone(newCamId)
+    const loadedZones = getSavedOrInitialZones(newCamId)
     setSlots(loadedSlots)
-    setZonePolygon(loadedZone)
+    setZones(loadedZones)
+    setSelectedZoneId(loadedZones.length > 0 ? loadedZones[0].id : null)
     setCustomCamImage(getCameraImage(newCamId))
     setSelectedFrameIndex(-1)
     setLiveSnapshotKey(Date.now())
@@ -268,6 +276,11 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
     setBboxDragCurrent(null)
     setDragging(null)
     setNextSlotPrefix(drawType === 'motorcycle' ? nextCam.defaultBikePrefix : nextCam.defaultCarPrefix)
+
+    // If no zones exist yet for this camera, start in Step 1
+    if (!loadedZones || loadedZones.length === 0) {
+      setSetupStep(1)
+    }
     showToast(`สลับไปยัง ${nextCam.code} (${nextCam.name}) เรียบร้อย`)
   }
 
@@ -275,11 +288,11 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
   const handleSaveRoiToServer = async () => {
     setIsSyncingServer(true)
     saveSlotsToStorage(slots, selectedCamId)
-    saveZoneToStorage(zonePolygon, selectedCamId)
-    const ok = await saveRoiToServer(selectedCamId, slots, zonePolygon)
+    saveZonesToStorage(zones, selectedCamId)
+    const ok = await saveRoiToServer(selectedCamId, slots, zones)
     setIsSyncingServer(false)
     if (ok) {
-      showToast(`บันทึกพิกัด ROI & โซนลานจอดกล้อง ${activeCam.code} (${slots.length} ช่อง) ไปยัง Server สำเร็จ! ทุกเครื่องจะเห็นตรงกันทันที`)
+      showToast(`บันทึกพิกัด ROI & โซนลานจอดกล้อง ${activeCam.code} (${zones.length} โซน, ${slots.length} ช่อง) ไปยัง PostgreSQL สำเร็จ!`)
     } else {
       showToast(`บันทึกใน LocalStorage เรียบร้อย (Server ตอบกลับไม่สำเร็จ)`, 'info')
     }
@@ -289,11 +302,11 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
   const handleSaveAllCamerasToServer = async () => {
     setIsSyncingServer(true)
     saveSlotsToStorage(slots, selectedCamId)
-    saveZoneToStorage(zonePolygon, selectedCamId)
+    saveZonesToStorage(zones, selectedCamId)
     const ok = await saveAllCamerasRoiToServer()
     setIsSyncingServer(false)
     if (ok) {
-      showToast(`ซิงค์พิกัด ROI และโซนลานจอดทั้ง 3 กล้องขึ้น Server กลางสำเร็จ! ทุกเครื่องจะเห็นตรงกันทันที`, 'success')
+      showToast(`ซิงค์พิกัด ROI และโซนลานจอดทั้ง 3 กล้องขึ้น PostgreSQL สำเร็จ! ทุกเครื่องจะเห็นตรงกันทันที`, 'success')
     } else {
       showToast(`บันทึกใน LocalStorage แล้ว แต่การเชื่อมต่อ Server ขัดข้อง`, 'info')
     }
@@ -306,31 +319,28 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
     const reader = new FileReader()
     reader.onload = (event) => {
       const dataUrl = event.target?.result
-      try {
-        saveCameraImage(selectedCamId, dataUrl)
+      if (dataUrl) {
         setCustomCamImage(dataUrl)
-        showToast(`อัปโหลดภาพเฉพาะของกล้อง ${activeCam.code} สำเร็จ!`)
-      } catch (err) {
-        showToast('ไฟล์ภาพมีขนาดใหญ่เกินไปสำหรับ LocalStorage แนะนำให้ใช้ภาพย่อขนาด', 'info')
+        saveCameraImage(selectedCamId, dataUrl)
+        showToast(`อัปโหลดภาพสำหรับกล้อง ${activeCam.code} เรียบร้อยแล้ว!`)
       }
     }
     reader.readAsDataURL(file)
-    e.target.value = ''
   }
 
-  // Reset to default snapshot photo
+  // Reset custom image back to live camera feed
   const handleResetImage = () => {
-    saveCameraImage(selectedCamId, null)
     setCustomCamImage(null)
+    saveCameraImage(selectedCamId, null)
     setSelectedFrameIndex(-1)
     setLiveSnapshotKey(Date.now())
-    showToast(`คืนค่าภาพสดแบบเรียลไทม์ของ ${activeCam.code} แล้ว`)
+    fetchCameraLive(selectedCamId)
+    showToast(`คืนค่าภาพเป็นภาพสดเรียลไทม์ของกล้อง ${activeCam.code} เรียบร้อย`)
   }
 
-  // Quick helper to seed default motorcycle slots for the current camera
+  // Add default bike slots if empty
   const handleAddDefaultBikes = () => {
-    const defSlots = getDefaultSlotsForCamera(selectedCamId)
-    const bikeSlots = defSlots.filter(
+    const bikeSlots = getDefaultSlotsForCamera(selectedCamId).filter(
       (s) => s.type === 'motorcycle' || s.type === 'bike'
     )
     if (bikeSlots.length === 0) {
@@ -450,7 +460,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
     if (e.button !== 0) return // Left click only
     const pt = getSvgCoordinates(e)
 
-    if (currentTool === 'bbox') {
+    if (setupStep === 2 && currentTool === 'bbox') {
       setBboxDragStart(pt)
       setBboxDragCurrent(pt)
       setSelectedSlotId(null)
@@ -462,8 +472,8 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
     const pt = getSvgCoordinates(e)
     setCursorPos(pt)
 
-    // BBox dragging in progress
-    if (currentTool === 'bbox' && bboxDragStart) {
+    // BBox dragging in progress (Step 2)
+    if (setupStep === 2 && currentTool === 'bbox' && bboxDragStart) {
       setBboxDragCurrent(pt)
     }
 
@@ -476,7 +486,6 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
             if (s.id !== slotId) return s
             const newPoints = [...s.points]
             newPoints[pointIndex] = pt
-            // Recompute bounding box
             const xs = newPoints.map((p) => p.x)
             const ys = newPoints.map((p) => p.y)
             const minX = Math.min(...xs)
@@ -516,21 +525,30 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
           })
         )
       } else if (dragging.type === 'zone_point') {
-        const { pointIndex } = dragging
-        setZonePolygon((prev) => {
-          const nextZone = [...prev]
-          nextZone[pointIndex] = pt
-          return nextZone
-        })
+        const { zoneId, pointIndex } = dragging
+        setZones((prev) =>
+          prev.map((z) => {
+            if (z.id !== zoneId) return z
+            const nextPts = [...z.points]
+            nextPts[pointIndex] = pt
+            return { ...z, points: nextPts }
+          })
+        )
       } else if (dragging.type === 'zone_shape') {
-        const { startX, startY, initialPoints } = dragging
+        const { zoneId, startX, startY, initialPoints } = dragging
         const dx = pt.x - startX
         const dy = pt.y - startY
-        setZonePolygon(() =>
-          initialPoints.map((p) => ({
-            x: Math.max(0, Math.min(NATIVE_WIDTH, Math.round(p.x + dx))),
-            y: Math.max(0, Math.min(NATIVE_HEIGHT, Math.round(p.y + dy)))
-          }))
+        setZones((prev) =>
+          prev.map((z) => {
+            if (z.id !== zoneId) return z
+            return {
+              ...z,
+              points: initialPoints.map((p) => ({
+                x: Math.max(0, Math.min(NATIVE_WIDTH, Math.round(p.x + dx))),
+                y: Math.max(0, Math.min(NATIVE_HEIGHT, Math.round(p.y + dy)))
+              }))
+            }
+          })
         )
       }
     }
@@ -543,8 +561,8 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
       return
     }
 
-    // Finish BBox Dragging
-    if (currentTool === 'bbox' && bboxDragStart && bboxDragCurrent) {
+    // Finish BBox Dragging (Step 2)
+    if (setupStep === 2 && currentTool === 'bbox' && bboxDragStart && bboxDragCurrent) {
       const minX = Math.min(bboxDragStart.x, bboxDragCurrent.x)
       const maxX = Math.max(bboxDragStart.x, bboxDragCurrent.x)
       const minY = Math.min(bboxDragStart.y, bboxDragCurrent.y)
@@ -579,21 +597,34 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
     }
   }
 
-  // Handle SVG Click (Used for 4-point slot drawing and multi-point zone mask drawing)
+  // Handle SVG Click
   const handleSvgClick = (e) => {
     const pt = getSvgCoordinates(e)
 
-    // Drawing Large Parking Zone Area Mask
-    if (drawType === 'zone') {
+    // ==========================================
+    // STEP 1: Drawing Parking Zone Mask (Multi-Zone)
+    // ==========================================
+    if (setupStep === 1) {
+      // If clicking to close polygon (clicked near first point or 4th point reached)
       if (zoneDraft.length >= 3) {
         const first = zoneDraft[0]
         const dist = Math.hypot(pt.x - first.x, pt.y - first.y)
-        if (dist < 35) {
-          // Closed polygon by clicking near starting point!
-          setZonePolygon(zoneDraft)
-          saveZoneToStorage(zoneDraft, selectedCamId)
+        if (dist < 35 || zoneDraft.length === 3) {
+          const finalPoints = zoneDraft.length === 3 ? [...zoneDraft, pt] : zoneDraft
+          const typeLabel = zoneDrawType === 'motorcycle' ? 'โซนมอเตอร์ไซค์' : 'โซนรถยนต์'
+          const countOfType = zones.filter((z) => z.type === zoneDrawType).length + 1
+          const newZone = {
+            id: `zone_${Date.now()}`,
+            name: `${typeLabel} ${countOfType}`,
+            type: zoneDrawType,
+            points: finalPoints
+          }
+          const nextZones = [...zones, newZone]
+          setZones(nextZones)
+          setSelectedZoneId(newZone.id)
+          saveZonesToStorage(nextZones, selectedCamId)
           setZoneDraft([])
-          showToast(`บันทึกกรอบโซนพื้นที่จอดรวม (${zoneDraft.length} จุด) เรียบร้อยแล้ว`)
+          showToast(`สร้าง${newZone.name} (${finalPoints.length} จุดมุม) สำเร็จ! สามารถเพิ่มโซนอื่นต่อได้`)
           return
         }
       }
@@ -601,14 +632,16 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
       return
     }
 
-    // If clicking on polygon tool for 4-point slot
-    if (currentTool === 'polygon') {
+    // ==========================================
+    // STEP 2: Drawing Individual Slot (Car/Bike)
+    // ==========================================
+    if (setupStep === 2 && currentTool === 'polygon') {
       const updatedDraft = [...polygonDraft, pt]
 
       if (updatedDraft.length < 4) {
         setPolygonDraft(updatedDraft)
       } else {
-        // Completed 4-point polygon!
+        // Completed 4-point slot polygon!
         const newId = getNextSlotId()
         const xs = updatedDraft.map((p) => p.x)
         const ys = updatedDraft.map((p) => p.y)
@@ -630,15 +663,15 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
         setSlots((prev) => [...prev, newSlot])
         setSelectedSlotId(newId)
         setPolygonDraft([])
-        showToast(`สร้างช่องจอด ${newId} (${drawType === 'motorcycle' ? 'มอเตอร์ไซค์' : 'รถยนต์'} Polygon) สำเร็จ!`)
+        showToast(`สร้างช่องจอด ${newId} (${drawType === 'motorcycle' ? 'มอเตอร์ไซค์' : 'รถยนต์'}) สำเร็จ!`)
       }
     }
   }
 
-  // Cancel in-progress polygon draft
+  // Cancel in-progress polygon draft for slot
   const handleCancelPolygon = () => {
     setPolygonDraft([])
-    showToast('ยกเลิกการวาด Polygon แล้ว', 'info')
+    showToast('ยกเลิกการวาดช่องจอดแล้ว', 'info')
   }
 
   // Complete zone drafting manually via button
@@ -647,10 +680,20 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
       showToast('กรุณาคลิกอย่างน้อย 3 จุดเพื่อสร้างกรอบโซนพื้นที่จอด', 'info')
       return
     }
-    setZonePolygon(zoneDraft)
-    saveZoneToStorage(zoneDraft, selectedCamId)
+    const typeLabel = zoneDrawType === 'motorcycle' ? 'โซนมอเตอร์ไซค์' : 'โซนรถยนต์'
+    const countOfType = zones.filter((z) => z.type === zoneDrawType).length + 1
+    const newZone = {
+      id: `zone_${Date.now()}`,
+      name: `${typeLabel} ${countOfType}`,
+      type: zoneDrawType,
+      points: zoneDraft
+    }
+    const nextZones = [...zones, newZone]
+    setZones(nextZones)
+    setSelectedZoneId(newZone.id)
+    saveZonesToStorage(nextZones, selectedCamId)
     setZoneDraft([])
-    showToast(`บันทึกกรอบโซนพื้นที่จอดรวม (${zoneDraft.length} จุด) สำเร็จ!`)
+    showToast(`บันทึก${newZone.name} (${zoneDraft.length} จุด) สำเร็จ!`)
   }
 
   // Cancel zone draft
@@ -659,64 +702,59 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
     showToast('ยกเลิกการวาดโซนแล้ว', 'info')
   }
 
-  // Reset zone to default for active camera
-  const handleResetZoneToDefault = () => {
-    const def = resetCameraZone(selectedCamId)
-    setZonePolygon(def)
-    setZoneDraft([])
-    showToast(`คืนค่าโซนพื้นที่จอดของ ${activeCam.code} เป็นค่าเริ่มต้นเรียบร้อย`)
+  // Delete a specific zone
+  const handleDeleteZone = (zoneId) => {
+    const updated = zones.filter((z) => z.id !== zoneId)
+    setZones(updated)
+    if (selectedZoneId === zoneId) {
+      setSelectedZoneId(updated.length > 0 ? updated[0].id : null)
+    }
+    saveZonesToStorage(updated, selectedCamId)
+    showToast('ลบโซนที่เลือกเรียบร้อย')
   }
 
-  // Clear zone completely
-  const handleClearZone = () => {
-    setZonePolygon([])
-    saveZoneToStorage([], selectedCamId)
+  // Clear all zones completely
+  const handleClearAllZones = () => {
+    setZones([])
+    setSelectedZoneId(null)
+    saveZonesToStorage([], selectedCamId)
     setZoneDraft([])
-    showToast(`ล้างโซนพื้นที่จอดของ ${activeCam.code} แล้ว`)
+    showToast(`ล้างโซนทั้งหมดของ ${activeCam.code} แล้ว`)
   }
 
   // Handle Zone vertex mouse down
-  const handleZonePointMouseDown = (e, pointIndex) => {
+  const handleZonePointMouseDown = (e, zoneId, pointIndex) => {
     e.stopPropagation()
-    setDragging({ type: 'zone_point', pointIndex })
+    setSelectedZoneId(zoneId)
+    setDragging({ type: 'zone_point', zoneId, pointIndex })
   }
 
   // Handle Zone shape mouse down
-  const handleZoneShapeMouseDown = (e) => {
-    if (currentTool !== 'select') return
+  const handleZoneShapeMouseDown = (e, zone) => {
+    if (currentTool !== 'select' && setupStep !== 1) return
     e.stopPropagation()
+    setSelectedZoneId(zone.id)
     const pt = getSvgCoordinates(e)
     setDragging({
       type: 'zone_shape',
+      zoneId: zone.id,
       startX: pt.x,
       startY: pt.y,
-      initialPoints: zonePolygon.map((p) => ({ ...p }))
+      initialPoints: zone.points.map((p) => ({ ...p }))
     })
   }
 
-  // Add vertex to zone
-  const handleAddZonePoint = () => {
-    if (!zonePolygon || zonePolygon.length === 0) {
-      setZonePolygon(getDefaultZoneForCamera(selectedCamId))
-      return
-    }
-    const last = zonePolygon[zonePolygon.length - 1]
-    const newPt = { x: Math.min(NATIVE_WIDTH - 50, last.x + 80), y: Math.min(NATIVE_HEIGHT - 50, last.y + 80) }
-    const updated = [...zonePolygon, newPt]
-    setZonePolygon(updated)
-    saveZoneToStorage(updated, selectedCamId)
-    showToast(`เพิ่มจุดมุม P${updated.length} ในโซนเรียบร้อย`)
-  }
-
-  // Delete specific vertex from zone
-  const handleDeleteZonePoint = (pIdx) => {
-    if (zonePolygon.length <= 3) {
+  // Delete specific vertex from selected zone
+  const handleDeleteZonePoint = (zoneId, pIdx) => {
+    const targetZone = zones.find((z) => z.id === zoneId)
+    if (!targetZone || targetZone.points.length <= 3) {
       showToast('โซนต้องมีอย่างน้อย 3 จุดพิกัด', 'info')
       return
     }
-    const updated = zonePolygon.filter((_, i) => i !== pIdx)
-    setZonePolygon(updated)
-    saveZoneToStorage(updated, selectedCamId)
+    const updatedPoints = targetZone.points.filter((_, i) => i !== pIdx)
+    const updatedZones = zones.map((z) => (z.id === zoneId ? { ...z, points: updatedPoints } : z))
+    setZones(updatedZones)
+    saveZonesToStorage(updatedZones, selectedCamId)
     showToast(`ลบจุดมุม P${pIdx + 1} เรียบร้อย`)
   }
 
@@ -753,129 +791,103 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
 
   // Duplicate a slot
   const handleDuplicateSlot = (slot) => {
-    const newId = getNextSlotId()
-    const offset = 30
+    const newId = getNextSlotId(slot.type)
+    const offset = 40
     const newPoints = slot.points.map((p) => ({
-      x: Math.min(NATIVE_WIDTH, p.x + offset),
-      y: Math.min(NATIVE_HEIGHT, p.y + offset)
+      x: Math.min(NATIVE_WIDTH - 20, p.x + offset),
+      y: Math.min(NATIVE_HEIGHT - 20, p.y + offset)
     }))
-    const newSlot = {
+    const xs = newPoints.map((p) => p.x)
+    const ys = newPoints.map((p) => p.y)
+    const minX = Math.min(...xs)
+    const maxX = Math.max(...xs)
+    const minY = Math.min(...ys)
+    const maxY = Math.max(...ys)
+
+    const duplicated = {
       ...slot,
       id: newId,
+      occupied: false,
+      vehicle_name: 'ว่างพร้อมจอด',
       points: newPoints,
-      bbox: {
-        x: Math.min(NATIVE_WIDTH, slot.bbox.x + offset),
-        y: Math.min(NATIVE_HEIGHT, slot.bbox.y + offset),
-        width: slot.bbox.width,
-        height: slot.bbox.height
-      }
+      bbox: { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
     }
-    setSlots((prev) => [...prev, newSlot])
+
+    setSlots((prev) => [...prev, duplicated])
     setSelectedSlotId(newId)
-    showToast(`คัดลอกช่อง ${slot.id} เป็น ${newId}`)
+    showToast(`คัดลอกช่อง ${slot.id} เป็น ${newId} สำเร็จ`)
   }
 
-  // Reset to default sample slots for active camera
+  // Update a field in a slot
+  const handleUpdateSlotField = (slotId, field, value) => {
+    setSlots((prev) =>
+      prev.map((s) => {
+        if (s.id !== slotId) return s
+        return { ...s, [field]: value }
+      })
+    )
+  }
+
+  // Reset slots to defaults for active camera
   const handleResetDefaults = () => {
-    if (window.confirm(`คุณต้องการรีเซ็ตช่องจอดของ ${activeCam.code} (${activeCam.name}) กลับเป็นค่าเริ่มต้นใช่หรือไม่?`)) {
-      const defs = resetCameraSlots(selectedCamId)
-      setSlots(defs)
+    if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการคืนค่าช่องจอดเริ่มต้นของ ${activeCam.code}?`)) {
+      const def = resetCameraSlots(selectedCamId)
+      setSlots(def)
       setSelectedSlotId(null)
       setPolygonDraft([])
-      showToast(`รีเซ็ตช่องจอดของ ${activeCam.code} เรียบร้อยแล้ว`)
+      showToast(`คืนค่าช่องจอดเริ่มต้นของ ${activeCam.code} (${def.length} ช่อง) เรียบร้อย`)
     }
   }
 
   // Clear all slots for active camera
   const handleClearAll = () => {
-    if (window.confirm(`คุณแน่ใจหรือไม่ว่าต้องการล้างช่องจอดทั้งหมดของ ${activeCam.code}?`)) {
+    if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบช่องจอดทั้งหมดของ ${activeCam.code}?`)) {
       setSlots([])
       setSelectedSlotId(null)
       setPolygonDraft([])
-      showToast(`ล้างช่องจอดทั้งหมดของ ${activeCam.code} แล้ว`)
+      saveSlotsToStorage([], selectedCamId)
+      showToast(`ล้างช่องจอดทั้งหมดของ ${activeCam.code} เรียบร้อย`)
     }
   }
 
-  // Update a slot's field (id, type, etc)
-  const handleUpdateSlotField = (slotId, field, val) => {
-    setSlots((prev) =>
-      prev.map((s) => (s.id === slotId ? { ...s, [field]: val } : s))
-    )
-  }
-
-  // Generate standardized JSON for export
-  const getExportData = () => {
-    return {
-      version: '1.0.0',
+  // Export JSON Download
+  const handleDownloadJson = () => {
+    const dataToExport = {
       camera_id: selectedCamId,
-      camera_code: activeCam.code,
       camera_name: activeCam.name,
       location: activeCam.location,
-      zone: activeCam.zone,
-      reference_image: currentRecord.filename,
-      image_dimensions: {
-        width: NATIVE_WIDTH,
-        height: NATIVE_HEIGHT
-      },
       exported_at: new Date().toISOString(),
-      total_slots: slots.length,
-      car_slots: slots.filter((s) => s.type !== 'motorcycle' && s.type !== 'bike').length,
-      motorcycle_slots: slots.filter((s) => s.type === 'motorcycle' || s.type === 'bike').length,
-      slots: slots.map((s) => ({
-        slot_id: s.id,
-        type: s.type || 'car',
-        shape: s.shape || 'polygon',
-        occupied: !!s.occupied,
-        vehicle_name: s.vehicle_name || '',
-        // Absolute pixel points (1600x1200)
-        points: s.points,
-        // Normalized points (0.0 to 1.0) for AI frameworks (YOLO, PyTorch, TensorRT)
-        normalized_points: s.points.map((p) => ({
-          x: parseFloat((p.x / NATIVE_WIDTH).toFixed(5)),
-          y: parseFloat((p.y / NATIVE_HEIGHT).toFixed(5))
-        })),
-        bbox: s.bbox,
-        normalized_bbox: {
-          x: parseFloat((s.bbox.x / NATIVE_WIDTH).toFixed(5)),
-          y: parseFloat((s.bbox.y / NATIVE_HEIGHT).toFixed(5)),
-          width: parseFloat((s.bbox.width / NATIVE_WIDTH).toFixed(5)),
-          height: parseFloat((s.bbox.height / NATIVE_HEIGHT).toFixed(5))
-        }
-      }))
+      capacity: slots.length,
+      zones: zones,
+      polygon: zones.length > 0 ? zones[0].points.map((p) => [p.x, p.y]) : [],
+      slots: slots
     }
-  }
-
-  const handleCopyJson = () => {
-    const jsonStr = JSON.stringify(getExportData(), null, 2)
-    navigator.clipboard.writeText(jsonStr).then(() => {
-      showToast(`คัดลอก JSON พิกัดช่องจอดของ ${activeCam.code} เรียบร้อยแล้ว!`)
+    const blob = new Blob([JSON.stringify(dataToExport, null, 2)], {
+      type: 'application/json'
     })
-  }
-
-  const handleDownloadJson = () => {
-    const jsonStr = JSON.stringify(getExportData(), null, 2)
-    const blob = new Blob([jsonStr], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `cpe_parking_slots_${selectedCamId}.json`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `roi_${selectedCamId}_${new Date().toISOString().slice(0, 10)}.json`
+    link.click()
     URL.revokeObjectURL(url)
-    showToast(`ดาวน์โหลดไฟล์ JSON ของ ${activeCam.code} เรียบร้อยแล้ว`)
+    showToast(`ส่งออกไฟล์ JSON ของ ${activeCam.code} สำเร็จ!`)
+    setShowExportModal(false)
   }
 
+  // Import JSON Paste
   const handleImportJson = () => {
     try {
       const parsed = JSON.parse(importJsonText)
-      const importedSlots = parsed.slots || parsed
-      if (!Array.isArray(importedSlots)) {
-        throw new Error('Invalid JSON structure: slots array not found')
+      const slotList = Array.isArray(parsed) ? parsed : parsed.slots || []
+      if (!Array.isArray(slotList) || slotList.length === 0) {
+        alert('ไม่พบรายการช่องจอด (slots) ที่ถูกต้องใน JSON')
+        return
       }
-      const formatted = importedSlots.map((item, idx) => ({
-        id: item.slot_id || item.id || `${activeCam.defaultCarPrefix}${(idx + 1).toString().padStart(2, '0')}`,
-        type: item.type || 'car',
+
+      const formatted = slotList.map((item, idx) => ({
+        id: item.id || `S${(idx + 1).toString().padStart(2, '0')}`,
+        type: item.type === 'motorcycle' || item.type === 'bike' ? 'motorcycle' : 'car',
         shape: item.shape || 'polygon',
         occupied: !!item.occupied,
         vehicle_name: item.vehicle_name || 'ว่างพร้อมจอด',
@@ -895,6 +907,23 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
 
       setSlots(formatted)
       saveSlotsToStorage(formatted, selectedCamId)
+
+      if (parsed.zones && Array.isArray(parsed.zones)) {
+        const norm = normalizeZones(parsed.zones)
+        if (norm.length > 0) {
+          setZones(norm)
+          saveZonesToStorage(norm, selectedCamId)
+          setSelectedZoneId(norm[0].id)
+        }
+      } else if (parsed.polygon && Array.isArray(parsed.polygon) && parsed.polygon.length >= 3) {
+        const norm = normalizeZones(parsed.polygon)
+        if (norm.length > 0) {
+          setZones(norm)
+          saveZonesToStorage(norm, selectedCamId)
+          setSelectedZoneId(norm[0].id)
+        }
+      }
+
       setShowImportModal(false)
       setImportJsonText('')
       showToast(`นำเข้าสำเร็จ ${formatted.length} ช่องจอดสำหรับ ${activeCam.code}`)
@@ -911,19 +940,19 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
       <div className="setup-header-banner">
         <div className="flex items-center gap-3">
           <div className="setup-icon-box">
-            <MapPin className="w-6 h-6 text-emerald-400" />
+            <MapPin className="w-5 h-5 text-emerald-400" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold text-white tracking-tight">
-                Setup Parking Slot (พิกัดช่องจอด ROI)
+              <h2 className="text-lg font-bold text-white tracking-tight">
+                ตั้งค่าพิกัดลานจอดรถ (Parking ROI Setup)
               </h2>
               <span className="badge-chip badge-chip-live">
-                <span>MULTI-CAMERA ROI EDITOR</span>
+                <span>{activeCam.code}</span>
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              วาดและกำหนดพิกัดช่องจอดแยกตามจุดติดตั้งกล้องจริง ({activeCam.code} • {activeCam.name})
+              กำหนดขอบเขตโซนลานจอดและช่องจอดรายคัน • {activeCam.name}
             </p>
           </div>
         </div>
@@ -943,36 +972,23 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
 
           <button
             type="button"
+            onClick={() => setShowExportModal(true)}
+            className="btn-setup-back"
+            title="ส่งออกพิกัดเป็น JSON"
+          >
+            <Download className="w-3.5 h-3.5 text-slate-300" />
+            <span>Export JSON</span>
+          </button>
+
+          <button
+            type="button"
             onClick={handleSaveRoiToServer}
             disabled={isSyncingServer}
             className="btn-setup-export"
-            style={{ background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.35))', borderColor: 'rgba(16, 185, 129, 0.5)', color: '#6ee7b7' }}
-            title={`บันทึกพิกัด ROI ของกล้อง ${activeCam.code} ไปยัง Server ให้ทุกเครื่องเห็นตรงกันทันที`}
+            title={`บันทึกพิกัด ROI & โซนของกล้อง ${activeCam.code} ไปยัง PostgreSQL`}
           >
-            <Save className={`w-4 h-4 text-emerald-400 ${isSyncingServer ? 'animate-spin' : ''}`} />
+            <Save className={`w-4 h-4 ${isSyncingServer ? 'animate-spin' : ''}`} />
             <span>{isSyncingServer ? 'กำลังบันทึก...' : `บันทึก ROI (${activeCam.code})`}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleSaveAllCamerasToServer}
-            disabled={isSyncingServer}
-            className="btn-setup-export"
-            style={{ background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(79, 70, 229, 0.35))', borderColor: 'rgba(99, 102, 241, 0.5)', color: '#c7d2fe' }}
-            title="ซิงค์พิกัดช่องจอดของทั้ง 3 กล้องขึ้น Server กลางทันที เพื่อให้ทุกเครื่องเห็นตรงกัน 100%"
-          >
-            <CloudUpload className={`w-4 h-4 text-indigo-300 ${isSyncingServer ? 'animate-spin' : ''}`} />
-            <span>ซิงค์ทั้ง 3 กล้อง</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowExportModal(true)}
-            className="btn-setup-export"
-            title="บันทึกและ Export พิกัดช่องจอดเป็น JSON"
-          >
-            <Download className="w-4 h-4" />
-            <span>Export JSON</span>
           </button>
         </div>
       </div>
@@ -995,11 +1011,11 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
           <div className="flex items-center gap-2">
             <Video className="w-4 h-4 text-emerald-400" />
             <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">
-              เลือกกล้องที่ต้องการวาดช่องจอด ({SYSTEM_CAMERAS.length} จุดติดตั้ง):
+              เลือกจุดติดตั้งกล้อง ({SYSTEM_CAMERAS.length} โหนด):
             </span>
           </div>
           <span className="text-[11px] text-slate-400">
-            ดึงภาพสด Snapshot จากกล้อง ESP32 แต่ละตัวเพื่อวาดและปรับแต่งตำแหน่งช่องจอด
+            คลิกเลือกกล้องเพื่อวาดโซนและกำหนดช่องจอด
           </span>
         </div>
 
@@ -1021,12 +1037,12 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                   <span className="cam-switcher-code">{cam.code}</span>
                   <div className="flex items-center gap-1.5">
                     {hasCustomImage ? (
-                      <span className="cam-tab-custom-badge" title="มีภาพอัปโหลดเฉพาะของกล้องนี้">
+                      <span className="cam-tab-custom-badge" title="มีภาพอัปโหลดเฉพาะ">
                         CUSTOM
                       </span>
                     ) : (
-                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-mono">
-                        LIVE FEED
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-mono font-bold">
+                        LIVE
                       </span>
                     )}
                     <span className="cam-switcher-zone">{cam.zoneName}</span>
@@ -1034,7 +1050,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                 </div>
 
                 <div className="cam-switcher-name text-left">{cam.name}</div>
-                <div className="text-[10px] text-slate-400 text-left font-mono mt-0.5">{cam.device}</div>
+                <div className="text-[10px] text-slate-400 text-left font-mono">{cam.device}</div>
 
                 <div className="cam-switcher-stats mt-1">
                   <span className="stat-pill car">
@@ -1050,184 +1066,223 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
         </div>
       </div>
 
+      {/* Step-by-Step Guided Navigation Flow Bar */}
+      <div className="roi-step-flow-bar">
+        <button
+          type="button"
+          className={`roi-step-card-tab ${setupStep === 1 ? 'active' : ''} ${zones.length > 0 ? 'completed' : ''}`}
+          onClick={() => {
+            setSetupStep(1)
+            setSelectedSlotId(null)
+          }}
+        >
+          <div className="step-num-bubble">
+            {zones.length > 0 ? '✓' : '1'}
+          </div>
+          <div>
+            <div className="text-xs font-bold text-white flex items-center gap-2">
+              <span>ขั้นตอนที่ 1: กำหนดโซนพื้นที่จอดรวม (Multi-Zone Masks)</span>
+              {zones.length > 0 && (
+                <span className="text-[10px] bg-indigo-500/25 text-indigo-300 px-2 py-0.5 rounded-full font-mono font-bold">
+                  {zones.length} โซน
+                </span>
+              )}
+            </div>
+            <div className="text-[11px] text-slate-400 mt-0.5">
+              {zones.length > 0
+                ? `วาดแล้ว ${zones.length} โซน (รถยนต์: ${zones.filter((z) => z.type === 'car').length} • มอเตอร์ไซค์: ${zones.filter((z) => z.type === 'motorcycle' || z.type === 'bike').length})`
+                : 'คลิก 4 มุมเพื่อกำหนดขอบเขตโซนรถยนต์ / มอเตอร์ไซค์'}
+            </div>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          className={`roi-step-card-tab step-2 ${setupStep === 2 ? 'active' : ''}`}
+          onClick={() => {
+            setSetupStep(2)
+            setZoneDraft([])
+          }}
+        >
+          <div className="step-num-bubble">2</div>
+          <div>
+            <div className="text-xs font-bold text-white flex items-center gap-2">
+              <span>ขั้นตอนที่ 2: วาดช่องจอดรถรายคัน (Parking Slots)</span>
+              {slots.length > 0 && (
+                <span className="text-[10px] bg-emerald-500/25 text-emerald-300 px-2 py-0.5 rounded-full font-mono font-bold">
+                  {slots.length} ช่อง
+                </span>
+              )}
+            </div>
+            <div className="text-[11px] text-slate-400 mt-0.5">
+              {slots.length > 0
+                ? `รถยนต์ ${slots.filter((s) => s.type !== 'motorcycle' && s.type !== 'bike').length} ช่อง • มอเตอร์ไซค์ ${slots.filter((s) => s.type === 'motorcycle' || s.type === 'bike').length} ช่อง`
+                : 'วาดช่องจอดรถยนต์ / มอเตอร์ไซค์ ทีละคันภายในแต่ละโซน'}
+            </div>
+          </div>
+        </button>
+      </div>
+
       {/* Main Work Area: Canvas on Left, Controls & List on Right */}
       <div className="setup-workspace-grid">
         {/* Left Column: Canvas Viewport & Toolbar */}
         <div className="setup-canvas-panel">
           {/* Top Canvas Toolbar */}
           <div className="canvas-toolbar">
-            {/* Group 1: Tools & Vehicle Type */}
-            <div className="toolbar-group">
-              <span className="toolbar-label">โหมด:</span>
-              <button
-                type="button"
-                className={`tool-btn ${currentTool === 'select' ? 'active' : ''}`}
-                onClick={() => {
-                  setCurrentTool('select')
-                  setPolygonDraft([])
-                }}
-                title="เลือกและขยับจุดพิกัด (Select & Move)"
-              >
-                <MousePointer className="w-3.5 h-3.5" />
-                <span>Move & Edit</span>
-              </button>
+            {/* ================================================== */}
+            {/* TOOLBAR FOR STEP 1: MULTI-ZONE AREA MASKS */}
+            {/* ================================================== */}
+            {setupStep === 1 ? (
+              <div className="toolbar-group flex-wrap gap-2">
+                <span className="toolbar-label text-indigo-300 font-bold flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>ประเภทโซน:</span>
+                </span>
 
-              <button
-                type="button"
-                className={`vehicle-type-pill car ${currentTool !== 'select' && drawType === 'car' ? 'active' : ''}`}
-                onClick={() => {
-                  setDrawType('car')
-                  setNextSlotPrefix(activeCam.defaultCarPrefix)
-                  if (currentTool === 'select') setCurrentTool('polygon')
-                }}
-                title={`วาดช่องจอดรถยนต์สำหรับ ${activeCam.code} (รหัส ${activeCam.defaultCarPrefix}..)`}
-              >
-                <Car className="w-3.5 h-3.5" />
-                <span>วาดรถยนต์ ({activeCam.defaultCarPrefix}..)</span>
-              </button>
+                {/* Zone Type Toggle (Car vs Motorcycle) */}
+                <div className="toolbar-segmented-group">
+                  <button
+                    type="button"
+                    className={`toolbar-segment-btn ${zoneDrawType === 'car' ? 'active car-zone' : ''}`}
+                    onClick={() => setZoneDrawType('car')}
+                  >
+                    <Car className="w-3.5 h-3.5" />
+                    <span>โซนรถยนต์ (Car)</span>
+                  </button>
 
-              <button
-                type="button"
-                className={`vehicle-type-pill bike ${currentTool !== 'select' && drawType === 'motorcycle' ? 'active' : ''}`}
-                onClick={() => {
-                  setDrawType('motorcycle')
-                  setNextSlotPrefix(activeCam.defaultBikePrefix)
-                  if (currentTool === 'select') setCurrentTool('polygon')
-                }}
-                title={`วาดช่องจอดมอเตอร์ไซค์สำหรับ ${activeCam.code} (รหัส ${activeCam.defaultBikePrefix}..)`}
-              >
-                <Bike className="w-3.5 h-3.5" />
-                <span>วาดมอเตอร์ไซค์ ({activeCam.defaultBikePrefix}..)</span>
-              </button>
+                  <button
+                    type="button"
+                    className={`toolbar-segment-btn ${zoneDrawType === 'motorcycle' ? 'active bike-zone' : ''}`}
+                    onClick={() => setZoneDrawType('motorcycle')}
+                  >
+                    <Bike className="w-3.5 h-3.5" />
+                    <span>โซนมอเตอร์ไซค์ (Bike)</span>
+                  </button>
+                </div>
 
-              <button
-                type="button"
-                className={`vehicle-type-pill zone ${drawType === 'zone' ? 'active' : ''}`}
-                onClick={() => {
-                  setDrawType('zone')
-                  setSelectedSlotId(null)
-                  setCurrentTool('polygon')
-                }}
-                title="วาดโซนพื้นที่จอดรวมขนาดใหญ่ (Overall Parking Zone Mask) เพื่อใช้คำนวณ Pixel % และเทรนโมเดล AI"
-              >
-                <Layers className="w-3.5 h-3.5 text-indigo-400" />
-                <span>โซนพื้นที่จอดรวม (Zone Mask)</span>
-              </button>
-            </div>
+                {zoneDraft.length === 0 ? (
+                  <div className={`toolbar-instruction-pill ${zoneDrawType === 'motorcycle' ? 'bike' : ''}`}>
+                    <Pentagon className="w-3.5 h-3.5 opacity-70" />
+                    <span>คลิก 4 มุมบนภาพเพื่อวาด{zoneDrawType === 'motorcycle' ? 'โซนมอเตอร์ไซค์' : 'โซนรถยนต์'}</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="toolbar-instruction-pill drafting">
+                      <span>กำลังวาด{zoneDrawType === 'motorcycle' ? 'โซนมอเตอร์ไซค์' : 'โซนรถยนต์'}: จุดที่ {zoneDraft.length}/4</span>
+                    </div>
 
-            {/* Group 2: Shape Format / Zone Controls */}
-            <div className="toolbar-group">
-              {drawType === 'zone' ? (
-                <>
-                  <span className="text-xs font-bold text-indigo-300 flex items-center gap-1.5 px-1">
-                    <Layers className="w-3.5 h-3.5" />
-                    <span>Zone Mask:</span>
-                  </span>
-
-                  {zoneDraft.length > 0 ? (
-                    <>
+                    {zoneDraft.length >= 3 && (
                       <button
                         type="button"
                         className="tool-btn highlight"
-                        disabled={zoneDraft.length < 3}
                         onClick={handleFinishZoneDraft}
-                        title="บันทึกกรอบโซนนี้"
+                        title="เสร็จสิ้นและบันทึกโซนนี้"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                         <span>เสร็จสิ้น ({zoneDraft.length} จุด)</span>
                       </button>
-                      <button
-                        type="button"
-                        className="tool-btn danger"
-                        onClick={handleCancelZoneDraft}
-                        title="ยกเลิกการวาด"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                        <span>ยกเลิก</span>
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        className="tool-btn"
-                        onClick={() => {
-                          setZoneDraft([])
-                          showToast('คลิกบนภาพเพื่อเริ่มกำหนดจุดขอบเขตโซนลานจอดใหม่')
-                        }}
-                        title="เริ่มคลิกวาดจุดขอบเขตโซนใหม่"
-                      >
-                        <Pentagon className="w-3.5 h-3.5 text-indigo-400" />
-                        <span>วาดโซนใหม่</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="tool-btn"
-                        onClick={handleAddZonePoint}
-                        title="เพิ่มจุดมุมในโซนปัจจุบัน"
-                      >
-                        <span>+ เพิ่มจุด (P{zonePolygon.length + 1})</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="tool-btn"
-                        onClick={handleResetZoneToDefault}
-                        title="รีเซ็ตโซนกลับเป็นค่าเริ่มต้น"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Default Zone</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="tool-btn danger"
-                        onClick={handleClearZone}
-                        title="ล้างโซนพื้นที่จอด"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                        <span>ล้างโซน</span>
-                      </button>
-                    </>
-                  )}
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    className={`tool-btn ${currentTool === 'polygon' ? 'active' : ''}`}
-                    onClick={() => setCurrentTool('polygon')}
-                    title="คลิก 4 มุมช่องจอด (4-Point Polygon)"
-                  >
-                    <Pentagon className="w-3.5 h-3.5 text-amber-400" />
-                    <span>4-Pt Polygon</span>
-                  </button>
+                    )}
 
-                  <button
-                    type="button"
-                    className={`tool-btn ${currentTool === 'bbox' ? 'active' : ''}`}
-                    onClick={() => setCurrentTool('bbox')}
-                    title="คลิกลากกล่องสี่เหลี่ยม (BBox)"
-                  >
-                    <Square className="w-3.5 h-3.5" />
-                    <span>Box</span>
-                  </button>
-
-                  {polygonDraft.length > 0 && (
                     <button
                       type="button"
                       className="tool-btn danger"
-                      onClick={handleCancelPolygon}
-                      title="ยกเลิกจุดที่กำลังคลิก"
+                      onClick={handleCancelZoneDraft}
+                      title="ยกเลิกการวาดโซนนี้"
                     >
                       <X className="w-3.5 h-3.5" />
-                      <span>ยกเลิก ({polygonDraft.length}/4)</span>
+                      <span>ยกเลิก</span>
                     </button>
-                  )}
-                </>
-              )}
-            </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              /* ================================================== */
+              /* TOOLBAR FOR STEP 2: INDIVIDUAL SLOTS */
+              /* ================================================== */
+              <div className="toolbar-group flex-wrap gap-2">
+                <button
+                  type="button"
+                  className={`tool-btn ${currentTool === 'select' ? 'active' : ''}`}
+                  onClick={() => {
+                    setCurrentTool('select')
+                    setPolygonDraft([])
+                  }}
+                  title="เลือกและขยับจุดพิกัดช่องจอด"
+                >
+                  <MousePointer className="w-3.5 h-3.5" />
+                  <span>เลือก / ขยับจุด</span>
+                </button>
 
-            {/* Group 3: Real Camera Live Feed & MinIO Snapshots */}
-            <div className="toolbar-group">
+                {/* Drawing Vehicle Mode */}
+                <div className="toolbar-segmented-group">
+                  <button
+                    type="button"
+                    className={`toolbar-segment-btn ${currentTool !== 'select' && drawType === 'car' ? 'active car-slot' : ''}`}
+                    onClick={() => {
+                      setDrawType('car')
+                      setNextSlotPrefix(activeCam.defaultCarPrefix)
+                      if (currentTool === 'select') setCurrentTool('polygon')
+                    }}
+                    title={`วาดช่องจอดรถยนต์ (${activeCam.defaultCarPrefix}..)`}
+                  >
+                    <Car className="w-3.5 h-3.5" />
+                    <span>วาดรถยนต์ ({activeCam.defaultCarPrefix}..)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`toolbar-segment-btn ${currentTool !== 'select' && drawType === 'motorcycle' ? 'active bike-slot' : ''}`}
+                    onClick={() => {
+                      setDrawType('motorcycle')
+                      setNextSlotPrefix(activeCam.defaultBikePrefix)
+                      if (currentTool === 'select') setCurrentTool('polygon')
+                    }}
+                    title={`วาดช่องจอดมอเตอร์ไซค์ (${activeCam.defaultBikePrefix}..)`}
+                  >
+                    <Bike className="w-3.5 h-3.5" />
+                    <span>วาดมอเตอร์ไซค์ ({activeCam.defaultBikePrefix}..)</span>
+                  </button>
+                </div>
+
+                {/* Tool Shape Toggle */}
+                <div className="toolbar-segmented-group">
+                  <button
+                    type="button"
+                    className={`toolbar-segment-btn ${currentTool === 'polygon' ? 'active tool' : ''}`}
+                    onClick={() => setCurrentTool('polygon')}
+                    title="คลิก 4 มุมช่องจอด (Polygon)"
+                  >
+                    <Pentagon className="w-3.5 h-3.5 text-amber-400" />
+                    <span>4 จุด</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`toolbar-segment-btn ${currentTool === 'bbox' ? 'active tool' : ''}`}
+                    onClick={() => setCurrentTool('bbox')}
+                    title="คลิกลากสี่เหลี่ยม (Bounding Box)"
+                  >
+                    <Square className="w-3.5 h-3.5" />
+                    <span>กล่อง</span>
+                  </button>
+                </div>
+
+                {polygonDraft.length > 0 && (
+                  <button
+                    type="button"
+                    className="tool-btn danger"
+                    onClick={handleCancelPolygon}
+                    title="ยกเลิกจุดที่กำลังคลิก"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>ยกเลิก ({polygonDraft.length}/4)</span>
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Right Group: Live Camera Actions & Display Toggles */}
+            <div className="toolbar-group ml-auto">
               <input
                 type="file"
                 ref={fileInputRef}
@@ -1248,43 +1303,17 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                 title={`ดึงภาพ Snapshot สดล่าสุดจากกล้อง ${activeCam.code}`}
               >
                 <RefreshCw className="w-3.5 h-3.5 text-emerald-400" />
-                <span>ดึงภาพสด (Live)</span>
+                <span>ดึงภาพสด</span>
               </button>
-
-              <button
-                type="button"
-                className={`tool-btn ${autoLivePolling ? 'active' : ''}`}
-                onClick={() => setAutoLivePolling(!autoLivePolling)}
-                title="เปิด/ปิด การดึงภาพสดอัตโนมัติทุก 4 วิ"
-              >
-                <span className={`w-2 h-2 rounded-full ${autoLivePolling ? 'bg-rose-400 animate-ping' : 'bg-slate-500'}`}></span>
-                <span>{autoLivePolling ? 'Live (4s)' : 'Auto'}</span>
-              </button>
-
-              {recentFrames.length > 0 && (
-                <select
-                  className="snapshot-select-input"
-                  value={selectedFrameIndex}
-                  onChange={(e) => setSelectedFrameIndex(Number(e.target.value))}
-                  title="เลือกภาพถ่ายในอดีตจาก MinIO"
-                >
-                  <option value={-1}>ภาพสดล่าสุด (Live Snapshot)</option>
-                  {recentFrames.map((r, i) => (
-                    <option key={r.id || i} value={i}>
-                      #{i + 1} • {r.local_time ? r.local_time.split(' ')[1] : r.filename}
-                    </option>
-                  ))}
-                </select>
-              )}
 
               <button
                 type="button"
                 className="tool-btn"
                 onClick={() => fileInputRef.current?.click()}
-                title={`อัปโหลดภาพนิ่งจากอุปกรณ์สำหรับกล้อง ${activeCam.code}`}
+                title={`อัปโหลดภาพสำหรับกล้อง ${activeCam.code}`}
               >
                 <Upload className="w-3.5 h-3.5 text-cyan-400" />
-                <span>อัปโหลด</span>
+                <span>อัปโหลดภาพ</span>
               </button>
 
               {customCamImage && (
@@ -1294,19 +1323,16 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                   onClick={handleResetImage}
                   title="คืนค่ากลับเป็นภาพสดของกล้องนี้"
                 >
-                  <RotateCcw className="w-3 h-3 text-amber-400" />
+                  <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
                   <span>คืนค่าภาพสด</span>
                 </button>
               )}
-            </div>
 
-            {/* Group 4: Quick Toggles & Reset */}
-            <div className="toolbar-group">
               <button
                 type="button"
                 className={`icon-toggle-btn ${showZoneOverlay ? 'active' : ''}`}
                 onClick={() => setShowZoneOverlay(!showZoneOverlay)}
-                title="เปิด/ปิด การแสดงกรอบโซนพื้นที่จอดรวม (Zone Area Mask)"
+                title="เปิด/ปิด การแสดงกรอบโซนพื้นที่จอดรวม"
               >
                 <Layers className={`w-3.5 h-3.5 ${showZoneOverlay ? 'text-indigo-400' : 'text-slate-500'}`} />
                 <span>Zone Mask</span>
@@ -1321,32 +1347,12 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                 {showLabels ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5 text-slate-500" />}
                 <span>Labels</span>
               </button>
-
-              <button
-                type="button"
-                className="icon-toggle-btn"
-                onClick={handleResetDefaults}
-                title={`รีเซ็ตช่องจอดของ ${activeCam.code} กลับเป็นค่าเริ่มต้น`}
-              >
-                <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
-                <span>Reset</span>
-              </button>
-
-              <button
-                type="button"
-                className="icon-toggle-btn danger"
-                onClick={handleClearAll}
-                title={`ล้างช่องจอดทั้งหมดของ ${activeCam.code}`}
-              >
-                <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                <span>Clear</span>
-              </button>
             </div>
           </div>
 
           {/* Interactive Canvas Viewport */}
           <div
-            className={`roi-viewport-wrapper ${currentTool}`}
+            className={`roi-viewport-wrapper ${setupStep === 1 ? 'polygon' : currentTool}`}
             ref={containerRef}
           >
             {/* Background Image for Active Camera */}
@@ -1367,72 +1373,89 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
               onClick={handleSvgClick}
             >
 
-              {/* 1. Render Large Parking Zone Area Polygon (AI Mask) */}
-              {showZoneOverlay && zonePolygon && zonePolygon.length >= 3 && (
-                <g className="zone-polygon-group">
-                  <polygon
-                    points={zonePolygon.map((p) => `${p.x},${p.y}`).join(' ')}
-                    className={`zone-area-polygon ${drawType === 'zone' ? 'active' : ''}`}
-                    onMouseDown={handleZoneShapeMouseDown}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      if (currentTool === 'select') {
-                        setDrawType('zone')
-                        setSelectedSlotId(null)
-                      }
-                    }}
-                  />
+              {/* 1. Render Confirmed Zone Area Polygons (Multi-Zone Support) */}
+              {showZoneOverlay &&
+                zones.map((zone, zIdx) => {
+                  const isZoneSelected = setupStep === 1 && zone.id === selectedZoneId
+                  const isBikeZone = zone.type === 'motorcycle' || zone.type === 'bike'
+                  const ptsStr = zone.points.map((p) => `${p.x},${p.y}`).join(' ')
+                  const minX = Math.min(...zone.points.map((p) => p.x))
+                  const minY = Math.min(...zone.points.map((p) => p.y))
+                  const zoneArea = calculatePolygonArea(zone.points)
 
-                  {/* Zone Label Badge */}
-                  {showLabels && (
-                    <g className="zone-label-group" pointerEvents="none">
-                      <rect
-                        x={Math.min(...zonePolygon.map((p) => p.x)) + 12}
-                        y={Math.min(...zonePolygon.map((p) => p.y)) + 12}
-                        width={280}
-                        height={32}
-                        rx={6}
-                        className="zone-label-bg"
+                  return (
+                    <g key={zone.id || zIdx} className="zone-polygon-group">
+                      <polygon
+                        points={ptsStr}
+                        className={`zone-area-polygon ${isBikeZone ? 'bike-zone' : 'car-zone'} ${
+                          isZoneSelected ? 'active' : ''
+                        }`}
+                        pointerEvents={setupStep === 1 ? 'auto' : 'none'}
+                        onMouseDown={
+                          setupStep === 1 ? (e) => handleZoneShapeMouseDown(e, zone) : undefined
+                        }
+                        onClick={
+                          setupStep === 1
+                            ? (e) => {
+                                e.stopPropagation()
+                                setSelectedZoneId(zone.id)
+                              }
+                            : undefined
+                        }
                       />
-                      <text
-                        x={Math.min(...zonePolygon.map((p) => p.x)) + 152}
-                        y={Math.min(...zonePolygon.map((p) => p.y)) + 33}
-                        textAnchor="middle"
-                        className="zone-label-text"
-                      >
-                        ZONE AREA MASK • {activeCam.code} ({calculatePolygonArea(zonePolygon).toLocaleString()} px²)
-                      </text>
+
+                      {/* Zone Label Badge */}
+                      {showLabels && (
+                        <g className="zone-label-group" pointerEvents="none">
+                          <rect
+                            x={minX + 12}
+                            y={minY + 12}
+                            width={310}
+                            height={32}
+                            rx={6}
+                            className={`zone-label-bg ${isBikeZone ? 'bike-badge' : ''}`}
+                          />
+                          <text
+                            x={minX + 167}
+                            y={minY + 33}
+                            textAnchor="middle"
+                            className={`zone-label-text ${isBikeZone ? 'bike-text' : ''}`}
+                          >
+                            {zone.name || `ZONE ${zIdx + 1}`} ({zoneArea.toLocaleString()} px²)
+                          </text>
+                        </g>
+                      )}
+
+                      {/* Zone Vertex Drag Handles in Step 1 (for selected zone) */}
+                      {setupStep === 1 &&
+                        isZoneSelected &&
+                        zone.points.map((pt, pIdx) => (
+                          <g key={pIdx}>
+                            <circle
+                              cx={pt.x}
+                              cy={pt.y}
+                              r={12}
+                              className={`zone-handle-vertex ${isBikeZone ? 'bike-handle' : ''}`}
+                              onMouseDown={(e) => handleZonePointMouseDown(e, zone.id, pIdx)}
+                            />
+                            <text
+                              x={pt.x}
+                              y={pt.y - 15}
+                              textAnchor="middle"
+                              className="text-[11px] fill-white font-bold font-mono"
+                              pointerEvents="none"
+                            >
+                              P{pIdx + 1}
+                            </text>
+                          </g>
+                        ))}
                     </g>
-                  )}
+                  )
+                })}
 
-                  {/* Zone Vertex Drag Handles */}
-                  {(drawType === 'zone' || currentTool === 'select') &&
-                    zonePolygon.map((pt, pIdx) => (
-                      <g key={pIdx}>
-                        <circle
-                          cx={pt.x}
-                          cy={pt.y}
-                          r={11}
-                          className="zone-handle-vertex"
-                          onMouseDown={(e) => handleZonePointMouseDown(e, pIdx)}
-                        />
-                        <text
-                          x={pt.x}
-                          y={pt.y - 14}
-                          textAnchor="middle"
-                          className="text-[11px] fill-indigo-200 font-bold font-mono"
-                          pointerEvents="none"
-                        >
-                          P{pIdx + 1}
-                        </text>
-                      </g>
-                    ))}
-                </g>
-              )}
-
-              {/* Active Zone Draft in Progress */}
-              {drawType === 'zone' && zoneDraft.length > 0 && (
-                <g className="zone-draft-group">
+              {/* Active Zone Draft in Progress (Step 1) */}
+              {setupStep === 1 && zoneDraft.length > 0 && (
+                <g className="zone-draft-group" pointerEvents="none">
                   {zoneDraft.map((pt, idx) => {
                     const nextPt = zoneDraft[idx + 1] || cursorPos
                     return (
@@ -1442,7 +1465,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                         y1={pt.y}
                         x2={nextPt.x}
                         y2={nextPt.y}
-                        className="zone-draft-line"
+                        className={`zone-draft-line ${zoneDrawType === 'motorcycle' ? 'bike-draft' : ''}`}
                       />
                     )
                   })}
@@ -1452,9 +1475,19 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                         cx={pt.x}
                         cy={pt.y}
                         r={9}
-                        className="fill-indigo-500 stroke-white stroke-2"
+                        className={
+                          zoneDrawType === 'motorcycle'
+                            ? 'fill-cyan-500 stroke-white stroke-2'
+                            : 'fill-indigo-500 stroke-white stroke-2'
+                        }
                       />
-                      <text x={pt.x + 12} y={pt.y - 8} className="text-xs fill-indigo-300 font-bold font-mono">
+                      <text
+                        x={pt.x + 12}
+                        y={pt.y - 8}
+                        className={`text-xs font-bold font-mono ${
+                          zoneDrawType === 'motorcycle' ? 'fill-cyan-300' : 'fill-indigo-300'
+                        }`}
+                      >
                         P{idx + 1}
                       </text>
                     </g>
@@ -1462,7 +1495,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                 </g>
               )}
 
-              {/* 2. Render All Confirmed Individual Parking Slots */}
+              {/* 2. Render All Confirmed Individual Parking Slots (Step 2) */}
               {slots.map((slot) => {
                 const isSelected = slot.id === selectedSlotId
                 const pointsString = slot.points.map((p) => `${p.x},${p.y}`).join(' ')
@@ -1481,16 +1514,21 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                       className={`slot-polygon ${isSelected ? 'active-polygon' : ''} ${
                         isBike ? 'bike-polygon' : 'car-polygon'
                       } ${isOccupied ? 'occupied' : 'vacant'}`}
-                      onMouseDown={(e) => handleShapeMouseDown(e, slot)}
+                      pointerEvents={setupStep === 2 && currentTool === 'select' ? 'auto' : 'none'}
+                      onMouseDown={(e) => {
+                        if (setupStep === 2 && currentTool === 'select') handleShapeMouseDown(e, slot)
+                      }}
                       onClick={(e) => {
-                        e.stopPropagation()
-                        setSelectedSlotId(slot.id)
-                        if (drawType === 'zone') setDrawType(isBike ? 'motorcycle' : 'car')
+                        if (setupStep === 2 && currentTool === 'select') {
+                          e.stopPropagation()
+                          setSelectedSlotId(slot.id)
+                        }
                       }}
                     />
 
-                    {/* Corner Vertex Handles (when selected) */}
-                    {isSelected &&
+                    {/* Corner Vertex Handles (when selected in Step 2) */}
+                    {setupStep === 2 &&
+                      isSelected &&
                       slot.points.map((pt, pIdx) => (
                         <circle
                           key={pIdx}
@@ -1529,9 +1567,9 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                 )
               })}
 
-              {/* Active 4-Pt Polygon Draft in Progress */}
-              {drawType !== 'zone' && polygonDraft.length > 0 && (
-                <g className="polygon-draft-group">
+              {/* Active 4-Pt Polygon Draft in Progress (Step 2) */}
+              {setupStep === 2 && polygonDraft.length > 0 && (
+                <g className="polygon-draft-group" pointerEvents="none">
                   {/* Lines between confirmed draft points */}
                   {polygonDraft.map((pt, idx) => {
                     const nextPt = polygonDraft[idx + 1] || cursorPos
@@ -1564,14 +1602,15 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                 </g>
               )}
 
-              {/* Active BBox Drag Preview */}
-              {currentTool === 'bbox' && bboxDragStart && bboxDragCurrent && (
+              {/* Active BBox Drag Preview (Step 2) */}
+              {setupStep === 2 && currentTool === 'bbox' && bboxDragStart && bboxDragCurrent && (
                 <rect
                   x={Math.min(bboxDragStart.x, bboxDragCurrent.x)}
                   y={Math.min(bboxDragStart.y, bboxDragCurrent.y)}
                   width={Math.abs(bboxDragCurrent.x - bboxDragStart.x)}
                   height={Math.abs(bboxDragCurrent.y - bboxDragStart.y)}
                   className={`bbox-drag-preview ${drawType === 'motorcycle' ? 'bike-bbox' : 'car-bbox'}`}
+                  pointerEvents="none"
                 />
               )}
             </svg>
@@ -1612,7 +1651,15 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
             <div className="flex items-center gap-2 text-xs text-slate-300">
               <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>
-                <strong>วิธีใช้งาน:</strong> เลือก <strong>"โซนพื้นที่จอดรวม"</strong> เพื่อวาดขอบเขตลานจอดใหญ่สำหรับคำนวณ Pixel % และเทรน AI | เลือก <strong>"4-Pt Polygon"</strong> หรือ <strong>"Box"</strong> เพื่อวาดช่องจอดรายคัน | ใช้ <strong>"Move & Edit"</strong> เพื่อปรับจุดมุม
+                {setupStep === 1 ? (
+                  <>
+                    <strong>คำแนะนำขั้นตอนที่ 1:</strong> คลิก 4 มุมบนภาพเพื่อตีกรอบลานจอดรถรวมให้ครอบคลุมพื้นที่ทั้งหมด จากนั้นลากจุดมุม P1-P4 เพื่อปรับความโค้งเอียงให้พอดี แล้วกด <strong>"ถัดไป: วาดช่องจอดรถ (Step 2)"</strong>
+                  </>
+                ) : (
+                  <>
+                    <strong>คำแนะนำขั้นตอนที่ 2:</strong> เลือก <strong>"วาดรถยนต์"</strong> หรือ <strong>"วาดมอเตอร์ไซค์"</strong> แล้วคลิก 4 มุมเพื่อสร้างช่องจอดทีละคันภายในโซนที่กำหนดไว้
+                  </>
+                )}
               </span>
             </div>
           </div>
@@ -1620,430 +1667,490 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
 
         {/* Right Column: Slot Management & Inspector Pane */}
         <div className="setup-inspector-panel">
-          {/* Summary KPIs */}
-          <div className="inspector-card">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <div className="flex items-center gap-2">
-                <Layers className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                  Slot Registry • {activeCam.code} ({slots.length})
-                </h3>
-              </div>
-              <div className="flex gap-2">
-                <span className="mini-chip bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  รถยนต์: {slots.filter((s) => s.type !== 'motorcycle' && s.type !== 'bike').length}
-                </span>
-                <span className="mini-chip bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                  มอเตอร์ไซค์: {slots.filter((s) => s.type === 'motorcycle' || s.type === 'bike').length}
-                </span>
-              </div>
-            </div>
-
-            {/* If in Zone Drawing Mode, show quick zone badge */}
-            {drawType === 'zone' && (
-              <div className="mt-2.5 p-2 rounded-lg bg-indigo-950/50 border border-indigo-500/40 text-xs flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-indigo-300">
-                  <Layers className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>กำลังแก้ไข: โซนพื้นที่จอดรวม (Zone Area Mask)</span>
-                </div>
-                <span className="font-mono font-bold text-indigo-200">
-                  {zonePolygon.length} จุดมุม
-                </span>
-              </div>
-            )}
-
-            {/* If no motorcycle slots yet, show quick helper button */}
-            {slots.filter((s) => s.type === 'motorcycle' || s.type === 'bike').length === 0 && (
-              <div className="mt-2.5 p-2 rounded-lg bg-cyan-950/40 border border-cyan-500/30 text-xs flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-cyan-300">
-                  <Bike className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>ยังไม่มีช่องมอเตอร์ไซค์ ({activeCam.code})</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleAddDefaultBikes}
-                  className="btn-seed-bikes"
-                >
-                  + เพิ่มช่องมอเตอร์ไซค์ทันที
-                </button>
-              </div>
-            )}
-
-            {/* Quick Auto-Naming Prefix Setting */}
-            <div className="pt-3 flex items-center justify-between text-xs">
-              <span className="text-slate-400">
-                รหัสเริ่มต้นถัดไป ({drawType === 'motorcycle' ? 'มอเตอร์ไซค์' : 'รถยนต์'}):
-              </span>
-              <div className="flex items-center gap-1.5">
-                <span className="font-mono text-emerald-400 font-bold bg-black/40 px-2 py-0.5 rounded border border-white/10">
-                  {getNextSlotId()}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Dedicated Zone Area Mask Inspector (when in Zone mode) */}
-          {drawType === 'zone' ? (
-            <div className="inspector-card active-slot-card" style={{ borderColor: 'rgba(99, 102, 241, 0.5)', background: 'linear-gradient(180deg, rgba(30, 27, 75, 0.4) 0%, rgba(15, 23, 42, 0.6) 100%)' }}>
-              <div className="flex items-center justify-between pb-2 mb-3 border-b border-indigo-500/30">
-                <div className="flex items-center gap-2">
-                  <Layers className="w-5 h-5 text-indigo-400" />
-                  <span className="font-mono text-base font-bold text-indigo-300">
-                    Parking Zone Mask • {activeCam.code}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    className="btn-icon-action"
-                    onClick={handleAddZonePoint}
-                    title="เพิ่มจุดมุมในโซน"
-                  >
-                    <span className="text-xs text-indigo-300 font-bold">+P</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-icon-action"
-                    onClick={handleResetZoneToDefault}
-                    title="รีเซ็ตโซนกลับเป็นค่าเริ่มต้น"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-icon-action danger"
-                    onClick={handleClearZone}
-                    title="ล้างโซนพื้นที่จอด"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Purpose Banner */}
-              <div className="p-2.5 rounded bg-indigo-950/60 border border-indigo-500/30 text-xs text-indigo-200 mb-3">
-                <strong>วัตถุประสงค์:</strong> โซนนี้จะใช้เป็น Mask คำนวณ <strong>Pixel Occupancy Rate (%)</strong> (สัดส่วนพิกเซลรถเทียบกับพื้นที่ลานจอด) และใช้เทรนโมเดล AI ในการตรวจจับพื้นที่
-              </div>
-
-              {/* Zone Metrics */}
-              <div className="grid grid-cols-2 gap-2 mb-3">
-                <div className="p-2 rounded bg-black/40 border border-white/5">
-                  <span className="text-[10px] text-slate-400 block uppercase">พื้นที่โซนรวม (Area):</span>
-                  <span className="text-sm font-bold font-mono text-indigo-300">
-                    {calculatePolygonArea(zonePolygon).toLocaleString()} px²
-                  </span>
-                </div>
-                <div className="p-2 rounded bg-black/40 border border-white/5">
-                  <span className="text-[10px] text-slate-400 block uppercase">ครอบคลุมหน้าจอ (Frame %):</span>
-                  <span className="text-sm font-bold font-mono text-emerald-400">
-                    {((calculatePolygonArea(zonePolygon) / (NATIVE_WIDTH * NATIVE_HEIGHT)) * 100).toFixed(1)}%
-                  </span>
-                </div>
-              </div>
-
-              {/* Coordinate Points Readout */}
-              <div className="inspector-field">
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-semibold text-slate-300">พิกัดจุดมุมของโซน ({zonePolygon.length} จุด):</label>
-                  <span className="text-[10px] text-slate-400">*ลากจุดบนภาพได้โดยตรง</span>
-                </div>
-                <div className="coords-grid max-h-36 overflow-y-auto pr-1">
-                  {zonePolygon.map((pt, idx) => (
-                    <div key={idx} className="coord-chip flex items-center justify-between" style={{ borderColor: 'rgba(99, 102, 241, 0.3)', background: 'rgba(99, 102, 241, 0.1)' }}>
-                      <span className="coord-idx text-indigo-300">P{idx + 1}:</span>
-                      <span className="font-mono text-indigo-100">({pt.x}, {pt.y})</span>
-                      {zonePolygon.length > 3 && (
-                        <button
-                          type="button"
-                          className="text-rose-400 hover:text-rose-300 text-[10px] ml-1 font-bold"
-                          onClick={() => handleDeleteZonePoint(idx)}
-                          title="ลบจุดนี้"
-                        >
-                          X
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-2 mt-3 pt-2 border-t border-white/10">
-                <button
-                  type="button"
-                  className="flex-1 py-1.5 px-3 rounded text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center justify-center gap-1.5"
-                  onClick={() => {
-                    saveZoneToStorage(zonePolygon, selectedCamId)
-                    saveRoiToServer(selectedCamId, slots, zonePolygon)
-                    showToast(`บันทึกพิกัดโซน ${activeCam.code} ขึ้น Server เรียบร้อย`)
-                  }}
-                >
-                  <Save className="w-3.5 h-3.5" />
-                  <span>บันทึกโซนไปยัง Server</span>
-                </button>
-              </div>
-            </div>
-          ) : (
-            /* Selected Slot Detailed Inspector */
-            selectedSlot ? (
-              <div className="inspector-card active-slot-card">
-                <div className="flex items-center justify-between pb-2 mb-3 border-b border-emerald-500/30">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-lg font-bold text-emerald-400">
-                      {selectedSlot.id}
-                    </span>
-                    <span className="text-xs text-slate-400">
-                      ({selectedSlot.shape === 'bbox' ? 'Bounding Box' : '4-Point Polygon'})
-                    </span>
+          {/* ================================================== */}
+          {/* STEP 1 INSPECTOR PANE */}
+          {/* ================================================== */}
+          {setupStep === 1 ? (
+            <>
+              <div className="inspector-card zone-card">
+                <div className="inspector-card-header">
+                  <div className="inspector-title">
+                    <Layers className="w-4 h-4 text-indigo-400" />
+                    <span>Multi-Zone Masks • {activeCam.code} ({zones.length})</span>
                   </div>
 
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      className="btn-icon-action"
-                      onClick={() => handleDuplicateSlot(selectedSlot)}
-                      title="คัดลอกช่องนี้"
-                    >
-                      <Copy className="w-3.5 h-3.5 text-blue-400" />
-                    </button>
+                  {zones.length > 0 && (
                     <button
                       type="button"
                       className="btn-icon-action danger"
-                      onClick={() => handleDeleteSlot(selectedSlot.id)}
-                      title="ลบช่องนี้"
+                      onClick={handleClearAllZones}
+                      title="ล้างโซนทั้งหมดของกล้องนี้"
                     >
                       <Trash2 className="w-3.5 h-3.5 text-rose-400" />
                     </button>
-                  </div>
-                </div>
-
-                {/* Edit Slot ID */}
-                <div className="inspector-field">
-                  <label>รหัสช่องจอด (Slot ID):</label>
-                  <input
-                    type="text"
-                    className="inspector-text-input font-mono"
-                    value={selectedSlot.id}
-                    onChange={(e) => handleUpdateSlotField(selectedSlot.id, 'id', e.target.value)}
-                  />
-                </div>
-
-                {/* Edit Vehicle Type */}
-                <div className="inspector-field">
-                  <label>ประเภทยานพาหนะ:</label>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      className={`type-select-btn ${selectedSlot.type === 'car' ? 'active car-active' : ''}`}
-                      onClick={() => handleUpdateSlotField(selectedSlot.id, 'type', 'car')}
-                    >
-                      <Car className="w-3.5 h-3.5 text-blue-400" />
-                      <span>รถยนต์ (Car)</span>
-                    </button>
-                    <button
-                      type="button"
-                      className={`type-select-btn ${selectedSlot.type === 'motorcycle' ? 'active bike-active' : ''}`}
-                      onClick={() => handleUpdateSlotField(selectedSlot.id, 'type', 'motorcycle')}
-                    >
-                      <Bike className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>มอเตอร์ไซค์ (Bike)</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Edit Occupancy Status (สถานะจำลอง / Test Override) */}
-                <div className="inspector-field">
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
-                    <label style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600 }}>สถานะจำลอง (Simulation):</label>
-                    <span style={{ fontSize: '0.65rem', color: '#64748b' }}>
-                      *ตรวจจับจริงด้วย AI YOLO
-                    </span>
-                  </div>
-                  <div className="flex gap-2 mb-2">
-                    <button
-                      type="button"
-                      className={`occupancy-toggle-btn ${!selectedSlot.occupied ? 'vacant' : ''}`}
-                      onClick={() => handleUpdateSlotField(selectedSlot.id, 'occupied', false)}
-                      title="ทดสอบจำลองเป็นช่องว่าง"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>ว่างพร้อมจอด (Vacant)</span>
-                    </button>
-                    <button
-                      type="button"
-                      className={`occupancy-toggle-btn ${selectedSlot.occupied ? 'occupied' : ''}`}
-                      onClick={() => handleUpdateSlotField(selectedSlot.id, 'occupied', true)}
-                      title="ทดสอบจำลองเป็นมีรถจอด"
-                    >
-                      <X className="w-3.5 h-3.5 text-rose-400" />
-                      <span>มีรถจอด (Occupied)</span>
-                    </button>
-                  </div>
-
-                  {selectedSlot.occupied && (
-                    <input
-                      type="text"
-                      className="inspector-text-input text-xs"
-                      placeholder="ระบุชื่อรุ่น/ทะเบียน (เช่น Sedan ดำ ฮฮ-9988)"
-                      value={selectedSlot.vehicle_name || ''}
-                      onChange={(e) => handleUpdateSlotField(selectedSlot.id, 'vehicle_name', e.target.value)}
-                    />
                   )}
                 </div>
 
-                {/* Coordinate Points Readout */}
-                <div className="inspector-field">
-                  <label>พิกัดจุดมุม (Coordinates X, Y):</label>
-                  <div className="coords-grid">
-                    {selectedSlot.points.map((pt, idx) => (
-                      <div key={idx} className="coord-chip">
-                        <span className="coord-idx">P{idx + 1}:</span>
-                        <span className="font-mono">({pt.x}, {pt.y})</span>
-                      </div>
-                    ))}
+                {/* Purpose Description */}
+                <div className="inspector-desc-box">
+                  กำหนดขอบเขตพื้นที่โซนเพื่อคำนวณ <strong>Pixel Occupancy (%)</strong> แยกตามประเภทรถยนต์และมอเตอร์ไซค์
+                </div>
+
+                {zones.length > 0 ? (
+                  <div className="zone-items-list">
+                    {zones.map((zone, zIdx) => {
+                      const isSelected = selectedZoneId === zone.id
+                      const isBike = zone.type === 'motorcycle' || zone.type === 'bike'
+                      const areaPx = calculatePolygonArea(zone.points)
+                      const areaPct = ((areaPx / (NATIVE_WIDTH * NATIVE_HEIGHT)) * 100).toFixed(1)
+
+                      return (
+                        <div
+                          key={zone.id || zIdx}
+                          className={`zone-item-card ${isSelected ? (isBike ? 'active bike' : 'active car') : ''}`}
+                          onClick={() => setSelectedZoneId(zone.id)}
+                        >
+                          {/* Zone Item Header */}
+                          <div className="zone-item-header">
+                            <div className="zone-item-title-group">
+                              {isBike ? (
+                                <Bike className="w-4 h-4 text-cyan-400 shrink-0" />
+                              ) : (
+                                <Car className="w-4 h-4 text-indigo-400 shrink-0" />
+                              )}
+                              <span className="zone-item-name font-mono">
+                                {zone.name || `โซนที่ ${zIdx + 1}`}
+                              </span>
+                              <span className={`zone-type-badge ${isBike ? 'bike' : 'car'}`}>
+                                {isBike ? 'มอเตอร์ไซค์' : 'รถยนต์'}
+                              </span>
+                            </div>
+
+                            <button
+                              type="button"
+                              className="btn-icon-tiny danger"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDeleteZone(zone.id)
+                              }}
+                              title="ลบโซนนี้"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                            </button>
+                          </div>
+
+                          {/* Zone Metrics */}
+                          <div className="zone-metrics-grid">
+                            <div className="zone-metric-tile">
+                              <span className="zone-metric-label">ขนาดพื้นที่</span>
+                              <span className={`zone-metric-val ${isBike ? 'text-cyan-300' : 'text-indigo-300'}`}>
+                                {areaPx.toLocaleString()} px²
+                              </span>
+                            </div>
+                            <div className="zone-metric-tile">
+                              <span className="zone-metric-label">สัดส่วนภาพ</span>
+                              <span className="zone-metric-val highlight">
+                                {areaPct}%
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Coordinate points (shown when selected) */}
+                          {isSelected && (
+                            <div className="zone-points-section">
+                              <div className="zone-points-header">
+                                <span className="zone-points-title">
+                                  จุดมุม ({zone.points.length} จุด):
+                                </span>
+                                <span className="zone-points-hint">*ลากปรับจุดบนภาพได้</span>
+                              </div>
+                              <div className="zone-points-grid">
+                                {zone.points.map((pt, pIdx) => (
+                                  <div
+                                    key={pIdx}
+                                    className={`zone-point-pill ${isBike ? 'bike' : 'car'}`}
+                                  >
+                                    <span className="pt-id">P{pIdx + 1}:</span>
+                                    <span className="pt-coords">({pt.x}, {pt.y})</span>
+                                    {zone.points.length > 3 && (
+                                      <button
+                                        type="button"
+                                        className="btn-del-pt"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          handleDeleteZonePoint(zone.id, pIdx)
+                                        }}
+                                        title="ลบจุดนี้"
+                                      >
+                                        <X className="w-2.5 h-2.5" />
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+
+                    {/* Step 1 Next Button */}
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        className="btn-step-confirm"
+                        onClick={() => {
+                          saveZonesToStorage(zones, selectedCamId)
+                          saveRoiToServer(selectedCamId, slots, zones)
+                          setSetupStep(2)
+                          showToast(`บันทึก ${zones.length} โซนของ ${activeCam.code} เรียบร้อย! เข้าสู่ขั้นตอนที่ 2`)
+                        }}
+                      >
+                        <span>ยืนยันโซน ({zones.length} โซน) และไปยังขั้นตอนที่ 2</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <Layers className="w-10 h-10 text-indigo-400/50 mx-auto mb-2 animate-pulse" />
+                    <h4 className="text-sm font-bold text-indigo-200 mb-1">ยังไม่ได้กำหนดโซนพื้นที่จอด</h4>
+                    <p className="text-xs text-slate-400 leading-relaxed px-2">
+                      เลือก <strong>"วาดโซนรถยนต์"</strong> หรือ <strong>"วาดโซนมอเตอร์ไซค์"</strong> จากแถบเครื่องมือด้านบน แล้วคลิก 4 จุดบนภาพเพื่อกำหนดขอบเขตพื้นที่ สามารถสร้างได้หลายโซน
+                    </p>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            /* ================================================== */
+            /* STEP 2 INSPECTOR PANE */
+            /* ================================================== */
+            <>
+              {/* Summary KPIs */}
+              <div className="inspector-card">
+                <div className="slot-summary-header">
+                  <div className="inspector-title">
+                    <Layers className="w-4 h-4 text-emerald-400" />
+                    <span>Slot Registry • {activeCam.code} ({slots.length})</span>
+                  </div>
+                  <div className="slot-count-badges">
+                    <span className="mini-badge car">
+                      <Car className="w-3 h-3 text-emerald-400" />
+                      <span>รถยนต์: {slots.filter((s) => s.type !== 'motorcycle' && s.type !== 'bike').length}</span>
+                    </span>
+                    <span className="mini-badge bike">
+                      <Bike className="w-3 h-3 text-cyan-400" />
+                      <span>มอเตอร์ไซค์: {slots.filter((s) => s.type === 'motorcycle' || s.type === 'bike').length}</span>
+                    </span>
                   </div>
                 </div>
 
-                {/* Bounding Box Summary */}
-                <div className="inspector-field">
-                  <label>ขนาด Bounding Box:</label>
-                  <div className="text-xs font-mono text-slate-300 bg-black/40 p-2 rounded border border-white/5 flex justify-between">
-                    <span>X: {selectedSlot.bbox.x} Y: {selectedSlot.bbox.y}</span>
-                    <span>W: {selectedSlot.bbox.width}px H: {selectedSlot.bbox.height}px</span>
+                {/* KPI Metrics Grid */}
+                <div className="zone-metrics-grid">
+                  <div className="zone-metric-tile">
+                    <span className="zone-metric-label">สัดส่วนช่องจอด</span>
+                    <span className="zone-metric-val">
+                      <span className="text-emerald-400">{slots.filter((s) => s.type !== 'motorcycle' && s.type !== 'bike').length} รถ</span>
+                      {' • '}
+                      <span className="text-cyan-400">{slots.filter((s) => s.type === 'motorcycle' || s.type === 'bike').length} มอเตอร์ไซค์</span>
+                    </span>
+                  </div>
+                  <div className="zone-metric-tile">
+                    <span className="zone-metric-label">รหัสเริ่มต้นถัดไป ({drawType === 'motorcycle' ? 'มอไซค์' : 'รถยนต์'})</span>
+                    <span className="zone-metric-val highlight font-mono">
+                      {getNextSlotId()}
+                    </span>
                   </div>
                 </div>
-              </div>
-            ) : (
-              <div className="inspector-card text-center py-6">
-                <MousePointer className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-                <p className="text-xs text-slate-400">
-                  คลิกเลือกช่องจอดในภาพ หรือในรายการด้านล่างเพื่อแก้ไขพิกัดและรหัสช่อง
-                </p>
-              </div>
-            )
-          )}
 
-          {/* Slot List Scroll Area */}
-          <div className="inspector-card flex-1 min-h-0 flex flex-col">
-            <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-              รายการช่องจอดทั้งหมด ({slots.length})
-            </h4>
-
-            <div className="slots-list-scrollable">
-              {slots.map((slot) => (
-                <div
-                  key={slot.id}
-                  className={`slot-item-row ${slot.id === selectedSlotId ? 'active' : ''}`}
-                  onClick={() => setSelectedSlotId(slot.id)}
-                >
-                  <div className="slot-row-meta">
-                    <span className="slot-badge-id font-mono font-bold">
-                      {slot.id}
-                    </span>
-                    <span className={`slot-type-chip ${slot.type === 'motorcycle' || slot.type === 'bike' ? 'bike' : 'car'}`}>
-                      {slot.type === 'motorcycle' || slot.type === 'bike' ? 'มอเตอร์ไซค์' : 'รถยนต์'}
-                    </span>
-                    <span className={`slot-status-chip ${slot.occupied ? 'occupied' : 'vacant'}`}>
-                      {slot.occupied ? 'มีรถ' : 'ว่าง'}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] font-mono text-slate-500">
-                      {slot.points.length} pts
-                    </span>
+                {/* If no motorcycle slots yet, show quick helper button */}
+                {slots.filter((s) => s.type === 'motorcycle' || s.type === 'bike').length === 0 && (
+                  <div className="p-2 rounded-lg bg-cyan-950/40 border border-cyan-500/30 text-xs flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-cyan-300">
+                      <Bike className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>ยังไม่มีช่องมอเตอร์ไซค์ ({activeCam.code})</span>
+                    </div>
                     <button
                       type="button"
-                      className="btn-icon-tiny"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDuplicateSlot(slot)
-                      }}
-                      title="คัดลอก"
+                      onClick={handleAddDefaultBikes}
+                      className="btn-seed-bikes"
                     >
-                      <Copy className="w-3 h-3 text-slate-400 hover:text-white" />
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-icon-tiny hover:text-rose-400"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDeleteSlot(slot.id)
-                      }}
-                      title="ลบ"
-                    >
-                      <Trash2 className="w-3 h-3 text-slate-500 hover:text-rose-400" />
+                      + เพิ่มช่องมอเตอร์ไซค์ทันที
                     </button>
                   </div>
-                </div>
-              ))}
+                )}
+              </div>
 
-              {slots.length === 0 && (
-                <div className="text-center py-8 text-xs text-slate-500">
-                  ยังไม่มีช่องจอด เริ่มวาดด้วยเครื่องมือด้านซ้ายได้ทันที
+              {/* Selected Slot Detailed Inspector */}
+              {selectedSlot ? (
+                <div className="inspector-card active-slot-card">
+                  <div className="inspector-card-header">
+                    <div className="inspector-title">
+                      <span className="font-mono text-base font-bold text-emerald-400">
+                        {selectedSlot.id}
+                      </span>
+                      <span className="text-xs text-slate-400 font-normal">
+                        ({selectedSlot.shape === 'bbox' ? 'Bounding Box' : '4-Point Polygon'})
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        className="btn-icon-tiny"
+                        onClick={() => handleDuplicateSlot(selectedSlot)}
+                        title="คัดลอกช่องนี้"
+                      >
+                        <Copy className="w-3.5 h-3.5 text-blue-400" />
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-icon-tiny danger"
+                        onClick={() => handleDeleteSlot(selectedSlot.id)}
+                        title="ลบช่องนี้"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Edit Slot ID */}
+                  <div className="inspector-field">
+                    <label>รหัสช่องจอด (Slot ID):</label>
+                    <input
+                      type="text"
+                      className="inspector-text-input font-mono"
+                      value={selectedSlot.id}
+                      onChange={(e) => handleUpdateSlotField(selectedSlot.id, 'id', e.target.value)}
+                    />
+                  </div>
+
+                  {/* Edit Vehicle Type */}
+                  <div className="inspector-field">
+                    <label>ประเภทยานพาหนะ:</label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        className={`type-select-btn ${selectedSlot.type === 'car' ? 'active car-active' : ''}`}
+                        onClick={() => handleUpdateSlotField(selectedSlot.id, 'type', 'car')}
+                      >
+                        <Car className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>รถยนต์ (Car)</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`type-select-btn ${selectedSlot.type === 'motorcycle' ? 'active bike-active' : ''}`}
+                        onClick={() => handleUpdateSlotField(selectedSlot.id, 'type', 'motorcycle')}
+                      >
+                        <Bike className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>มอเตอร์ไซค์ (Bike)</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Edit Occupancy Status (สถานะจำลอง / Test Override) */}
+                  <div className="inspector-field">
+                    <div className="flex items-center justify-between mb-1">
+                      <label style={{ margin: 0, fontSize: '0.72rem', fontWeight: 600 }}>สถานะจำลอง (Simulation):</label>
+                      <span className="text-[10px] text-slate-500">
+                        *ตรวจจับจริงด้วย AI YOLO
+                      </span>
+                    </div>
+                    <div className="flex gap-2 mb-2">
+                      <button
+                        type="button"
+                        className={`occupancy-toggle-btn ${!selectedSlot.occupied ? 'vacant' : ''}`}
+                        onClick={() => handleUpdateSlotField(selectedSlot.id, 'occupied', false)}
+                        title="ทดสอบจำลองเป็นช่องว่าง"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>ว่างพร้อมจอด (Vacant)</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`occupancy-toggle-btn ${selectedSlot.occupied ? 'occupied' : ''}`}
+                        onClick={() => handleUpdateSlotField(selectedSlot.id, 'occupied', true)}
+                        title="ทดสอบจำลองเป็นมีรถจอด"
+                      >
+                        <X className="w-3.5 h-3.5 text-rose-400" />
+                        <span>มีรถจอด (Occupied)</span>
+                      </button>
+                    </div>
+
+                    {selectedSlot.occupied && (
+                      <input
+                        type="text"
+                        className="inspector-text-input text-xs"
+                        placeholder="ระบุชื่อรุ่น/ทะเบียน (เช่น Sedan ดำ ฮฮ-9988)"
+                        value={selectedSlot.vehicle_name || ''}
+                        onChange={(e) => handleUpdateSlotField(selectedSlot.id, 'vehicle_name', e.target.value)}
+                      />
+                    )}
+                  </div>
+
+                  {/* Coordinate Points Readout */}
+                  <div className="inspector-field">
+                    <label>พิกัดจุดมุม (Coordinates X, Y):</label>
+                    <div className="coords-grid">
+                      {selectedSlot.points.map((pt, idx) => (
+                        <div key={idx} className="coord-chip">
+                          <span className="coord-idx">P{idx + 1}:</span>
+                          <span className="font-mono">({pt.x}, {pt.y})</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Bounding Box Summary */}
+                  <div className="inspector-field" style={{ marginBottom: 0 }}>
+                    <label>ขนาด Bounding Box:</label>
+                    <div className="text-xs font-mono text-slate-300 bg-black/40 p-2 rounded border border-white/5 flex justify-between">
+                      <span>X: {selectedSlot.bbox.x} Y: {selectedSlot.bbox.y}</span>
+                      <span>W: {selectedSlot.bbox.width}px H: {selectedSlot.bbox.height}px</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="inspector-card text-center py-5">
+                  <MousePointer className="w-7 h-7 text-slate-500 mx-auto mb-2" />
+                  <h4 className="text-xs font-bold text-slate-200 mb-1">เลือกช่องจอดเพื่อแก้ไข</h4>
+                  <p className="text-[11px] text-slate-400 leading-relaxed px-3">
+                    คลิกเลือกช่องจอดบนภาพ หรือในรายการด้านล่างเพื่อแก้ไขพิกัดและรหัสช่อง
+                  </p>
                 </div>
               )}
-            </div>
-          </div>
+
+              {/* Slot List Scroll Area */}
+              <div className="inspector-card flex-1 min-h-0 flex flex-col">
+                <div className="inspector-card-header">
+                  <div className="inspector-title">
+                    <span>รายการช่องจอดทั้งหมด ({slots.length})</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400">
+                    คลิกแถวเพื่อดูรายละเอียด
+                  </span>
+                </div>
+
+                <div className="slots-list-scrollable">
+                  {slots.map((slot) => {
+                    const isBike = slot.type === 'motorcycle' || slot.type === 'bike'
+                    const isOccupied = !!slot.occupied
+                    return (
+                      <div
+                        key={slot.id}
+                        className={`slot-item-row ${slot.id === selectedSlotId ? 'active' : ''}`}
+                        onClick={() => setSelectedSlotId(slot.id)}
+                      >
+                        <div className="slot-row-meta">
+                          <span className={`slot-badge-id ${isBike ? 'bike' : ''}`}>
+                            {slot.id}
+                          </span>
+                          <span className={`slot-type-chip ${isBike ? 'bike' : 'car'}`}>
+                            {isBike ? (
+                              <>
+                                <Bike className="w-3 h-3 text-cyan-400" />
+                                <span>มอไซค์</span>
+                              </>
+                            ) : (
+                              <>
+                                <Car className="w-3 h-3 text-emerald-400" />
+                                <span>รถยนต์</span>
+                              </>
+                            )}
+                          </span>
+                          <span className={`slot-status-chip ${isOccupied ? 'occupied' : 'vacant'}`}>
+                            {isOccupied ? 'มีรถ' : 'ว่าง'}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-mono text-slate-500">
+                            {slot.points.length} pts
+                          </span>
+                          <button
+                            type="button"
+                            className="btn-icon-tiny"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDuplicateSlot(slot)
+                            }}
+                            title="คัดลอก"
+                          >
+                            <Copy className="w-3 h-3 text-blue-400" />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-icon-tiny danger"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteSlot(slot.id)
+                            }}
+                            title="ลบ"
+                          >
+                            <Trash2 className="w-3 h-3 text-rose-400" />
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
       {/* Export JSON Modal */}
       {showExportModal && (
-        <div className="camera-modal-backdrop" onClick={() => setShowExportModal(false)}>
-          <div
-            className="camera-modal-dialog max-w-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modal-header-bar">
-              <div className="flex items-center gap-2">
-                <Download className="w-5 h-5 text-emerald-400" />
-                <h3 className="modal-title">Export Parking Slots ROI (JSON)</h3>
-              </div>
+        <div className="roi-modal-backdrop" onClick={() => setShowExportModal(false)}>
+          <div className="roi-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="roi-modal-header">
+              <h3 className="text-base font-bold text-white">Export ROI Coordinates (JSON)</h3>
               <button
                 type="button"
-                className="btn-modal-close"
+                className="btn-icon-action"
                 onClick={() => setShowExportModal(false)}
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
-
-            <div className="p-5">
-              <p className="text-xs text-slate-300 mb-3">
-                พิกัดช่องจอดพร้อมใช้งานสำหรับระบบ AI Inference, FastAPI, และโมเดลทำนายการครอบครองที่จอด:
-              </p>
-
-              <pre className="json-preview-box">
-                {JSON.stringify(getExportData(), null, 2)}
-              </pre>
-
-              <div className="flex items-center justify-between mt-4">
-                <span className="text-xs text-slate-400">
-                  บันทึกแล้วใน Browser LocalStorage อัตโนมัติ
-                </span>
-
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleCopyJson}
-                    className="btn-secondary-action"
-                  >
-                    <Copy className="w-4 h-4 text-cyan-400" />
-                    <span>Copy JSON</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleDownloadJson}
-                    className="btn-save-setup flex items-center gap-1.5"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>Download File (.json)</span>
-                  </button>
-                </div>
-              </div>
+            <p className="text-xs text-slate-400 mb-3">
+              ดาวน์โหลดพิกัดช่องจอดทั้งหมด ({slots.length} ช่อง) ของกล้อง <strong>{activeCam.code}</strong> สำหรับนำไปใช้กับโมเดลตรวจจับ
+            </p>
+            <textarea
+              readOnly
+              className="roi-json-preview font-mono text-xs"
+              value={JSON.stringify(
+                {
+                  camera_id: selectedCamId,
+                  name: activeCam.name,
+                  location: activeCam.location,
+                  capacity: slots.length,
+                  zones: zones,
+                  polygon: zones.length > 0 ? zones[0].points.map((p) => [p.x, p.y]) : [],
+                  slots: slots
+                },
+                null,
+                2
+              )}
+            />
+            <div className="roi-modal-footer">
+              <button
+                type="button"
+                className="btn-setup-back"
+                onClick={() => setShowExportModal(false)}
+              >
+                ปิด
+              </button>
+              <button
+                type="button"
+                className="btn-setup-export"
+                onClick={handleDownloadJson}
+              >
+                <Download className="w-4 h-4" />
+                <span>ดาวน์โหลดไฟล์ .json</span>
+              </button>
             </div>
           </div>
         </div>
@@ -2051,54 +2158,43 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
 
       {/* Import JSON Modal */}
       {showImportModal && (
-        <div className="camera-modal-backdrop" onClick={() => setShowImportModal(false)}>
-          <div
-            className="camera-modal-dialog max-w-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modal-header-bar">
-              <div className="flex items-center gap-2">
-                <Upload className="w-5 h-5 text-cyan-400" />
-                <h3 className="modal-title">Import Parking Slots ROI</h3>
-              </div>
+        <div className="roi-modal-backdrop" onClick={() => setShowImportModal(false)}>
+          <div className="roi-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="roi-modal-header">
+              <h3 className="text-base font-bold text-white">Import ROI Coordinates (JSON)</h3>
               <button
                 type="button"
-                className="btn-modal-close"
+                className="btn-icon-action"
                 onClick={() => setShowImportModal(false)}
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
-
-            <div className="p-5">
-              <p className="text-xs text-slate-300 mb-2">
-                วางข้อความ JSON พิกัดช่องจอดที่คุณบันทึกไว้:
-              </p>
-
-              <textarea
-                className="w-full h-48 bg-black/60 border border-slate-700 rounded-lg p-3 text-xs font-mono text-white focus:border-cyan-500 focus:outline-none"
-                placeholder='{"slots": [{"slot_id": "A01", "type": "car", "points": [...]}]}'
-                value={importJsonText}
-                onChange={(e) => setImportJsonText(e.target.value)}
-              />
-
-              <div className="flex justify-end gap-2 mt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowImportModal(false)}
-                  className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="button"
-                  onClick={handleImportJson}
-                  disabled={!importJsonText.trim()}
-                  className="btn-save-setup disabled:opacity-50"
-                >
-                  นำเข้าพิกัด
-                </button>
-              </div>
+            <p className="text-xs text-slate-400 mb-2">
+              วาง JSON พิกัดช่องจอดที่บันทึกไว้สำหรับกล้อง <strong>{activeCam.code}</strong>
+            </p>
+            <textarea
+              className="roi-json-preview font-mono text-xs"
+              placeholder='วาง JSON ที่นี่ เช่น: { "slots": [...] } หรือ [...]'
+              value={importJsonText}
+              onChange={(e) => setImportJsonText(e.target.value)}
+            />
+            <div className="roi-modal-footer">
+              <button
+                type="button"
+                className="btn-setup-back"
+                onClick={() => setShowImportModal(false)}
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                className="btn-setup-export"
+                onClick={handleImportJson}
+              >
+                <Upload className="w-4 h-4" />
+                <span>นำเข้าพิกัด</span>
+              </button>
             </div>
           </div>
         </div>

@@ -223,17 +223,9 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
   const cam2Live = liveData?.front_dept_2 || liveData?.cam2
   const cam3Live = liveData?.side_dept || liveData?.cam3
 
-  const cam1Image = cam1CustomImage || (cam1Live
-    ? `${INGESTION_API}/api/latest?location=front_dept_1&image=true&t=${imgKey}`
-    : currentRecord.image_url)
-
-  const cam2Image = cam2CustomImage || (cam2Live
-    ? `${INGESTION_API}/api/latest?location=front_dept_2&image=true&t=${imgKey}`
-    : dumpRecords[8]?.image_url || '/dump_data/images/2026-09-22_18-00-42_303.jpg')
-
-  const cam3Image = cam3CustomImage || (cam3Live
-    ? `${INGESTION_API}/api/latest?location=side_dept&image=true&t=${imgKey}`
-    : dumpRecords[18]?.image_url || '/dump_data/images/2026-09-22_18-01-33_173.jpg')
+  const cam1Image = cam1CustomImage || `${INGESTION_API}/api/latest?camera_id=cam1&image=true&t=${imgKey}`
+  const cam2Image = cam2CustomImage || `${INGESTION_API}/api/latest?camera_id=cam2&image=true&t=${imgKey}`
+  const cam3Image = cam3CustomImage || `${INGESTION_API}/api/latest?camera_id=cam3&image=true&t=${imgKey}`
 
   // Camera Data incorporating real live streams, telemetry & shared slot registry
   const cameras = [
@@ -242,30 +234,28 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
       camId: 'cam1',
       slotCode: 'CAM-01',
       name: 'หน้าภาค (ลานหน้าภาควิชาคอมพิวเตอร์ 1)',
-      subtitle: 'Zone A - Main Front Gate',
+      subtitle: 'Zone A - หน้าภาค 1 (รถยนต์)',
       device: 'Edge Node (ESP32-CAM / Cam1)',
       zone: 'zone_a',
-      ip: cam1Live?.client_ip || currentRecord.client_ip || '172.30.94.142',
-      minioKey: cam1Live ? `s3://raw-datasets/dataset/cam1/${cam1Live.partition?.date}/${cam1Live.partition?.hour}/images/${cam1Live.filename}` : `s3://raw-datasets/cam1/images/2026-09-22/18/${currentRecord.filename}`,
+      ip: cam1Live?.client_ip || '172.30.91.44',
+      minioKey: cam1Live?.minio_url ? `s3://raw-datasets/${cam1Live.minio_url}` : 's3://raw-datasets/dataset/cam1/latest.jpg',
       fps: '0.2 fps (ทุก 5s)',
       status: 'online',
       latency: '28ms',
       isReal: true,
       imageUrl: cam1Image,
-      snapshotTimestamp: cam1Live?.timestamp ? cam1Live.timestamp.replace('T', ' ').substring(0, 19) : currentRecord.local_time,
-      realTelemetry: cam1Live
-        ? {
-            chip_temp_c: cam1Live.telemetry?.chip_temp_c ?? 42.5,
-            uptime_sec: cam1Live.telemetry?.uptime_sec ?? 120,
-            free_heap: cam1Live.telemetry?.free_heap ?? 154200,
-            free_psram: cam1Live.telemetry?.free_psram ?? 3419476,
-            wifi_rssi_dbm: cam1Live.telemetry?.wifi_rssi_dbm ?? cam1Live.telemetry?.rssi ?? -60,
-            light_aec_value: cam1Live.telemetry?.aec_value ?? 294,
-            client_ip: cam1Live.client_ip,
-            filename: cam1Live.filename,
-            status: 'ONLINE (LIVE STREAM)'
-          }
-        : currentRecord,
+      snapshotTimestamp: cam1Live?.timestamp ? cam1Live.timestamp.replace('T', ' ').substring(0, 19) : 'ภาพสดเรียลไทม์ (Live Stream)',
+      realTelemetry: {
+        chip_temp_c: cam1Live?.telemetry?.chip_temp_c ?? cam1Live?.chip_temp_c ?? 53.3,
+        uptime_sec: cam1Live?.telemetry?.uptime_sec ?? 2139,
+        free_heap: cam1Live?.telemetry?.free_heap ?? 154200,
+        free_psram: cam1Live?.telemetry?.free_psram ?? 3419476,
+        wifi_rssi_dbm: cam1Live?.telemetry?.wifi_rssi_dbm ?? cam1Live?.wifi_rssi_dbm ?? -65,
+        light_aec_value: cam1Live?.telemetry?.aec_value ?? 294,
+        client_ip: cam1Live?.client_ip || '172.30.91.44',
+        filename: cam1Live?.filename || 'cam1_live_stream.jpg',
+        status: 'ONLINE (LIVE STREAM)'
+      },
       car: cam1Counts.car,
       bike: cam1Counts.bike,
       vacancyChance15m:
@@ -289,36 +279,28 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
       camId: 'cam2',
       slotCode: 'CAM-02',
       name: 'ลานจอดรถในร่มข้างอาคาร (หน้าภาค 2)',
-      subtitle: 'Zone B - Covered Lot',
+      subtitle: 'Zone B - หน้าภาค 2 (รถยนต์)',
       device: 'Edge Node (ESP32-CAM / Cam2)',
       zone: 'zone_b',
-      ip: cam2Live?.client_ip || '172.30.94.135',
-      minioKey: cam2Live ? `s3://raw-datasets/dataset/cam2/${cam2Live.partition?.date}/${cam2Live.partition?.hour}/images/${cam2Live.filename}` : 'parking-raw/cam2_latest.jpg',
+      ip: cam2Live?.client_ip || '172.30.92.108',
+      minioKey: cam2Live?.minio_url ? `s3://raw-datasets/${cam2Live.minio_url}` : 's3://raw-datasets/dataset/cam2/latest.jpg',
       fps: '0.2 fps (ทุก 5s)',
       status: 'online',
       latency: '31ms',
       isReal: true,
       imageUrl: cam2Image,
-      snapshotTimestamp: cam2Live?.timestamp ? cam2Live.timestamp.replace('T', ' ').substring(0, 19) : '2026-09-25 15:27:48',
-      realTelemetry: cam2Live
-        ? {
-            chip_temp_c: cam2Live.telemetry?.chip_temp_c ?? 62.8,
-            uptime_sec: cam2Live.telemetry?.uptime_sec ?? 9,
-            free_heap: cam2Live.telemetry?.free_heap ?? 155068,
-            free_psram: cam2Live.telemetry?.free_psram ?? 3417932,
-            wifi_rssi_dbm: cam2Live.telemetry?.wifi_rssi_dbm ?? cam2Live.telemetry?.rssi ?? -78,
-            light_aec_value: cam2Live.telemetry?.aec_value ?? 196,
-            client_ip: cam2Live.client_ip,
-            filename: cam2Live.filename,
-            status: 'ONLINE (LIVE STREAM)'
-          }
-        : {
-            chip_temp_c: 62.8,
-            uptime_sec: 9,
-            free_heap: 155068,
-            wifi_rssi_dbm: -78,
-            status: 'ONLINE (LIVE)'
-          },
+      snapshotTimestamp: cam2Live?.timestamp ? cam2Live.timestamp.replace('T', ' ').substring(0, 19) : 'ภาพสดเรียลไทม์ (Live Stream)',
+      realTelemetry: {
+        chip_temp_c: cam2Live?.telemetry?.chip_temp_c ?? cam2Live?.chip_temp_c ?? 54.1,
+        uptime_sec: cam2Live?.telemetry?.uptime_sec ?? 1840,
+        free_heap: cam2Live?.telemetry?.free_heap ?? 155068,
+        free_psram: cam2Live?.telemetry?.free_psram ?? 3417932,
+        wifi_rssi_dbm: cam2Live?.telemetry?.wifi_rssi_dbm ?? cam2Live?.wifi_rssi_dbm ?? -68,
+        light_aec_value: cam2Live?.telemetry?.aec_value ?? 196,
+        client_ip: cam2Live?.client_ip || '172.30.92.108',
+        filename: cam2Live?.filename || 'cam2_live_stream.jpg',
+        status: 'ONLINE (LIVE STREAM)'
+      },
       car: cam2Counts.car,
       bike: cam2Counts.bike,
       vacancyChance15m:
@@ -342,36 +324,28 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
       camId: 'cam3',
       slotCode: 'CAM-03',
       name: 'ลานจอดด้านหลังภาควิชา (ข้างภาคคอม)',
-      subtitle: 'Zone C - Rear Faculty Lot',
+      subtitle: 'Zone C - ข้างภาคคอม (มอเตอร์ไซค์)',
       device: 'Edge Node (ESP32-CAM / Cam3)',
       zone: 'zone_c',
       ip: cam3Live?.client_ip || '172.30.92.100',
-      minioKey: cam3Live ? `s3://raw-datasets/dataset/cam3/${cam3Live.partition?.date}/${cam3Live.partition?.hour}/images/${cam3Live.filename}` : 'parking-raw/cam3_latest.jpg',
+      minioKey: cam3Live?.minio_url ? `s3://raw-datasets/${cam3Live.minio_url}` : 's3://raw-datasets/dataset/cam3/latest.jpg',
       fps: '0.2 fps (ทุก 5s)',
       status: 'online',
       latency: '36ms',
       isReal: true,
       imageUrl: cam3Image,
-      snapshotTimestamp: cam3Live?.timestamp ? cam3Live.timestamp.replace('T', ' ').substring(0, 19) : '2026-09-25 14:46:36',
-      realTelemetry: cam3Live
-        ? {
-            chip_temp_c: cam3Live.telemetry?.chip_temp_c ?? 42.5,
-            uptime_sec: cam3Live.telemetry?.uptime_sec ?? 120,
-            free_heap: cam3Live.telemetry?.free_heap ?? 154200,
-            free_psram: cam3Live.telemetry?.free_psram ?? 3419476,
-            wifi_rssi_dbm: cam3Live.telemetry?.wifi_rssi_dbm ?? cam3Live.telemetry?.rssi ?? -60,
-            light_aec_value: cam3Live.telemetry?.aec_value ?? 490,
-            client_ip: cam3Live.client_ip,
-            filename: cam3Live.filename,
-            status: 'ONLINE (LIVE STREAM)'
-          }
-        : {
-            chip_temp_c: 42.5,
-            uptime_sec: 120,
-            free_heap: 154200,
-            wifi_rssi_dbm: -60,
-            status: 'ONLINE (LIVE)'
-          },
+      snapshotTimestamp: cam3Live?.timestamp ? cam3Live.timestamp.replace('T', ' ').substring(0, 19) : 'ภาพสดเรียลไทม์ (Live Stream)',
+      realTelemetry: {
+        chip_temp_c: cam3Live?.telemetry?.chip_temp_c ?? cam3Live?.chip_temp_c ?? 51.7,
+        uptime_sec: cam3Live?.telemetry?.uptime_sec ?? 1920,
+        free_heap: cam3Live?.telemetry?.free_heap ?? 154200,
+        free_psram: cam3Live?.telemetry?.free_psram ?? 3419476,
+        wifi_rssi_dbm: cam3Live?.telemetry?.wifi_rssi_dbm ?? cam3Live?.wifi_rssi_dbm ?? -62,
+        light_aec_value: cam3Live?.telemetry?.aec_value ?? 490,
+        client_ip: cam3Live?.client_ip || '172.30.92.100',
+        filename: cam3Live?.filename || 'cam3_live_stream.jpg',
+        status: 'ONLINE (LIVE STREAM)'
+      },
       car: cam3Counts.car,
       bike: cam3Counts.bike,
       vacancyChance15m:
@@ -646,101 +620,70 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
           </div>
 
           <div className="zone-progress-list">
-            <div className="zone-progress-item">
-              <div className="zone-progress-header">
-                <span className="font-medium text-xs text-white">Zone A (ลานหน้าตึก)</span>
-                <span className="text-xs text-emerald-400 font-bold">
-                  รถยนต์: {cam1Counts.car.free}/{cam1Counts.car.total} | มอเตอร์ไซค์: {cam1Counts.bike.free}/{cam1Counts.bike.total} ว่าง (
-                  {cam1Counts.car.total + cam1Counts.bike.total > 0
-                    ? Math.round(
-                        ((cam1Counts.car.occupied + cam1Counts.bike.occupied) /
-                          (cam1Counts.car.total + cam1Counts.bike.total)) *
-                          100
-                      )
-                    : 0}% จอดแล้ว)
-                </span>
-              </div>
-              <div className="progress-track">
-                <div
-                  className="progress-fill bg-gradient-to-r from-emerald-500 to-blue-500"
-                  style={{
-                    width: `${
-                      cam1Counts.car.total + cam1Counts.bike.total > 0
-                        ? Math.round(
-                            ((cam1Counts.car.occupied + cam1Counts.bike.occupied) /
-                              (cam1Counts.car.total + cam1Counts.bike.total)) *
-                              100
-                          )
-                        : 0
-                    }%`
-                  }}
-                ></div>
-              </div>
-            </div>
+            {[
+              {
+                code: 'CAM-01',
+                zone: 'Zone A',
+                name: 'ลานหน้าตึก',
+                counts: cam1Counts,
+                colorClass: 'emerald'
+              },
+              {
+                code: 'CAM-02',
+                zone: 'Zone B',
+                name: 'ลานในร่มข้างตึก',
+                counts: cam2Counts,
+                colorClass: 'amber'
+              },
+              {
+                code: 'CAM-03',
+                zone: 'Zone C',
+                name: 'ลานหลังตึกบุคลากร',
+                counts: cam3Counts,
+                colorClass: 'cyan'
+              }
+            ].map((z) => {
+              const totalSlots = z.counts.car.total + z.counts.bike.total
+              const occupiedSlots = z.counts.car.occupied + z.counts.bike.occupied
+              const occPct = totalSlots > 0 ? Math.round((occupiedSlots / totalSlots) * 100) : 0
+              const status = occPct >= 80 ? 'full' : occPct >= 40 ? 'moderate' : 'available'
 
-            <div className="zone-progress-item">
-              <div className="zone-progress-header">
-                <span className="font-medium text-xs text-white">Zone B (ลานในร่มข้างตึก)</span>
-                <span className="text-xs text-amber-400 font-bold">
-                  รถยนต์: {cam2Counts.car.free}/{cam2Counts.car.total} | มอเตอร์ไซค์: {cam2Counts.bike.free}/{cam2Counts.bike.total} ว่าง (
-                  {cam2Counts.car.total + cam2Counts.bike.total > 0
-                    ? Math.round(
-                        ((cam2Counts.car.occupied + cam2Counts.bike.occupied) /
-                          (cam2Counts.car.total + cam2Counts.bike.total)) *
-                          100
-                      )
-                    : 0}% จอดแล้ว)
-                </span>
-              </div>
-              <div className="progress-track">
-                <div
-                  className="progress-fill bg-gradient-to-r from-amber-500 to-rose-500"
-                  style={{
-                    width: `${
-                      cam2Counts.car.total + cam2Counts.bike.total > 0
-                        ? Math.round(
-                            ((cam2Counts.car.occupied + cam2Counts.bike.occupied) /
-                              (cam2Counts.car.total + cam2Counts.bike.total)) *
-                              100
-                          )
-                        : 0
-                    }%`
-                  }}
-                ></div>
-              </div>
-            </div>
+              return (
+                <div className="zone-progress-item-card" key={z.code}>
+                  <div className="zone-item-header">
+                    <div className="zone-title-group">
+                      <span className="zone-code-tag">{z.zone}</span>
+                      <span className="zone-location-name font-bold">{z.name}</span>
+                      <span className="text-[10px] text-slate-500 font-mono">({z.code})</span>
+                    </div>
+                    <div className="zone-occupancy-pill">
+                      <span className={`status-dot ${status}`}></span>
+                      <span className="pct-text font-mono font-bold text-slate-200">{occPct}% จอดแล้ว</span>
+                    </div>
+                  </div>
 
-            <div className="zone-progress-item">
-              <div className="zone-progress-header">
-                <span className="font-medium text-xs text-white">Zone C (ลานหลังตึกบุคลากร)</span>
-                <span className="text-xs text-blue-400 font-bold">
-                  รถยนต์: {cam3Counts.car.free}/{cam3Counts.car.total} | มอเตอร์ไซค์: {cam3Counts.bike.free}/{cam3Counts.bike.total} ว่าง (
-                  {cam3Counts.car.total + cam3Counts.bike.total > 0
-                    ? Math.round(
-                        ((cam3Counts.car.occupied + cam3Counts.bike.occupied) /
-                          (cam3Counts.car.total + cam3Counts.bike.total)) *
-                          100
-                      )
-                    : 0}% จอดแล้ว)
-                </span>
-              </div>
-              <div className="progress-track">
-                <div
-                  className="progress-fill bg-gradient-to-r from-blue-500 to-indigo-500"
-                  style={{
-                    width: `${
-                      cam3Counts.car.total + cam3Counts.bike.total > 0
-                        ? Math.round(
-                            ((cam3Counts.car.occupied + cam3Counts.bike.occupied) /
-                              (cam3Counts.car.total + cam3Counts.bike.total)) *
-                              100
-                          )
-                        : 0
-                    }%`
-                  }}
-                ></div>
-              </div>
-            </div>
+                  <div className="zone-breakdown-pills">
+                    <div className="breakdown-pill car">
+                      <Car className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span className="pill-label">รถยนต์:</span>
+                      <span className="pill-val font-mono font-bold">{z.counts.car.free}/{z.counts.car.total} ว่าง</span>
+                    </div>
+                    <div className="breakdown-pill bike">
+                      <Bike className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                      <span className="pill-label">มอเตอร์ไซค์:</span>
+                      <span className="pill-val font-mono font-bold">{z.counts.bike.free}/{z.counts.bike.total} ว่าง</span>
+                    </div>
+                  </div>
+
+                  <div className="progress-track">
+                    <div
+                      className={`progress-fill ${z.colorClass}`}
+                      style={{ width: `${occPct}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
 
           {/* Quick Metrics */}

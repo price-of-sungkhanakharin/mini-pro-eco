@@ -659,14 +659,220 @@ def latest():
         }
     })
 
+def db_get_parking_templates(cam_id=None):
+    """Retrieve parking templates from PostgreSQL parking_templates table."""
+    conn = get_pg_connection()
+    if not conn:
+        return None
+    try:
+        with conn.cursor() as cur:
+            if cam_id:
+                cur.execute(
+                    "SELECT camera_id, location_name, vehicle_type, total_capacity, zone_polygon, slots, frame_width, frame_height, is_active, updated_at FROM parking_templates WHERE camera_id = %s LIMIT 1",
+                    (cam_id,)
+                )
+                row = cur.fetchone()
+                if row:
+                    return {
+                        row[0]: {
+                            "camera_id": row[0],
+                            "name": row[1],
+                            "vehicle_type": row[2],
+                            "capacity": row[3],
+                            "polygon": row[4],
+                            "zones": row[4],
+                            "slots": row[5],
+                            "frame_width": row[6],
+                            "frame_height": row[7],
+                            "is_active": row[8],
+                            "updated_at": row[9].isoformat() if row[9] else None,
+                        }
+                    }
+                return {}
+            else:
+                cur.execute(
+                    "SELECT camera_id, location_name, vehicle_type, total_capacity, zone_polygon, slots, frame_width, frame_height, is_active, updated_at FROM parking_templates ORDER BY camera_id"
+                )
+                rows = cur.fetchall()
+                result = {}
+                for row in rows:
+                    result[row[0]] = {
+                        "camera_id": row[0],
+                        "name": row[1],
+                        "vehicle_type": row[2],
+                        "capacity": row[3],
+                        "polygon": row[4],
+                        "zones": row[4],
+                        "slots": row[5],
+                        "frame_width": row[6],
+                        "frame_height": row[7],
+                        "is_active": row[8],
+                        "updated_at": row[9].isoformat() if row[9] else None,
+                    }
+                return result
+    except Exception as e:
+        logger.error("Error reading parking_templates from PostgreSQL: %s", e)
+        return None
+    finally:
+        conn.close()
+
+def db_save_parking_template(cam_id, payload):
+    """Upsert parking template into PostgreSQL parking_templates table."""
+    conn = get_pg_connection()
+    if not conn:
+        return False
+    try:
+        with conn.cursor() as cur:
+            name = payload.get("name") or f"Camera {cam_id}"
+            slots = payload.get("slots", [])
+            capacity = int(payload.get("capacity", len(slots)))
+            vehicle_type = payload.get("vehicle_type") or ("motorcycle" if cam_id == "cam3" or "bike" in name.lower() or "มอเตอร์ไซค์" in name else "car")
+            polygon = payload.get("zones") if payload.get("zones") is not None else payload.get("polygon", [])
+
+            cur.execute("""
+                INSERT INTO parking_templates (
+                    camera_id, location_name, vehicle_type, total_capacity,
+                    zone_polygon, slots, frame_width, frame_height, is_active, updated_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, 1600, 1200, TRUE, NOW())
+                ON CONFLICT (camera_id) DO UPDATE SET
+                    location_name = EXCLUDED.location_name,
+                    vehicle_type = EXCLUDED.vehicle_type,
+                    total_capacity = EXCLUDED.total_capacity,
+                    zone_polygon = EXCLUDED.zone_polygon,
+                    slots = EXCLUDED.slots,
+                    frame_width = EXCLUDED.frame_width,
+                    frame_height = EXCLUDED.frame_height,
+                    is_active = EXCLUDED.is_active,
+                    updated_at = NOW();
+            """, (cam_id, name, vehicle_type, capacity, Json(polygon), Json(slots)))
+
+            # Also initialize/update park_status
+            occupied_slots = [s["id"] for s in slots if s.get("occupied")]
+            available_slots = [s["id"] for s in slots if not s.get("occupied")]
+            occupied_count = len(occupied_slots)
+            vacant_count = len(available_slots)
+            total_slots = len(slots) if len(slots) > 0 else max(capacity, 1)
+            occupancy_pct = round((occupied_count / max(total_slots, 1)) * 100, 1)
+            status_level = "FULL" if occupancy_pct >= 90 else "MODERATE" if occupancy_pct >= 60 else "AVAILABLE"
+
+            cur.execute("""
+                INSERT INTO park_status (
+                    camera_id, location_name, vehicle_type, total_capacity,
+                    occupied_count, vacant_count, occupancy_rate_pct, zone_pixel_occupancy_pct,
+                    status_level, available_slot_ids, occupied_slot_ids, slots_detail,
+                    latest_image_url, updated_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, 0.0, %s, %s, %s, %s, %s, NOW())
+                ON CONFLICT (camera_id) DO UPDATE SET
+                    location_name = EXCLUDED.location_name,
+                    vehicle_type = EXCLUDED.vehicle_type,
+                    total_capacity = EXCLUDED.total_capacity,
+                    occupied_count = EXCLUDED.occupied_count,
+                    vacant_count = EXCLUDED.vacant_count,
+                    occupancy_rate_pct = EXCLUDED.occupancy_rate_pct,
+                    status_level = EXCLUDED.status_level,
+                    available_slot_ids = EXCLUDED.available_slot_ids,
+                    occupied_slot_ids = EXCLUDED.occupied_slot_ids,
+                    slots_detail = EXCLUDED.slots_detail,
+                    updated_at = NOW();
+            """, (
+                cam_id, name, vehicle_type, total_slots,
+                occupied_count, vacant_count, occupancy_pct, status_level,
+                Json(available_slots), Json(occupied_slots), Json(slots),
+                f"/api/latest/{cam_id}"
+            ))
+        return True
+    except Exception as e:
+        logger.error("Error saving parking_template to PostgreSQL: %s", e)
+        return False
+    finally:
+        conn.close()
+
+def db_get_park_status(cam_id=None):
+    """Retrieve real-time parking status from park_status table."""
+    conn = get_pg_connection()
+    if not conn:
+        return None
+    try:
+        with conn.cursor() as cur:
+            if cam_id:
+                cur.execute("""
+                    SELECT camera_id, location_name, vehicle_type, total_capacity,
+                           occupied_count, vacant_count, occupancy_rate_pct, zone_pixel_occupancy_pct,
+                           status_level, available_slot_ids, occupied_slot_ids, slots_detail,
+                           latest_image_url, updated_at
+                    FROM park_status WHERE camera_id = %s LIMIT 1
+                """, (cam_id,))
+                row = cur.fetchone()
+                if row:
+                    return {
+                        "camera_id": row[0],
+                        "location_name": row[1],
+                        "vehicle_type": row[2],
+                        "total_capacity": row[3],
+                        "occupied_count": row[4],
+                        "vacant_count": row[5],
+                        "occupancy_rate_pct": row[6],
+                        "zone_pixel_occupancy_pct": row[7],
+                        "status_level": row[8],
+                        "available_slot_ids": row[9] or [],
+                        "occupied_slot_ids": row[10] or [],
+                        "slots_detail": row[11] or [],
+                        "latest_image_url": row[12],
+                        "updated_at": row[13].isoformat() if row[13] else None
+                    }
+                return None
+            else:
+                cur.execute("""
+                    SELECT camera_id, location_name, vehicle_type, total_capacity,
+                           occupied_count, vacant_count, occupancy_rate_pct, zone_pixel_occupancy_pct,
+                           status_level, available_slot_ids, occupied_slot_ids, slots_detail,
+                           latest_image_url, updated_at
+                    FROM park_status ORDER BY camera_id
+                """)
+                rows = cur.fetchall()
+                results = []
+                for row in rows:
+                    results.append({
+                        "camera_id": row[0],
+                        "location_name": row[1],
+                        "vehicle_type": row[2],
+                        "total_capacity": row[3],
+                        "occupied_count": row[4],
+                        "vacant_count": row[5],
+                        "occupancy_rate_pct": row[6],
+                        "zone_pixel_occupancy_pct": row[7],
+                        "status_level": row[8],
+                        "available_slot_ids": row[9] or [],
+                        "occupied_slot_ids": row[10] or [],
+                        "slots_detail": row[11] or [],
+                        "latest_image_url": row[12],
+                        "updated_at": row[13].isoformat() if row[13] else None
+                    })
+                return results
+    except Exception as e:
+        logger.error("Error reading park_status from PostgreSQL: %s", e)
+        return None
+    finally:
+        conn.close()
+
 ROI_CONFIG_PATH = BASE_DIR / "data" / "roi.json"
 EXTERNAL_ROI_PATH = Path("/home/r211admin/parking-detect/roi.json")
 
 @app.route("/api/roi", methods=["GET", "POST"])
 @app.route("/api/roi/<cam_id>", methods=["GET", "POST"])
 def manage_roi(cam_id=None):
-    """Get or update real-time parking slot polygon ROI coordinates."""
+    """Get or update real-time parking slot polygon ROI coordinates (PostgreSQL with JSON fallback)."""
     if request.method == "GET":
+        # First attempt to read from PostgreSQL parking_templates
+        pg_templates = db_get_parking_templates(cam_id)
+        if pg_templates is not None and len(pg_templates) > 0:
+            if cam_id:
+                return jsonify(pg_templates)
+            return jsonify(pg_templates)
+
+        # Fallback to local JSON configuration
         roi_data = {}
         for p in [ROI_CONFIG_PATH, EXTERNAL_ROI_PATH]:
             if p.exists():
@@ -687,6 +893,20 @@ def manage_roi(cam_id=None):
         if not payload:
             return jsonify({"error": "Empty ROI payload"}), 400
 
+        target_cam = cam_id or payload.get("camera_id")
+        if target_cam:
+            loc = resolve_location(target_cam, target_cam)
+            c_key = LOCATIONS[loc].get("camera_id", target_cam)
+            # Save to PostgreSQL
+            db_save_parking_template(c_key, payload)
+        elif isinstance(payload, dict):
+            for k, v in payload.items():
+                if not k.startswith("_") and isinstance(v, dict):
+                    loc = resolve_location(k, k)
+                    c_key = LOCATIONS[loc].get("camera_id", k)
+                    db_save_parking_template(c_key, v)
+
+        # Maintain JSON file as backup
         roi_data = {}
         if ROI_CONFIG_PATH.exists():
             try:
@@ -695,20 +915,22 @@ def manage_roi(cam_id=None):
             except Exception:
                 roi_data = {}
 
-        if cam_id or "camera_id" in payload:
-            target_cam = cam_id or payload.get("camera_id")
+        if target_cam:
             loc = resolve_location(target_cam, target_cam)
             c_key = LOCATIONS[loc].get("camera_id", target_cam)
             roi_data[c_key] = payload
         elif isinstance(payload, dict):
             for k, v in payload.items():
-                if k != "_comment":
+                if not k.startswith("_"):
                     roi_data[k] = v
 
         roi_data["_updated_at"] = datetime.now().isoformat()
         ROI_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with open(ROI_CONFIG_PATH, "w", encoding="utf-8") as rf:
-            json.dump(roi_data, rf, indent=2, ensure_ascii=False)
+        try:
+            with open(ROI_CONFIG_PATH, "w", encoding="utf-8") as rf:
+                json.dump(roi_data, rf, indent=2, ensure_ascii=False)
+        except Exception as ex:
+            logger.warning("Could not write local roi.json backup: %s", ex)
 
         if EXTERNAL_ROI_PATH.parent.exists():
             try:
@@ -717,8 +939,18 @@ def manage_roi(cam_id=None):
             except Exception as ex:
                 logger.warning("Could not sync to external roi.json: %s", ex)
 
-        logger.info("Saved updated ROI configuration successfully")
-        return jsonify({"status": "success", "message": "ROI updated successfully", "data": roi_data})
+        logger.info("Saved updated ROI configuration to PostgreSQL & JSON successfully")
+        return jsonify({"status": "success", "message": "ROI template stored to PostgreSQL", "data": payload})
+
+
+@app.route("/api/parking/status", methods=["GET"])
+@app.route("/api/parking/status/<cam_id>", methods=["GET"])
+def get_parking_live_status(cam_id=None):
+    """Retrieve real-time parking status for LINE Bot and Dashboard from PostgreSQL."""
+    status_data = db_get_park_status(cam_id)
+    if status_data is None:
+        return jsonify({"error": "No status data available"}), 404
+    return jsonify(status_data)
 
 @app.route("/api/settings", methods=["GET", "POST"])
 def settings():

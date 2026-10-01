@@ -86,7 +86,36 @@ CURRENT_PARKING_STATE: Dict[str, Any] = {
 
 
 def get_current_parking_summary() -> str:
-    """Format the current parking occupancy into a readable context for the AI."""
+    """Format the current parking occupancy from PostgreSQL park_status into a readable context for the AI."""
+    from backend.db.database import SessionLocal
+    from backend.app.models.parking_log import ParkStatusModel
+
+    try:
+        with SessionLocal() as db:
+            rows = db.query(ParkStatusModel).order_by(ParkStatusModel.camera_id).all()
+            if rows:
+                lines = ["[ข้อมูลสถานะลานจอดรถภาควิชาคอมพิวเตอร์ ณ ปัจจุบัน จากฐานข้อมูล PostgreSQL]:"]
+                for r in rows:
+                    avail_count = r.vacant_count
+                    total_count = r.total_capacity
+                    avail_str = ", ".join(r.available_slot_ids) if r.available_slot_ids else "ไม่มีช่องว่าง"
+                    slot_lines = []
+                    for s in (r.slots_detail or []):
+                        s_name = s.get("vehicle_name") or ("ไม่ว่าง" if s.get("occupied") else "ว่างพร้อมจอด")
+                        s_type = "รถยนต์" if s.get("type") == "car" else "มอเตอร์ไซค์"
+                        slot_lines.append(f"    - ช่อง {s.get('id')}: {s_name} ({s_type})")
+                    details_str = "\n".join(slot_lines) if slot_lines else "    - ไม่พบรายละเอียดช่องจอด"
+                    lines.append(f"""- พื้นที่: {r.location_name} (กล้อง {r.camera_id}, ประเภท: {r.vehicle_type})
+  * ความจุรวม: {total_count} ช่อง | ว่าง: {avail_count} ช่อง | ไม่ว่าง: {r.occupied_count} ช่อง (อัตราการจอด {r.occupancy_rate_pct}%)
+  * ช่องที่ว่างพร้อมจอด: {avail_str}
+  * สถานะรวม: {r.status_level}
+  * รายละเอียดช่องจอด:
+{details_str}
+  * อัปเดตล่าสุด: {r.updated_at.strftime('%Y-%m-%d %H:%M:%S') if r.updated_at else datetime.now().strftime('%Y-%m-%d %H:%M:%S')}""")
+                return "\n".join(lines)
+    except Exception as e:
+        logger.warning("Could not query PostgreSQL park_status, falling back to cache: %s", e)
+
     avail_count = len(CURRENT_PARKING_STATE["available_slots"])
     total_count = CURRENT_PARKING_STATE["total_slots"]
     avail_str = ", ".join(CURRENT_PARKING_STATE["available_slots"]) if avail_count > 0 else "ไม่มีช่องว่าง"

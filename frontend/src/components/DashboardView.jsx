@@ -24,7 +24,8 @@ import {
   getSavedOrInitialSlots,
   calculateSlotCounts,
   getCameraImage,
-  SLOTS_STORAGE_KEY
+  SLOTS_STORAGE_KEY,
+  syncAllSlotsFromServer
 } from '../utils/dumpData'
 
 export default function DashboardView({ onOpenModal, onNavigate }) {
@@ -50,14 +51,16 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
   const [liveData, setLiveData] = useState(null)
   const [imgKey, setImgKey] = useState(() => Date.now())
 
-  const INGESTION_API =
-    typeof window !== 'undefined'
-      ? `http://${window.location.hostname}:5005`
-      : 'http://localhost:5005'
-
   const fetchLiveTelemetry = async () => {
     try {
-      const res = await fetch(`${INGESTION_API}/api/telemetry`)
+      let res = await fetch('/api/telemetry')
+      if (!res.ok) {
+        const fallback =
+          typeof window !== 'undefined'
+            ? `http://${window.location.hostname}:5005/api/telemetry`
+            : 'http://localhost:5005/api/telemetry'
+        res = await fetch(fallback)
+      }
       if (res.ok) {
         const data = await res.json()
         setLiveData(data)
@@ -73,6 +76,31 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
     fetchLiveTelemetry()
     const liveTimer = setInterval(fetchLiveTelemetry, 3000)
     return () => clearInterval(liveTimer)
+  }, [])
+
+  // Synchronize and poll parking slots from central server so all connected machines display identical ROI
+  useEffect(() => {
+    let isMounted = true
+
+    const syncServerRoi = async () => {
+      try {
+        const synced = await syncAllSlotsFromServer()
+        if (synced && isMounted) {
+          if (synced.cam1) setCam1Slots(synced.cam1)
+          if (synced.cam2) setCam2Slots(synced.cam2)
+          if (synced.cam3) setCam3Slots(synced.cam3)
+        }
+      } catch (err) {
+        // Fallback silently
+      }
+    }
+
+    syncServerRoi()
+    const roiTimer = setInterval(syncServerRoi, 3000)
+    return () => {
+      isMounted = false
+      clearInterval(roiTimer)
+    }
   }, [])
 
   // Listen for real-time slots and images updates from ParkingSetup ROI Editor

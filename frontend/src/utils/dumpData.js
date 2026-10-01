@@ -95,7 +95,9 @@ export const FALLBACK_DUMP_RECORDS = [
 
 export const getIngestionApiBase = () => {
   if (typeof window !== 'undefined') {
-    return `http://${window.location.hostname}:5005`
+    // In browser, relative URL ('') uses Vite/Nginx dev proxy on the active port,
+    // avoiding CORS or firewall issues when accessing remote server IPs.
+    return ''
   }
   return 'http://localhost:5005'
 }
@@ -650,15 +652,48 @@ export function getCameraConfig(camId = 'cam1') {
 }
 
 /**
+ * Check if slots array is merely the dummy single 100x100 test box from initial development
+ */
+export function isDummyTestSlot(slots) {
+  if (!slots || !Array.isArray(slots) || slots.length === 0) return true
+  if (
+    slots.length === 1 &&
+    slots[0].id === 'A01' &&
+    slots[0].points?.[0]?.x === 100 &&
+    slots[0].points?.[0]?.y === 100
+  ) {
+    return true
+  }
+  return false
+}
+
+/**
  * Fetch saved ROI slots from backend Ingestion Server
  */
 export async function fetchRoiFromServer(camId = null) {
-  const apiBase = getIngestionApiBase()
+  const path = camId ? `/api/roi/${camId}` : '/api/roi'
+
+  // 1. Try relative path (Vite reverse proxy)
   try {
-    const url = camId ? `${apiBase}/api/roi/${camId}` : `${apiBase}/api/roi`
-    const res = await fetch(url)
+    const res = await fetch(path)
     if (res.ok) {
-      return await res.json()
+      const data = await res.json()
+      if (data && typeof data === 'object') return data
+    }
+  } catch (err) {
+    // Relative fetch failed
+  }
+
+  // 2. Fallback to direct port 5005
+  try {
+    const fallbackBase =
+      typeof window !== 'undefined'
+        ? `http://${window.location.hostname}:5005`
+        : 'http://localhost:5005'
+    const res = await fetch(`${fallbackBase}${path}`)
+    if (res.ok) {
+      const data = await res.json()
+      if (data && typeof data === 'object') return data
     }
   } catch (err) {
     console.warn('Could not fetch ROI from server:', err)
@@ -670,21 +705,36 @@ export async function fetchRoiFromServer(camId = null) {
  * Sync drawn ROI slots to backend Ingestion Server and detection worker
  */
 export async function saveRoiToServer(camId, slots, polygon = null) {
-  const apiBase = getIngestionApiBase()
+  const payload = {
+    camera_id: camId,
+    name: getCameraConfig(camId)?.name || camId,
+    capacity: slots.length,
+    slots: slots,
+    polygon: polygon || [
+      [0, 0],
+      [1600, 0],
+      [1600, 1200],
+      [0, 1200]
+    ]
+  }
+
+  // 1. Try relative path
   try {
-    const payload = {
-      camera_id: camId,
-      name: getCameraConfig(camId)?.name || camId,
-      capacity: slots.length,
-      slots: slots,
-      polygon: polygon || [
-        [0, 0],
-        [1600, 0],
-        [1600, 1200],
-        [0, 1200]
-      ]
-    }
-    const res = await fetch(`${apiBase}/api/roi`, {
+    const res = await fetch('/api/roi', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    if (res.ok) return true
+  } catch (e) {}
+
+  // 2. Fallback to direct port 5005
+  try {
+    const fallbackBase =
+      typeof window !== 'undefined'
+        ? `http://${window.location.hostname}:5005`
+        : 'http://localhost:5005'
+    const res = await fetch(`${fallbackBase}/api/roi`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -693,6 +743,110 @@ export async function saveRoiToServer(camId, slots, polygon = null) {
   } catch (err) {
     console.warn('Could not save ROI to server:', err)
     return false
+  }
+}
+
+/**
+ * Save all 3 cameras ROI slots to the central server in a single atomic request
+ */
+export async function saveAllCamerasRoiToServer() {
+  const payload = {
+    cam1: {
+      camera_id: 'cam1',
+      name: getCameraConfig('cam1')?.name || 'CAM-01',
+      capacity: getSavedOrInitialSlots('cam1').length,
+      slots: getSavedOrInitialSlots('cam1')
+    },
+    cam2: {
+      camera_id: 'cam2',
+      name: getCameraConfig('cam2')?.name || 'CAM-02',
+      capacity: getSavedOrInitialSlots('cam2').length,
+      slots: getSavedOrInitialSlots('cam2')
+    },
+    cam3: {
+      camera_id: 'cam3',
+      name: getCameraConfig('cam3')?.name || 'CAM-03',
+      capacity: getSavedOrInitialSlots('cam3').length,
+      slots: getSavedOrInitialSlots('cam3')
+    }
+  }
+
+  try {
+    const res = await fetch('/api/roi', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    if (res.ok) return true
+  } catch (e) {}
+
+  try {
+    const fallbackBase =
+      typeof window !== 'undefined'
+        ? `http://${window.location.hostname}:5005`
+        : 'http://localhost:5005'
+    const res = await fetch(`${fallbackBase}/api/roi`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    return res.ok
+  } catch (err) {
+    console.warn('Could not save all ROI to server:', err)
+  }
+  return false
+}
+
+/**
+ * Synchronize slots for all cameras from the central server.
+ * Ensures all connected computers and browser tabs see the exact same ROI.
+ */
+export async function syncAllSlotsFromServer() {
+  try {
+    const roiData = await fetchRoiFromServer()
+    if (!roiData || typeof roiData !== 'object') return null
+
+    let anyUpdated = false
+    const results = {}
+
+    for (const cam of SYSTEM_CAMERAS) {
+      const camId = cam.id
+      const camData = roiData[camId] || roiData[cam.location]
+      const serverSlots = camData?.slots
+
+      if (Array.isArray(serverSlots) && serverSlots.length > 0) {
+        if (!isDummyTestSlot(serverSlots)) {
+          results[camId] = serverSlots
+          saveSlotsToStorage(serverSlots, camId, false)
+          anyUpdated = true
+        } else {
+          // Server has dummy test slot: if this client has real custom slots, push to server!
+          const localSlots = getSavedOrInitialSlots(camId)
+          if (!isDummyTestSlot(localSlots)) {
+            saveRoiToServer(camId, localSlots)
+            results[camId] = localSlots
+          } else {
+            results[camId] = localSlots
+          }
+        }
+      } else {
+        // Server has no slots for this camera yet
+        const localSlots = getSavedOrInitialSlots(camId)
+        if (localSlots && localSlots.length > 0 && !isDummyTestSlot(localSlots)) {
+          saveRoiToServer(camId, localSlots)
+        }
+        results[camId] = localSlots
+      }
+    }
+
+    if (anyUpdated && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('cpe-slots-updated', { detail: results }))
+    }
+
+    return results
+  } catch (err) {
+    console.warn('Failed to sync all slots from server:', err)
+    return null
   }
 }
 
@@ -720,16 +874,18 @@ export function getSavedOrInitialSlots(camId = 'cam1') {
   return fallback
 }
 
-export function saveSlotsToStorage(slots, camId = 'cam1') {
+export function saveSlotsToStorage(slots, camId = 'cam1', broadcast = true) {
   if (typeof window === 'undefined') return
   const storageKey = `cpe_parking_slots_${camId}`
   try {
     localStorage.setItem(storageKey, JSON.stringify(slots))
-    window.dispatchEvent(
-      new CustomEvent('cpe-slots-updated', {
-        detail: { cameraId: camId, slots }
-      })
-    )
+    if (broadcast) {
+      window.dispatchEvent(
+        new CustomEvent('cpe-slots-updated', {
+          detail: { cameraId: camId, slots }
+        })
+      )
+    }
   } catch (e) {
     console.warn(`Failed to save slots for ${camId}:`, e)
   }
@@ -738,6 +894,7 @@ export function saveSlotsToStorage(slots, camId = 'cam1') {
 export function resetCameraSlots(camId = 'cam1') {
   const defaults = getDefaultSlotsForCamera(camId)
   saveSlotsToStorage(defaults, camId)
+  saveRoiToServer(camId, defaults)
   return defaults
 }
 

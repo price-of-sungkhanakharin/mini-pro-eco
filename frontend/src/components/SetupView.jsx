@@ -12,10 +12,12 @@ import {
   Sliders,
   Radio,
   ExternalLink,
-  Layers
+  Layers,
+  Cpu
 } from 'lucide-react'
 import ParkingSetup from './ParkingSetup.jsx'
 import RoboflowStudio from './RoboflowStudio.jsx'
+import AutoTrainerStudio from './AutoTrainerStudio.jsx'
 
 export default function SetupView({
   onNavigate,
@@ -138,6 +140,15 @@ export default function SetupView({
         >
           <HardDrive className="w-4 h-4" />
           <span>MinIO & DB Connection</span>
+        </button>
+
+        <button
+          type="button"
+          className={`setup-tab-btn ${activeTab === 'trainer' ? 'active' : ''}`}
+          onClick={() => setActiveTab('trainer')}
+        >
+          <Cpu className="w-4 h-4 text-purple-400" />
+          <span>Auto-Trainer & Model Hub</span>
         </button>
 
         <button
@@ -407,6 +418,12 @@ export default function SetupView({
                 <span className="font-mono text-slate-300">localhost:6379</span>
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'trainer' && (
+          <div className="setup-section p-0">
+            <AutoTrainerStudio apiBase={apiBase} />
           </div>
         )}
 

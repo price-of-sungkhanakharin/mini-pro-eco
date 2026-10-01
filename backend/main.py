@@ -18,6 +18,7 @@ from backend.app.routers import (
     label_studio_router,
     line_bot_router,
     minio_router,
+    modal_trainer_router,
     models,
     parking_router,
     roboflow_router,
@@ -226,6 +227,7 @@ app.include_router(label_studio_router.router)
 app.include_router(line_bot_router.router)
 app.include_router(parking_router.router)
 app.include_router(roboflow_router.router)
+app.include_router(modal_trainer_router.router)
 
 
 @app.get("/")

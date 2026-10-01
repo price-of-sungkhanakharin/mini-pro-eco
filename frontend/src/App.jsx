@@ -7,6 +7,7 @@ import SetupView from './components/SetupView.jsx'
 import ParkingSetup from './components/ParkingSetup.jsx'
 import CameraModal from './components/CameraModal.jsx'
 import RoboflowStudio from './components/RoboflowStudio.jsx'
+import AutoTrainerStudio from './components/AutoTrainerStudio.jsx'
 import EcosystemView from './components/EcosystemView.jsx'
 import IngestionLogsView from './components/IngestionLogsView.jsx'
 import {
@@ -421,6 +422,9 @@ function App() {
               )}
               {currentView === 'logs' && (
                 <IngestionLogsView onNavigate={handleNavigate} />
+              )}
+              {(currentView === 'trainer' || currentView === 'auto_trainer') && (
+                <AutoTrainerStudio apiBase={API_BASE_URL} />
               )}
               {currentView === 'setup' && (
                 <SetupView

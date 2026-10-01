@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import JSON, Boolean, Column, DateTime, Float, ForeignKey, Integer, String
 
 from backend.db.database import Base
 
@@ -17,5 +17,10 @@ class ModelRegistryModel(Base):
     version = Column(String, nullable=False)
     minio_weight_path = Column(String, nullable=False)
     metrics = Column(JSON, nullable=True)
-    created_by = Column(Integer, ForeignKey("users.id"))
+    is_active = Column(Boolean, default=False, nullable=False)
+    map50 = Column(Float, nullable=True)
+    epochs = Column(Integer, nullable=True)
+    base_model = Column(String, nullable=True)
+    roboflow_version = Column(Integer, nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

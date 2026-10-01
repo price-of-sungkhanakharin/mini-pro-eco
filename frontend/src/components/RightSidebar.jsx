@@ -5,7 +5,8 @@ import {
   Settings,
   Server,
   ChevronRight,
-  ChevronLeft
+  ChevronLeft,
+  Cpu
 } from 'lucide-react'
 
 export default function RightSidebar({
@@ -30,6 +31,14 @@ export default function RightSidebar({
       icon: ScrollText,
       badge: 'ESP32',
       badgeColor: 'badge-blue'
+    },
+    {
+      id: 'trainer',
+      label: 'Auto-Trainer & Hub',
+      sublabel: 'เทรน Modal GPU & สลับโมเดล',
+      icon: Cpu,
+      badge: 'MODAL',
+      badgeColor: 'badge-purple'
     },
     {
       id: 'setup',

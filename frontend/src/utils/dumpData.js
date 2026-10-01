@@ -702,20 +702,70 @@ export async function fetchRoiFromServer(camId = null) {
 }
 
 /**
- * Sync drawn ROI slots to backend Ingestion Server and detection worker
+ * Convert zone points [{x, y}] to format [[x, y]] for backend / YOLO
  */
-export async function saveRoiToServer(camId, slots, polygon = null) {
-  const payload = {
-    camera_id: camId,
-    name: getCameraConfig(camId)?.name || camId,
-    capacity: slots.length,
-    slots: slots,
-    polygon: polygon || [
+export function formatPolygonForServer(points) {
+  if (!points || !Array.isArray(points) || points.length === 0) {
+    return [
       [0, 0],
       [1600, 0],
       [1600, 1200],
       [0, 1200]
     ]
+  }
+  if (Array.isArray(points[0])) return points
+  return points.map((p) => [Math.round(p.x), Math.round(p.y)])
+}
+
+/**
+ * Convert server polygon [[x, y]] to client points [{x, y}]
+ */
+export function parsePolygonFromServer(serverPolygon) {
+  if (!serverPolygon || !Array.isArray(serverPolygon) || serverPolygon.length === 0) {
+    return null
+  }
+  // Check if it's already an array of {x, y}
+  if (typeof serverPolygon[0] === 'object' && !Array.isArray(serverPolygon[0]) && 'x' in serverPolygon[0]) {
+    const valid = serverPolygon
+      .map((p) => ({ x: Number(p.x), y: Number(p.y) }))
+      .filter((p) => !isNaN(p.x) && !isNaN(p.y))
+    return valid.length >= 3 ? valid : null
+  }
+  // Check if it's an array of [x, y] tuples: [[x, y], ...]
+  if (Array.isArray(serverPolygon[0])) {
+    const valid = serverPolygon
+      .map((pt) => ({ x: Number(pt[0]), y: Number(pt[1]) }))
+      .filter((p) => !isNaN(p.x) && !isNaN(p.y))
+    return valid.length >= 3 ? valid : null
+  }
+  return null
+}
+
+/**
+ * Sync drawn ROI slots and zone area polygon(s) to backend Ingestion Server and detection worker
+ */
+export async function saveRoiToServer(camId, slots, zonesOrPolygon = null) {
+  let activeZones = []
+  if (Array.isArray(zonesOrPolygon) && zonesOrPolygon.length > 0) {
+    activeZones = normalizeZones(zonesOrPolygon)
+  } else {
+    activeZones = getSavedOrInitialZones(camId)
+  }
+
+  const firstZone = activeZones.length > 0 ? activeZones[0].points : null
+
+  const payload = {
+    camera_id: camId,
+    name: getCameraConfig(camId)?.name || camId,
+    capacity: slots.length,
+    slots: slots,
+    zones: activeZones.map((z) => ({
+      id: z.id,
+      name: z.name,
+      type: z.type,
+      polygon: formatPolygonForServer(z.points)
+    })),
+    polygon: formatPolygonForServer(firstZone)
   }
 
   // 1. Try relative path
@@ -747,28 +797,31 @@ export async function saveRoiToServer(camId, slots, polygon = null) {
 }
 
 /**
- * Save all 3 cameras ROI slots to the central server in a single atomic request
+ * Save all 3 cameras ROI slots & Zone Polygons to the central server in a single atomic request
  */
 export async function saveAllCamerasRoiToServer() {
-  const payload = {
-    cam1: {
-      camera_id: 'cam1',
-      name: getCameraConfig('cam1')?.name || 'CAM-01',
-      capacity: getSavedOrInitialSlots('cam1').length,
-      slots: getSavedOrInitialSlots('cam1')
-    },
-    cam2: {
-      camera_id: 'cam2',
-      name: getCameraConfig('cam2')?.name || 'CAM-02',
-      capacity: getSavedOrInitialSlots('cam2').length,
-      slots: getSavedOrInitialSlots('cam2')
-    },
-    cam3: {
-      camera_id: 'cam3',
-      name: getCameraConfig('cam3')?.name || 'CAM-03',
-      capacity: getSavedOrInitialSlots('cam3').length,
-      slots: getSavedOrInitialSlots('cam3')
+  const getCameraPayload = (camId) => {
+    const slots = getSavedOrInitialSlots(camId)
+    const zones = getSavedOrInitialZones(camId)
+    return {
+      camera_id: camId,
+      name: getCameraConfig(camId)?.name || camId,
+      capacity: slots.length,
+      slots: slots,
+      zones: zones.map((z) => ({
+        id: z.id,
+        name: z.name,
+        type: z.type,
+        polygon: formatPolygonForServer(z.points)
+      })),
+      polygon: formatPolygonForServer(zones[0]?.points || null)
     }
+  }
+
+  const payload = {
+    cam1: getCameraPayload('cam1'),
+    cam2: getCameraPayload('cam2'),
+    cam3: getCameraPayload('cam3')
   }
 
   try {
@@ -798,7 +851,7 @@ export async function saveAllCamerasRoiToServer() {
 }
 
 /**
- * Synchronize slots for all cameras from the central server.
+ * Synchronize slots and multi-zones for all cameras from the central server.
  * Ensures all connected computers and browser tabs see the exact same ROI.
  */
 export async function syncAllSlotsFromServer() {
@@ -813,6 +866,7 @@ export async function syncAllSlotsFromServer() {
       const camId = cam.id
       const camData = roiData[camId] || roiData[cam.location]
       const serverSlots = camData?.slots
+      const rawServerZones = camData?.zones || camData?.polygon
 
       if (Array.isArray(serverSlots) && serverSlots.length > 0) {
         if (!isDummyTestSlot(serverSlots)) {
@@ -837,6 +891,14 @@ export async function syncAllSlotsFromServer() {
         }
         results[camId] = localSlots
       }
+
+      // Sync Multi-Zone Area Masks & Polygons safely
+      if (rawServerZones) {
+        const normalized = normalizeZones(rawServerZones)
+        if (normalized.length > 0) {
+          saveZonesToStorage(normalized, camId, false)
+        }
+      }
     }
 
     if (anyUpdated && typeof window !== 'undefined') {
@@ -848,6 +910,148 @@ export async function syncAllSlotsFromServer() {
     console.warn('Failed to sync all slots from server:', err)
     return null
   }
+}
+
+/**
+ * Check if polygon is merely a full-frame dummy (1600x1200 whole camera)
+ */
+export function isDummyTestZone(polygon) {
+  if (!polygon || !Array.isArray(polygon) || polygon.length < 3) return true
+  const pts = parsePolygonFromServer(polygon)
+  if (pts && pts.length === 4) {
+    const minX = Math.min(...pts.map((p) => p.x))
+    const maxX = Math.max(...pts.map((p) => p.x))
+    const minY = Math.min(...pts.map((p) => p.y))
+    const maxY = Math.max(...pts.map((p) => p.y))
+    if (minX <= 20 && maxX >= 1550 && minY <= 20 && maxY >= 1150) {
+      return true
+    }
+  }
+  return false
+}
+
+export function getDefaultZoneForCamera(camId = 'cam1') {
+  return []
+}
+
+/**
+ * Normalize zones input from array of zone objects or legacy single polygon
+ */
+export function normalizeZones(rawZones) {
+  if (!rawZones) return []
+  if (Array.isArray(rawZones)) {
+    // Check if it's already an array of zone objects: [{ id, name, type, points/polygon }, ...]
+    if (
+      rawZones.length > 0 &&
+      typeof rawZones[0] === 'object' &&
+      !Array.isArray(rawZones[0]) &&
+      !('x' in rawZones[0])
+    ) {
+      const validZones = rawZones
+        .map((z, idx) => {
+          if (!z || typeof z !== 'object') return null
+          const rawPts = z.points || z.polygon
+          const parsedPts = parsePolygonFromServer(rawPts)
+          if (!parsedPts || parsedPts.length < 3) return null
+          return {
+            id: z.id || `zone_${idx + 1}`,
+            name:
+              z.name ||
+              (z.type === 'motorcycle' || z.type === 'bike'
+                ? `โซนมอเตอร์ไซค์ ${idx + 1}`
+                : `โซนรถยนต์ ${idx + 1}`),
+            type: z.type === 'motorcycle' || z.type === 'bike' ? 'motorcycle' : 'car',
+            points: parsedPts
+          }
+        })
+        .filter(Boolean)
+      if (validZones.length > 0) return validZones
+    }
+
+    // Check if it's a single polygon array: [{x, y}, ...] or [[x, y], ...]
+    const singlePts = parsePolygonFromServer(rawZones)
+    if (singlePts && singlePts.length >= 3 && !isDummyTestZone(singlePts)) {
+      return [
+        {
+          id: 'zone_1',
+          name: 'โซนพื้นที่รวม 1',
+          type: 'car',
+          points: singlePts
+        }
+      ]
+    }
+  }
+  return []
+}
+
+export function getSavedOrInitialZones(camId = 'cam1') {
+  if (typeof window === 'undefined') return []
+  const storageKey = `cpe_parking_zones_${camId}`
+  try {
+    const raw = localStorage.getItem(storageKey)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      const normalized = normalizeZones(parsed)
+      if (normalized.length > 0) return normalized
+    }
+    // Fallback to legacy single zone key ONLY if multi-zones key has nothing
+    const singleRaw = localStorage.getItem(`cpe_parking_zone_${camId}`)
+    if (singleRaw) {
+      const parsed = JSON.parse(singleRaw)
+      const normalized = normalizeZones(parsed)
+      if (normalized.length > 0) return normalized
+    }
+  } catch (e) {
+    console.warn(`Error reading saved zones for ${camId}:`, e)
+  }
+  return []
+}
+
+export function saveZonesToStorage(zones, camId = 'cam1', broadcast = true) {
+  if (typeof window === 'undefined') return
+  const storageKey = `cpe_parking_zones_${camId}`
+  try {
+    const safeZones = Array.isArray(zones)
+      ? zones.filter((z) => z && Array.isArray(z.points) && z.points.length >= 3)
+      : []
+    if (safeZones.length > 0) {
+      localStorage.setItem(storageKey, JSON.stringify(safeZones))
+      // Keep legacy single key synced with first zone for backward compatibility
+      localStorage.setItem(`cpe_parking_zone_${camId}`, JSON.stringify(safeZones[0].points))
+    } else {
+      localStorage.removeItem(storageKey)
+      localStorage.removeItem(`cpe_parking_zone_${camId}`)
+    }
+    if (broadcast) {
+      window.dispatchEvent(
+        new CustomEvent('cpe-zones-updated', {
+          detail: { cameraId: camId, zones: safeZones }
+        })
+      )
+    }
+  } catch (e) {
+    console.warn(`Failed to save zones for ${camId}:`, e)
+  }
+}
+
+export function getSavedOrInitialZone(camId = 'cam1') {
+  const zones = getSavedOrInitialZones(camId)
+  return zones.length > 0 ? zones[0].points : null
+}
+
+export function saveZoneToStorage(zonePoints, camId = 'cam1', broadcast = true) {
+  if (zonePoints && Array.isArray(zonePoints) && zonePoints.length >= 3) {
+    saveZonesToStorage(
+      [{ id: 'zone_1', name: 'โซนพื้นที่รวม 1', type: 'car', points: zonePoints }],
+      camId,
+      broadcast
+    )
+  }
+}
+
+export function resetCameraZone(camId = 'cam1') {
+  saveZonesToStorage([], camId)
+  return []
 }
 
 export function getDefaultSlotsForCamera(camId = 'cam1') {

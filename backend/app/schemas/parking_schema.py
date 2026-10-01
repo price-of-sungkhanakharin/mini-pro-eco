@@ -1,7 +1,7 @@
 """Pydantic schemas for parking occupancy time-series logging."""
 
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 from pydantic import BaseModel, ConfigDict
 
 
@@ -52,3 +52,43 @@ class ParkingSummaryResponse(BaseModel):
     total_vehicles: int
     overall_occupancy_pct: float
     locations: List[ParkingLocationSummary]
+
+
+class ParkingTemplateResponse(BaseModel):
+    """Schema for parking template response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    camera_id: str
+    location_name: Optional[str] = None
+    vehicle_type: str = "car"
+    total_capacity: int = 0
+    zone_polygon: Optional[List[Any]] = None
+    slots: List[Any] = []
+    frame_width: int = 1600
+    frame_height: int = 1200
+    is_active: bool = True
+    updated_at: Optional[datetime] = None
+
+
+class ParkStatusResponse(BaseModel):
+    """Schema for real-time park status response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    camera_id: str
+    location_name: Optional[str] = None
+    vehicle_type: str = "car"
+    total_capacity: int = 0
+    occupied_count: int = 0
+    vacant_count: int = 0
+    occupancy_rate_pct: float = 0.0
+    zone_pixel_occupancy_pct: float = 0.0
+    status_level: str = "AVAILABLE"
+    available_slot_ids: List[Any] = []
+    occupied_slot_ids: List[Any] = []
+    slots_detail: List[Any] = []
+    latest_image_url: Optional[str] = None
+    updated_at: Optional[datetime] = None

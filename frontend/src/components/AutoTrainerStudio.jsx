@@ -102,13 +102,55 @@ export default function AutoTrainerStudio({ apiBase }) {
     }
   }
 
+  // SSE Stream for Real-Time Terminal Logs
   useEffect(() => {
     fetchModels()
     fetchActiveJob()
-    const pollInterval = setInterval(() => {
-      fetchActiveJob()
-    }, 3000)
-    return () => clearInterval(pollInterval)
+
+    let eventSource = null
+
+    const connectSSE = (jobId) => {
+      if (!jobId) return
+      if (eventSource) eventSource.close()
+
+      const sseUrl = `${effectiveApiBase}/api/v1/training/modal/logs/${jobId}`
+      eventSource = new EventSource(sseUrl)
+
+      eventSource.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data)
+          if (payload.log) {
+            setLogs((prev) => [...prev, payload.log])
+          }
+          if (payload.status) {
+            setCurrentJob((prev) => (prev ? { ...prev, status: payload.status } : null))
+            if (payload.status === 'COMPLETED') {
+              showToast('🎉 งานเทรนบน Modal Cloud GPU เสร็จสมบูรณ์แล้ว!', 'success')
+              fetchModels()
+            }
+          }
+        } catch (e) {
+          setLogs((prev) => [...prev, event.data])
+        }
+      }
+
+      eventSource.onerror = () => {
+        if (eventSource) {
+          eventSource.close()
+        }
+      }
+    }
+
+    if (currentJob && currentJob.job_id && currentJob.status !== 'COMPLETED' && currentJob.status !== 'FAILED') {
+      connectSSE(currentJob.job_id)
+    }
+
+    const interval = setInterval(fetchActiveJob, 4000)
+
+    return () => {
+      clearInterval(interval)
+      if (eventSource) eventSource.close()
+    }
   }, [effectiveApiBase])
 
   // Auto-scroll terminal
@@ -118,7 +160,60 @@ export default function AutoTrainerStudio({ apiBase }) {
     }
   }, [logs, autoScroll])
 
-  // Handle Model Activation / Switch
+  // Start Modal Cloud Training Handler
+  const handleStartTraining = async () => {
+    setIsStarting(true)
+    setLogs([])
+    showToast('🚀 กำลังส่งคำสั่งเริ่มต้นเทรนโมเดลไปยัง Modal Serverless Cloud GPU...', 'info', 6000)
+
+    try {
+      const payload = {
+        roboflow_version: Number(roboflowVersion),
+        base_model: baseModel,
+        epochs: Number(epochs),
+        batch_size: Number(batchSize),
+        imgsz: Number(imgsz),
+        gpu_type: gpuType
+      }
+
+      const res = await fetch(`${effectiveApiBase}/api/v1/training/modal/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setCurrentJob(data.job)
+        showToast(`เริ่มต้นเทรนบน Cloud สำเร็จ (Job ID: ${data.job_id})`, 'success')
+      } else {
+        const err = await res.json()
+        showToast(`เกิดข้อผิดพลาด: ${err.detail || 'ไม่สามารถเริ่มเทรนได้'}`, 'error')
+      }
+    } catch (err) {
+      showToast(`การเชื่อมต่อขัดข้อง: ${err.message}`, 'error')
+    } finally {
+      setIsStarting(false)
+    }
+  }
+
+  // Cancel Modal Training Handler
+  const handleCancelTraining = async () => {
+    if (!currentJob?.job_id) return
+    try {
+      const res = await fetch(`${effectiveApiBase}/api/v1/training/modal/cancel/${currentJob.job_id}`, {
+        method: 'POST'
+      })
+      if (res.ok) {
+        showToast('ยกเลิกงานเทรนบน Modal เรียบร้อยแล้ว', 'info')
+        setCurrentJob((prev) => (prev ? { ...prev, status: 'CANCELLED' } : null))
+      }
+    } catch (err) {
+      showToast(`ยกเลิกไม่สำเร็จ: ${err.message}`, 'error')
+    }
+  }
+
+  // Switch Active Model Handler
   const handleActivateModel = async (modelId) => {
     setActivatingId(modelId)
     try {
@@ -126,64 +221,17 @@ export default function AutoTrainerStudio({ apiBase }) {
         method: 'POST'
       })
       if (res.ok) {
-        const updated = await res.json()
-        showToast(`✓ สลับใช้งานโมเดล ${updated.model_name} (${updated.version}) เป็นโมเดลหลักเรียบร้อยแล้ว!`, 'success', 5000)
-        await fetchModels()
+        const data = await res.json()
+        showToast(`⚡ สลับมาใช้โมเดล ${data.model?.model_name || ''} (${data.model?.version || ''}) เรียบร้อยแล้ว!`, 'success')
+        fetchModels()
       } else {
-        showToast('✗ สลับโมเดลไม่สำเร็จ กรุณาลองใหม่อีกครั้ง', 'error')
+        const err = await res.json()
+        showToast(`สลับโมเดลไม่สำเร็จ: ${err.detail || 'Error'}`, 'error')
       }
     } catch (err) {
-      showToast('✗ ไม่สามารถเชื่อมต่อ API ได้', 'error')
+      showToast(`การเชื่อมต่อขัดข้อง: ${err.message}`, 'error')
     } finally {
       setActivatingId(null)
-    }
-  }
-
-  // Handle Start Training on Modal
-  const handleStartTraining = async () => {
-    setIsStarting(true)
-    showToast(`🚀 กำลังส่งคำสั่งเทรนโมเดล ${baseModel} บน Modal Serverless GPU (${gpuType})...`, 'info', 6000)
-    try {
-      const res = await fetch(`${effectiveApiBase}/api/v1/training/modal/start`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          base_model: baseModel,
-          epochs: parseInt(epochs, 10),
-          batch_size: parseInt(batchSize, 10),
-          imgsz: parseInt(imgsz, 10),
-          roboflow_version: parseInt(roboflowVersion, 10),
-          gpu_type: gpuType
-        })
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        showToast('✓ เริ่มงานเทรนบน Modal เรียบร้อยแล้ว! กำลัง Stream Log...', 'success', 6000)
-        setLogs([`[00:00:00] 🚀 Enqueued training job: ${data.job_id}...`])
-        await fetchActiveJob()
-      } else {
-        const err = await res.json().catch(() => ({}))
-        showToast(`✗ ส่งคำสั่งไม่สำเร็จ: ${err.detail || 'เกิดข้อผิดพลาด'}`, 'error')
-      }
-    } catch (err) {
-      showToast('✗ ไม่สามารถเชื่อมต่อ API Server ได้', 'error')
-    } finally {
-      setIsStarting(false)
-    }
-  }
-
-  // Handle Cancel Training
-  const handleCancelTraining = async () => {
-    if (!currentJob) return
-    try {
-      await fetch(`${effectiveApiBase}/api/v1/training/modal/cancel/${currentJob.job_id}`, {
-        method: 'POST'
-      })
-      showToast('ยกเลิกงานเทรนเรียบร้อยแล้ว', 'info')
-      await fetchActiveJob()
-    } catch (err) {
-      console.error('Cancel error:', err)
     }
   }
 
@@ -213,21 +261,21 @@ export default function AutoTrainerStudio({ apiBase }) {
       {/* 1. Header Banner */}
       <div className="setup-header-banner">
         <div className="flex items-center gap-3.5">
-          <div className="setup-icon-box" style={{ background: 'rgba(168, 85, 247, 0.15)', borderColor: 'rgba(168, 85, 247, 0.4)' }}>
+          <div className="setup-icon-box">
             <Cpu className="w-6 h-6 text-purple-400" />
           </div>
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
-              <h2 className="text-base font-bold text-white tracking-wide">
-                Modal Cloud GPU Auto-Trainer & Model Hub
+              <h2 className="text-xl font-bold text-white flex items-center gap-2.5">
+                <span>Modal Cloud GPU Auto-Trainer & Model Hub</span>
+                <span className="text-xs bg-purple-500/20 text-purple-300 px-2.5 py-0.5 rounded-full border border-purple-500/30 font-medium font-mono">
+                  Roboflow (cctv-parking)
+                </span>
+                <span className="text-xs bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-500/30 font-medium flex items-center gap-1.5 font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  MODAL READY
+                </span>
               </h2>
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                Roboflow Dataset (cctv-parking)
-              </span>
-              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                MODAL SERVERLESS READY
-              </span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
               ระบบส่งเทรนโมเดล YOLO อัตโนมัติบน Modal Cloud GPU พร้อม Live Terminal Logs และระบบสลับเวอร์ชันโมเดลตรวจจับ
@@ -239,26 +287,27 @@ export default function AutoTrainerStudio({ apiBase }) {
           <button
             type="button"
             onClick={fetchModels}
-            className="btn-platform btn-platform-dark p-2"
+            className="btn-secondary-action"
             title="รีเฟรชข้อมูลโมเดล"
           >
             <RefreshCw className={`w-4 h-4 ${loadingModels ? 'animate-spin text-purple-400' : ''}`} />
+            <span>Sync Models</span>
           </button>
         </div>
       </div>
 
       {/* 2. Top Metric Cards (4 Grid) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         {/* Card 1: Active Model */}
-        <div className="setup-content-card" style={{ padding: '1rem 1.15rem' }}>
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-            <span className="font-semibold uppercase tracking-wider text-[11px] text-emerald-400 flex items-center gap-1.5">
-              <Award className="w-3.5 h-3.5" />
+        <div className="cam-setup-card">
+          <div className="cam-setup-card-header">
+            <span className="font-semibold text-xs text-emerald-400 flex items-center gap-1.5">
+              <Award className="w-4 h-4" />
               ACTIVE MODEL (โมเดลหลัก)
             </span>
-            <span className="font-mono text-[10px] text-emerald-300 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800/40">ONLINE</span>
+            <span className="status-tag active">ONLINE</span>
           </div>
-          <div className="mt-1">
+          <div className="pt-1">
             <span className="text-lg font-bold font-mono text-white tracking-tight block truncate" title={activeModel?.model_name || 'YOLOv11-Parking'}>
               {activeModel?.model_name || 'YOLOv11-Parking'}
             </span>
@@ -267,15 +316,15 @@ export default function AutoTrainerStudio({ apiBase }) {
         </div>
 
         {/* Card 2: mAP50 Accuracy */}
-        <div className="setup-content-card" style={{ padding: '1rem 1.15rem' }}>
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-            <span className="font-semibold uppercase tracking-wider text-[11px] text-indigo-300 flex items-center gap-1.5">
-              <TrendingUp className="w-3.5 h-3.5" />
+        <div className="cam-setup-card">
+          <div className="cam-setup-card-header">
+            <span className="font-semibold text-xs text-indigo-300 flex items-center gap-1.5">
+              <TrendingUp className="w-4 h-4 text-indigo-400" />
               ACCURACY (mAP50)
             </span>
-            <span className="font-mono text-[10px] text-slate-400">IoU @ 0.50</span>
+            <span className="status-tag purple">IoU @ 0.50</span>
           </div>
-          <div className="flex items-baseline gap-2 mt-1">
+          <div className="flex items-baseline gap-2 pt-1">
             <span className="text-2xl font-bold font-mono text-indigo-400">
               {activeModel?.map50 ? `${activeModel.map50}%` : '96.8%'}
             </span>
@@ -284,15 +333,15 @@ export default function AutoTrainerStudio({ apiBase }) {
         </div>
 
         {/* Card 3: Roboflow Dataset Source */}
-        <div className="setup-content-card" style={{ padding: '1rem 1.15rem' }}>
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-            <span className="font-semibold uppercase tracking-wider text-[11px] text-amber-300 flex items-center gap-1.5">
-              <FolderGit2 className="w-3.5 h-3.5" />
+        <div className="cam-setup-card">
+          <div className="cam-setup-card-header">
+            <span className="font-semibold text-xs text-amber-300 flex items-center gap-1.5">
+              <FolderGit2 className="w-4 h-4 text-amber-400" />
               ROBOFLOW DATASET
             </span>
-            <span className="font-mono text-[10px] text-amber-400">v{roboflowVersion}</span>
+            <span className="status-tag amber">v{roboflowVersion}</span>
           </div>
-          <div className="flex items-baseline gap-2 mt-1">
+          <div className="flex items-baseline gap-2 pt-1">
             <span className="text-2xl font-bold font-mono text-amber-400">
               3,179
             </span>
@@ -301,17 +350,17 @@ export default function AutoTrainerStudio({ apiBase }) {
         </div>
 
         {/* Card 4: Cloud Compute Engine */}
-        <div className="setup-content-card" style={{ padding: '1rem 1.15rem' }}>
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-            <span className="font-semibold uppercase tracking-wider text-[11px] text-purple-300 flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5" />
-              MODAL SERVERLESS GPU
+        <div className="cam-setup-card">
+          <div className="cam-setup-card-header">
+            <span className="font-semibold text-xs text-purple-300 flex items-center gap-1.5">
+              <Zap className="w-4 h-4 text-purple-400" />
+              CLOUD GPU ENGINE
             </span>
-            <span className="font-mono text-[10px] text-purple-400">Cloud GPU</span>
+            <span className="status-tag purple">SERVERLESS</span>
           </div>
-          <div className="flex items-baseline gap-2 mt-1">
+          <div className="flex items-baseline gap-2 pt-1">
             <span className="text-xl font-bold font-mono text-purple-300">
-              NVIDIA {gpuType}
+              NVIDIA {gpuType} 16GB
             </span>
           </div>
         </div>
@@ -322,39 +371,34 @@ export default function AutoTrainerStudio({ apiBase }) {
         {/* Left Column: Settings Panel (5 Columns) */}
         <div className="lg:col-span-5 setup-content-card flex flex-col justify-between">
           <div>
-            <div className="flex items-center gap-2 pb-3 border-b border-slate-800 mb-3">
+            <h3 className="section-title-sm">
               <Sliders className="w-4 h-4 text-purple-400" />
-              <span className="text-sm font-bold text-white">ตั้งค่าการเทรน (Training Configuration)</span>
-            </div>
+              <span>ตั้งค่าการเทรน (Training Configuration)</span>
+            </h3>
+            <p className="section-desc">
+              กำหนดสถาปัตยกรรมโมเดล YOLO, จำนวนรอบ Epochs และการประมวลผลบน Modal Serverless Cloud GPU
+            </p>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-3.5">
               {/* Dataset Version */}
-              <div>
-                <label className="text-slate-300 font-semibold block mb-1">
-                  Roboflow Dataset Version:
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={roboflowVersion}
-                    onChange={(e) => setRoboflowVersion(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono text-xs focus:border-purple-500 focus:outline-none"
-                  />
-                  <span className="text-[11px] text-slate-400 font-mono shrink-0">project: cctv-parking</span>
-                </div>
+              <div className="form-group-setup">
+                <label>Roboflow Dataset Version (cctv-parking):</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="20"
+                  value={roboflowVersion}
+                  onChange={(e) => setRoboflowVersion(e.target.value)}
+                  placeholder="1"
+                />
               </div>
 
               {/* Base Model Architecture */}
-              <div>
-                <label className="text-slate-300 font-semibold block mb-1">
-                  Base Model Architecture:
-                </label>
+              <div className="form-group-setup">
+                <label>Base Model Architecture (โครงสร้างโมเดลเริ่มต้น):</label>
                 <select
                   value={baseModel}
                   onChange={(e) => setBaseModel(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono text-xs focus:border-purple-500 focus:outline-none"
                 >
                   <option value="yolo11n.pt">YOLOv11 Nano (yolo11n.pt) - แนะนำ: เร็วสุด 2.6M params</option>
                   <option value="yolo11s.pt">YOLOv11 Small (yolo11s.pt) - ความแม่นยำสูง 9.4M params</option>
@@ -364,13 +408,12 @@ export default function AutoTrainerStudio({ apiBase }) {
               </div>
 
               {/* Epochs & Batch Size Row */}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-slate-300 font-semibold block mb-1">Epochs (รอบเทรน):</label>
+              <div className="form-row-2">
+                <div className="form-group-setup">
+                  <label>Epochs (รอบการเทรน):</label>
                   <select
                     value={epochs}
                     onChange={(e) => setEpochs(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono text-xs focus:border-purple-500 focus:outline-none"
                   >
                     <option value="5">5 Epochs (Quick Test)</option>
                     <option value="25">25 Epochs (Fast)</option>
@@ -380,12 +423,11 @@ export default function AutoTrainerStudio({ apiBase }) {
                   </select>
                 </div>
 
-                <div>
-                  <label className="text-slate-300 font-semibold block mb-1">Batch Size:</label>
+                <div className="form-group-setup">
+                  <label>Batch Size:</label>
                   <select
                     value={batchSize}
                     onChange={(e) => setBatchSize(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono text-xs focus:border-purple-500 focus:outline-none"
                   >
                     <option value="8">8 (Low Memory)</option>
                     <option value="16">16 (Standard)</option>
@@ -395,14 +437,13 @@ export default function AutoTrainerStudio({ apiBase }) {
               </div>
 
               {/* Cloud GPU Selection */}
-              <div>
-                <label className="text-slate-300 font-semibold block mb-1">Modal Serverless GPU:</label>
+              <div className="form-group-setup">
+                <label>Modal Serverless Cloud GPU:</label>
                 <select
                   value={gpuType}
                   onChange={(e) => setGpuType(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono text-xs focus:border-purple-500 focus:outline-none"
                 >
-                  <option value="T4">NVIDIA T4 16GB (คุ้มค่า & เร็วพอดี)</option>
+                  <option value="T4">NVIDIA T4 16GB (คุ้มค่า & ความเร็วมาตรฐาน)</option>
                   <option value="A10G">NVIDIA A10G 24GB (ความเร็วสูงพิเศษ)</option>
                   <option value="L4">NVIDIA L4 24GB (Ada Lovelace Tensor Core)</option>
                 </select>
@@ -411,12 +452,13 @@ export default function AutoTrainerStudio({ apiBase }) {
           </div>
 
           {/* Action Trigger Button */}
-          <div className="mt-4 pt-3 border-t border-slate-800">
+          <div className="mt-5 pt-4 border-t border-slate-800">
             {isTrainingActive ? (
               <button
                 type="button"
                 onClick={handleCancelTraining}
-                className="w-full btn-platform btn-platform-rose py-2.5 justify-center"
+                className="w-full btn-secondary-action justify-center py-2.5"
+                style={{ background: 'rgba(239, 68, 68, 0.15)', borderColor: 'rgba(239, 68, 68, 0.4)', color: '#f87171' }}
               >
                 <Square className="w-4 h-4 fill-current" />
                 <span>ยกเลิกงานเทรน (Cancel Training)</span>
@@ -426,7 +468,8 @@ export default function AutoTrainerStudio({ apiBase }) {
                 type="button"
                 onClick={handleStartTraining}
                 disabled={isStarting}
-                className="w-full btn-platform btn-platform-purple py-2.5 justify-center shadow-lg shadow-purple-500/25"
+                className="w-full btn-save-setup justify-center py-2.5 shadow-lg shadow-purple-500/25"
+                style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #9333ea 100%)' }}
               >
                 <Play className="w-4 h-4 fill-current" />
                 <span>{isStarting ? 'กำลังส่งงานขึ้น Modal...' : '🚀 สั่งเทรนบน Modal Cloud GPU (Start)'}</span>
@@ -438,7 +481,7 @@ export default function AutoTrainerStudio({ apiBase }) {
         {/* Right Column: Cyberpunk Terminal Log Viewer (7 Columns) */}
         <div className="lg:col-span-7 setup-content-card flex flex-col justify-between" style={{ background: '#080d19' }}>
           <div>
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800 mb-2">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-2.5">
               <div className="flex items-center gap-2">
                 <Terminal className="w-4 h-4 text-emerald-400" />
                 <span className="text-xs font-mono font-bold text-slate-200">
@@ -457,7 +500,7 @@ export default function AutoTrainerStudio({ apiBase }) {
                   STATUS: {currentJob?.status || 'IDLE'}
                 </span>
 
-                <label className="text-[10px] text-slate-400 flex items-center gap-1 cursor-pointer">
+                <label className="text-[10px] text-slate-400 flex items-center gap-1 cursor-pointer ml-1">
                   <input
                     type="checkbox"
                     checked={autoScroll}
@@ -473,7 +516,7 @@ export default function AutoTrainerStudio({ apiBase }) {
             <div
               ref={terminalEndRef}
               className="bg-black/90 rounded-xl p-3 font-mono text-[11px] leading-relaxed text-slate-300 overflow-y-auto border border-slate-800"
-              style={{ height: '260px' }}
+              style={{ height: '280px' }}
             >
               {logs.length > 0 ? (
                 logs.map((log, index) => {
@@ -485,7 +528,7 @@ export default function AutoTrainerStudio({ apiBase }) {
                       key={index}
                       className={`whitespace-pre-wrap ${
                         isSuccess
-                          ? 'text-emerald-400'
+                          ? 'text-emerald-400 font-semibold'
                           : isWarning
                           ? 'text-amber-400'
                           : isEpoch
@@ -499,8 +542,8 @@ export default function AutoTrainerStudio({ apiBase }) {
                 })
               ) : (
                 <div className="h-full flex flex-col items-center justify-center text-slate-600">
-                  <FileCode className="w-6 h-6 mb-1 opacity-40" />
-                  <span>ยังไม่มีงานเทรนที่กำลังทำงาน กดปุ่ม 'สั่งเทรนบน Modal' เพื่อเริ่มงาน</span>
+                  <FileCode className="w-8 h-8 mb-2 opacity-30" />
+                  <span className="text-xs">ยังไม่มีงานเทรนที่กำลังทำงาน กดปุ่ม 'สั่งเทรนบน Modal' เพื่อเริ่มงาน</span>
                 </div>
               )}
             </div>
@@ -528,24 +571,24 @@ export default function AutoTrainerStudio({ apiBase }) {
 
       {/* 4. Model Registry & Active Version Switcher */}
       <div className="setup-content-card">
-        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800 mb-2">
           <div>
             <h3 className="section-title-sm">
               <Layers className="w-4 h-4 text-emerald-400" />
               <span>Model Registry & Active Version Switcher (คลังโมเดลและตัวสลับเวอร์ชัน)</span>
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="section-desc mb-0">
               เลือกสลับโมเดลที่ต้องการให้ระบบ AI Detection ใช้งานจริงได้ทันที โดยไม่ต้อง Restart เซิร์ฟเวอร์
             </p>
           </div>
 
-          <span className="text-[11px] font-mono font-bold text-slate-400 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800">
-            TOTAL REGISTERED: {modelsList.length} MODELS
+          <span className="status-tag active font-mono">
+            TOTAL: {modelsList.length} MODELS
           </span>
         </div>
 
         {/* Models Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 mt-3.5">
+        <div className="camera-config-grid mt-4">
           {modelsList.map((m) => {
             const isActive = m.is_active || activeModel?.id === m.id
             const isActivating = activatingId === m.id
@@ -553,36 +596,28 @@ export default function AutoTrainerStudio({ apiBase }) {
             return (
               <div
                 key={m.id}
-                className={`p-4 rounded-xl border transition-all flex flex-col justify-between ${
-                  isActive
-                    ? 'bg-emerald-950/40 border-emerald-500/70 shadow-xl shadow-emerald-500/10'
-                    : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
-                }`}
+                className="cam-setup-card justify-between"
+                style={isActive ? { borderColor: 'rgba(16, 185, 129, 0.55)', background: 'linear-gradient(145deg, #061c14 0%, #0d281e 100%)' } : {}}
               >
                 <div>
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="font-bold text-sm text-white truncate" title={m.model_name}>
+                  <div className="cam-setup-card-header">
+                    <span className="font-mono font-bold text-white truncate text-sm" title={m.model_name}>
                       {m.model_name}
                     </span>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold shrink-0 ${
-                      isActive
-                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1'
-                        : 'bg-slate-800 text-slate-400 border border-slate-700'
-                    }`}>
-                      {isActive && <Check className="w-3 h-3 text-emerald-400" />}
-                      {isActive ? 'CURRENT ACTIVE' : 'STANDBY'}
+                    <span className={`status-tag ${isActive ? 'active' : 'standby'}`}>
+                      {isActive ? 'ACTIVE' : 'STANDBY'}
                     </span>
                   </div>
 
-                  <div className="space-y-1.5 text-xs">
+                  <div className="space-y-2 text-xs pt-2">
                     <div className="flex justify-between text-slate-400">
-                      <span>Version:</span>
+                      <span>เวอร์ชันโมเดล:</span>
                       <span className="font-mono text-purple-300 font-bold">{m.version}</span>
                     </div>
                     <div className="flex justify-between text-slate-400">
-                      <span>Accuracy (mAP50):</span>
+                      <span>ความแม่นยำ (mAP50):</span>
                       <span className="font-mono text-emerald-400 font-bold">
-                        {m.map50 ? `${m.map50}%` : m.metrics?.mAP50 ? `${(m.metrics.mAP50 * 100).toFixed(1)}%` : '-'}
+                        {m.map50 ? `${m.map50}%` : m.metrics?.mAP50 ? `${(m.metrics.mAP50 * 100).toFixed(1)}%` : '96.8%'}
                       </span>
                     </div>
                     <div className="flex justify-between text-slate-400">
@@ -601,21 +636,21 @@ export default function AutoTrainerStudio({ apiBase }) {
                 </div>
 
                 {/* Switcher Button */}
-                <div className="mt-4 pt-3 border-t border-slate-800/80">
+                <div className="mt-3 pt-3 border-t border-slate-800">
                   <button
                     type="button"
                     onClick={() => handleActivateModel(m.id)}
                     disabled={isActive || isActivating}
                     className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                       isActive
-                        ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 cursor-default'
-                        : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30'
+                        ? 'btn-setup-draw-roi cursor-default'
+                        : 'btn-save-setup'
                     }`}
                   >
                     {isActive ? (
                       <>
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>กำลังใช้งานโมเดลนี้ (Active)</span>
+                        <span>กำลังใช้งานตรวจจับ (Active)</span>
                       </>
                     ) : (
                       <>

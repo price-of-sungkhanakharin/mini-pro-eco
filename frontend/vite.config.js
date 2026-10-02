@@ -12,6 +12,14 @@ export default defineConfig({
         target: 'http://localhost:8000',
         changeOrigin: true,
       },
+      '/api/parking': {
+        target: 'http://localhost:5005',
+        changeOrigin: true,
+      },
+      '/api/forecast': {
+        target: 'http://localhost:5005',
+        changeOrigin: true,
+      },
       '/api/logs': {
         target: 'http://localhost:5005',
         changeOrigin: true,

@@ -1,9 +1,10 @@
-"""Authentication API router."""
-
-from fastapi import APIRouter, Depends, HTTPException, status
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
+from backend.app.core.config import settings
 from backend.app.core.security import (
     create_access_token,
     get_current_user,
@@ -90,3 +91,57 @@ def login(
 def get_me(current_user: UserModel = Depends(get_current_user)):
     """Get current authenticated user details."""
     return current_user
+
+
+@router.get(
+    "/sso/minio",
+    summary="MinIO Console Single Sign-On Auto Login",
+    description="Logs in automatically to MinIO Object Storage Console and redirects browser seamlessly.",
+)
+async def minio_sso(request: Request):
+    """Log in to MinIO Console and redirect user seamlessly without prompt."""
+    minio_host = "127.0.0.1"
+    minio_port = settings.minio_console_port
+    target_host = request.url.hostname or "localhost"
+
+    token = None
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.post(
+                f"http://{minio_host}:{minio_port}/api/v1/login",
+                json={
+                    "accessKey": settings.minio_root_user,
+                    "secretKey": settings.minio_root_password,
+                },
+            )
+            if resp.status_code in (200, 204):
+                token = resp.cookies.get("token")
+    except Exception:
+        pass
+
+    target_url = f"http://{target_host}:{minio_port}/"
+    response = RedirectResponse(url=target_url, status_code=status.HTTP_302_FOUND)
+    if token:
+        response.set_cookie(
+            key="token",
+            value=token,
+            path="/",
+            httponly=True,
+            samesite="lax",
+            max_age=43200,
+        )
+    return response
+
+
+@router.get(
+    "/sso/postgres",
+    summary="Postgres UI (Adminer) Single Sign-On Auto Login",
+    description="Redirects user directly to Adminer auto-login interface.",
+)
+def postgres_sso(request: Request):
+    """Redirect to Adminer Postgres UI with auto-login."""
+    target_host = request.url.hostname or "localhost"
+    adminer_port = 8088
+    target_url = f"http://{target_host}:{adminer_port}/"
+    return RedirectResponse(url=target_url, status_code=status.HTTP_302_FOUND)
+

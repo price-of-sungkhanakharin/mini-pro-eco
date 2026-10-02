@@ -33,10 +33,10 @@ export default function EcosystemView() {
     },
     {
       title: 'MinIO Object Storage Console',
-      subtitle: 'S3-Compatible Storage for Dataset & Image Snapshots',
+      subtitle: 'S3 Storage Console (SSO Auto-Login)',
       port: ':9001',
-      url: `http://${host}:9001`,
-      desc: 'เข้าดู Bucket รูปภาพ Snapshot กล้องวงจรปิด และไฟล์ Weights',
+      url: `http://${host}:8000/api/v1/auth/sso/minio`,
+      desc: 'เข้าดู Bucket รูปภาพ Snapshot กล้องวงจรปิด และไฟล์ Weights เข้าใช้งานได้ทันที (Auto-Login)',
       status: 'Active',
       color: 'rose'
     },
@@ -50,11 +50,11 @@ export default function EcosystemView() {
       color: 'blue'
     },
     {
-      title: 'PostgreSQL Database Engine',
-      subtitle: 'Relational & Time-Series Parking Occupancy Logs',
-      port: ':5432',
-      url: `${host}:5432`,
-      desc: 'ฐานข้อมูลเก็บ User, Model Registry, Audit Roboflow และ parking_occupancy_logs',
+      title: 'PostgreSQL Database UI (Adminer)',
+      subtitle: 'Relational Database Management (Auto-Login)',
+      port: ':8088',
+      url: `http://${host}:8088`,
+      desc: 'ฐานข้อมูลเก็บ User, Model Registry, Audit Roboflow และ parking_occupancy_logs (เข้าดูตารางได้ทันที)',
       status: 'Active',
       color: 'indigo'
     },

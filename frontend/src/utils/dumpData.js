@@ -946,8 +946,21 @@ export async function saveAllCamerasRoiToServer() {
  */
 export async function syncAllSlotsFromServer() {
   try {
-    const roiData = await fetchRoiFromServer()
+    const apiBase = getIngestionApiBase()
+    const [roiData, statusData] = await Promise.all([
+      fetchRoiFromServer(),
+      fetch(`${apiBase}/api/parking/status`).then(r => r.ok ? r.json() : []).catch(() => [])
+    ])
     if (!roiData || typeof roiData !== 'object') return null
+
+    const statusMap = {}
+    if (Array.isArray(statusData)) {
+      statusData.forEach((item) => {
+        if (item && item.camera_id) {
+          statusMap[item.camera_id] = item
+        }
+      })
+    }
 
     let anyUpdated = false
     const results = {}
@@ -959,26 +972,32 @@ export async function syncAllSlotsFromServer() {
       const rawServerZones = camData?.zones || camData?.polygon
 
       if (Array.isArray(serverSlots) && serverSlots.length > 0) {
-        if (!isDummyTestSlot(serverSlots)) {
-          results[camId] = serverSlots
-          saveSlotsToStorage(serverSlots, camId, false)
-          anyUpdated = true
-        } else {
-          // Server has dummy test slot: if this client has real custom slots, push to server!
-          const localSlots = getSavedOrInitialSlots(camId)
-          if (!isDummyTestSlot(localSlots)) {
-            saveRoiToServer(camId, localSlots)
-            results[camId] = localSlots
-          } else {
-            results[camId] = localSlots
+        const camLiveStatus = statusMap[camId]
+        const liveSlotDetails = Array.isArray(camLiveStatus?.slots_detail) ? camLiveStatus.slots_detail : []
+        const liveSlotMap = {}
+        liveSlotDetails.forEach((s) => {
+          if (s && s.id) liveSlotMap[s.id] = s
+        })
+
+        const mergedSlots = serverSlots.map((slot) => {
+          const live = liveSlotMap[slot.id]
+          if (live) {
+            return {
+              ...slot,
+              occupied: Boolean(live.occupied),
+              vehicle: live.vehicle || null,
+              vehicle_name: live.vehicle_name || (live.occupied ? 'ไม่ว่าง' : 'ว่างพร้อมจอด'),
+              conf: live.conf !== undefined ? live.conf : null
+            }
           }
-        }
+          return slot
+        })
+
+        results[camId] = mergedSlots
+        saveSlotsToStorage(mergedSlots, camId, false)
+        anyUpdated = true
       } else {
-        // Server has no slots for this camera yet
         const localSlots = getSavedOrInitialSlots(camId)
-        if (localSlots && localSlots.length > 0 && !isDummyTestSlot(localSlots)) {
-          saveRoiToServer(camId, localSlots)
-        }
         results[camId] = localSlots
       }
 

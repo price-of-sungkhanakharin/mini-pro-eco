@@ -396,18 +396,38 @@ export default function CameraModal({ camera, onClose, onNavigate }) {
                 </div>
 
                 {/* AI Forecast Banner */}
-                <div className="ai-forecast-card">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-amber-400" />
-                    <span className="tile-label" style={{ color: '#fbbf24', opacity: 0.9 }}>
-                      ทำนายโอกาสว่าง (+15 นาที)
-                    </span>
-                  </div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-xl font-extrabold font-mono text-amber-400">
-                      ~{camera.vacancyChance15m ?? 85}%
-                    </span>
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                  {carTotal > 0 && (
+                    <div className="ai-forecast-card">
+                      <div className="flex items-center gap-2">
+                        <Car className="w-4 h-4 text-emerald-400" />
+                        <span className="tile-label" style={{ color: '#34d399', opacity: 0.9 }}>
+                          ทำนายรถยนต์ (+15น.)
+                        </span>
+                      </div>
+                      <div className="flex items-baseline gap-1 mt-0.5">
+                        <span className={`text-base font-bold ${carFree >= 2 ? 'text-emerald-400' : carFree === 1 ? 'text-amber-400' : 'text-rose-400'}`}>
+                          {carFree >= 2 ? 'โอกาสมีที่จอดสูง' : carFree === 1 ? 'โอกาสปานกลาง' : 'เต็ม'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {bikeTotal > 0 && (
+                    <div className="ai-forecast-card">
+                      <div className="flex items-center gap-2">
+                        <Bike className="w-4 h-4 text-cyan-400" />
+                        <span className="tile-label" style={{ color: '#22d3ee', opacity: 0.9 }}>
+                          ทำนายมอไซค์ (+15น.)
+                        </span>
+                      </div>
+                      <div className="flex items-baseline gap-1 mt-0.5">
+                        <span className={`text-base font-bold ${bikeFree >= 3 || (bikeTotal > 0 && bikeFree / bikeTotal >= 0.15) ? 'text-emerald-400' : bikeFree >= 1 ? 'text-amber-400' : 'text-rose-400'}`}>
+                          {bikeFree >= 3 || (bikeTotal > 0 && bikeFree / bikeTotal >= 0.15) ? 'โอกาสมีที่จอดสูง' : bikeFree >= 1 ? 'โอกาสปานกลาง' : 'เต็ม'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

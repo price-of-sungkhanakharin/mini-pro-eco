@@ -31,6 +31,70 @@ import {
   checkCameraOnlineStatus
 } from '../utils/dumpData'
 
+/**
+ * Evaluates 3-tier car vacancy prediction status based on actual free car count (k).
+ * k >= 2: "โอกาสมีที่จอดสูง" (High vacancy chance - Green)
+ * k == 1: "โอกาสปานกลาง" (Medium vacancy chance - Yellow)
+ * k == 0: "เต็ม" (Full - Red)
+ */
+export function getCarVacancyStatus(freeCar) {
+  if (typeof freeCar !== 'number' || freeCar < 0) return null
+  if (freeCar >= 2) {
+    return {
+      level: 'high',
+      text: 'โอกาสมีที่จอดสูง',
+      colorClass: 'text-emerald-400',
+      badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+    }
+  }
+  if (freeCar === 1) {
+    return {
+      level: 'medium',
+      text: 'โอกาสปานกลาง',
+      colorClass: 'text-amber-400',
+      badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+    }
+  }
+  return {
+    level: 'full',
+    text: 'เต็ม',
+    colorClass: 'text-rose-400',
+    badgeClass: 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+  }
+}
+
+/**
+ * Evaluates 3-tier motorcycle vacancy prediction status based on free motorcycle count.
+ * freeBike >= 3 (or >= 15% of capacity): "โอกาสมีที่จอดสูง" (High vacancy chance - Green)
+ * freeBike >= 1: "โอกาสปานกลาง" (Medium vacancy chance - Yellow)
+ * freeBike == 0: "เต็ม" (Full - Red)
+ */
+export function getBikeVacancyStatus(freeBike, totalBike = 25) {
+  if (typeof freeBike !== 'number' || freeBike < 0) return null
+  if (freeBike >= 3 || (totalBike > 0 && freeBike / totalBike >= 0.15)) {
+    return {
+      level: 'high',
+      text: 'โอกาสมีที่จอดสูง',
+      colorClass: 'text-emerald-400',
+      badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+    }
+  }
+  if (freeBike >= 1) {
+    return {
+      level: 'medium',
+      text: 'โอกาสปานกลาง',
+      colorClass: 'text-amber-400',
+      badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+    }
+  }
+  return {
+    level: 'full',
+    text: 'เต็ม',
+    colorClass: 'text-rose-400',
+    badgeClass: 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+  }
+}
+
 export default function DashboardView({ onOpenModal, onNavigate }) {
   const INGESTION_API = getIngestionApiBase()
   const [selectedZone, setSelectedZone] = useState('all')
@@ -267,20 +331,12 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
       },
       car: cam1Counts.car,
       bike: cam1Counts.bike,
-      vacancyChance15m:
-        cam1Counts.car.total + cam1Counts.bike.total > 0
-          ? Math.min(
-              95,
-              Math.max(
-              35,
-              Math.round(
-                ((cam1Counts.car.free + cam1Counts.bike.free) /
-                  (cam1Counts.car.total + cam1Counts.bike.total)) *
-                  100
-              )
-            )
-          )
-        : 85,
+      carVacancyStatus:
+        cam1Counts.car.total > 0 ? getCarVacancyStatus(cam1Counts.car.free) : null,
+      bikeVacancyChance15m:
+        cam1Counts.bike.total > 0
+          ? Math.round((cam1Counts.bike.free / cam1Counts.bike.total) * 100)
+          : null,
       slots: cam1Slots
     },
     {
@@ -314,20 +370,12 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
       },
       car: cam2Counts.car,
       bike: cam2Counts.bike,
-      vacancyChance15m:
-        cam2Counts.car.total + cam2Counts.bike.total > 0
-          ? Math.min(
-              95,
-              Math.max(
-              35,
-              Math.round(
-                ((cam2Counts.car.free + cam2Counts.bike.free) /
-                  (cam2Counts.car.total + cam2Counts.bike.total)) *
-                  100
-              )
-            )
-          )
-        : 78,
+      carVacancyStatus:
+        cam2Counts.car.total > 0 ? getCarVacancyStatus(cam2Counts.car.free) : null,
+      bikeVacancyChance15m:
+        cam2Counts.bike.total > 0
+          ? Math.round((cam2Counts.bike.free / cam2Counts.bike.total) * 100)
+          : null,
       slots: cam2Slots
     },
     {
@@ -361,20 +409,9 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
       },
       car: cam3Counts.car,
       bike: cam3Counts.bike,
-      vacancyChance15m:
-        cam3Counts.car.total + cam3Counts.bike.total > 0
-          ? Math.min(
-              95,
-              Math.max(
-              35,
-              Math.round(
-                ((cam3Counts.car.free + cam3Counts.bike.free) /
-                  (cam3Counts.car.total + cam3Counts.bike.total)) *
-                  100
-              )
-            )
-          )
-        : 60,
+      carVacancyStatus: null,
+      bikeVacancyStatus:
+        cam3Counts.bike.total > 0 ? getBikeVacancyStatus(cam3Counts.bike.free, cam3Counts.bike.total) : null,
       slots: cam3Slots
     }
   ]
@@ -608,27 +645,43 @@ export default function DashboardView({ onOpenModal, onNavigate }) {
 
             {/* Camera Metrics & Parking Counter Bar (Uniform on all cards) */}
             <div className="camera-metrics-bar">
-              <div className="flex items-center gap-3">
-                <div className="slot-badge car-badge">
-                  <Car className="w-3.5 h-3.5 text-blue-400" />
-                  <span>
-                    ว่าง <strong className="text-white">{cam.car.free}</strong>/{cam.car.total}
-                  </span>
-                </div>
+              <div className="flex items-center gap-2">
+                {cam.car.total > 0 && (
+                  <div className="slot-badge car-badge" title="ช่องจอดรถยนต์">
+                    <Car className="w-3.5 h-3.5 text-blue-400" />
+                    <span>
+                      รถยนต์ ว่าง <strong className="text-white">{cam.car.free}</strong>/{cam.car.total}
+                    </span>
+                  </div>
+                )}
 
-                <div className="slot-badge bike-badge">
-                  <Bike className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>
-                    ว่าง <strong className="text-white">{cam.bike.free}</strong>/{cam.bike.total}
-                  </span>
-                </div>
+                {cam.bike.total > 0 && (
+                  <div className="slot-badge bike-badge" title="ช่องจอดมอเตอร์ไซค์">
+                    <Bike className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>
+                      มอไซค์ ว่าง <strong className="text-white">{cam.bike.free}</strong>/{cam.bike.total}
+                    </span>
+                  </div>
+                )}
               </div>
 
-              <div className="chance-badge">
-                <Sparkles className="w-3 h-3 text-amber-300" />
-                <span>
-                  โอกาสว่าง: <strong>{cam.vacancyChance15m}%</strong> (+15น.)
-                </span>
+              <div className="flex items-center gap-2">
+                {cam.car.total > 0 && cam.carVacancyStatus && (
+                  <div className="chance-badge" title="ประเมินโอกาสว่างเฉพาะช่องจอดรถยนต์ (+15 นาที) ตามจำนวนช่องว่างจริง">
+                    <Car className="w-3 h-3 text-blue-300" />
+                    <span>
+                      โอกาสว่าง: <strong className={cam.carVacancyStatus.colorClass}>{cam.carVacancyStatus.text}</strong> (+15น.)
+                    </span>
+                  </div>
+                )}
+                {cam.car.total === 0 && cam.bike.total > 0 && cam.bikeVacancyStatus && (
+                  <div className="chance-badge" title="ประเมินโอกาสว่างเฉพาะช่องจอดมอเตอร์ไซค์ (+15 นาที) ตามจำนวนช่องว่างจริง">
+                    <Bike className="w-3 h-3 text-emerald-300" />
+                    <span>
+                      โอกาสว่าง: <strong className={cam.bikeVacancyStatus.colorClass}>{cam.bikeVacancyStatus.text}</strong> (+15น.)
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

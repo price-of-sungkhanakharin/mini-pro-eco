@@ -59,6 +59,15 @@ export default function EcosystemView() {
       color: 'indigo'
     },
     {
+      title: 'MLflow Tracking & Experiment Registry',
+      subtitle: 'Model Lifecycle, Metrics & Evaluation Tracking',
+      port: ':5001',
+      url: `http://${host}:5001`,
+      desc: 'ระบบติดตามและเปรียบเทียบโมเดล AI, Brier Scores, Reliability Curve และผลการทดลอง Out-of-Sample',
+      status: 'Active',
+      color: 'violet'
+    },
+    {
       title: 'Redis Cache & Queue',
       subtitle: 'In-Memory Cache & Asynchronous Task Queue',
       port: ':6379',

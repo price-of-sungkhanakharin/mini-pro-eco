@@ -62,7 +62,7 @@ export default function EcosystemView() {
       title: 'MLflow Tracking & Experiment Registry',
       subtitle: 'Model Lifecycle, Metrics & Evaluation Tracking',
       port: ':5001',
-      url: `http://${host}:5001`,
+      url: `http://${host}:5001/#/experiments/9`,
       desc: 'ระบบติดตามและเปรียบเทียบโมเดล AI, Brier Scores, Reliability Curve และผลการทดลอง Out-of-Sample',
       status: 'Active',
       color: 'violet'

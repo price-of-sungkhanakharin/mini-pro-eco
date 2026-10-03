@@ -1,102 +1,859 @@
+<?xml version='1.0' encoding='utf-8'?>
 <mxfile host="65bd71144e">
-    <diagram id="5KAFenfT5CQU9z7iqvRB" name="Page-1">
-        <mxGraphModel dx="2031" dy="837" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="800" math="0" shadow="0">
+    <diagram id="page_master_arch" name="1. System Overview Architecture">
+        <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1850" pageHeight="1200" math="0" shadow="0">
             <root>
-                <mxCell id="0"/>
-                <mxCell id="1" parent="0"/>
-                <mxCell id="end_user" value="End user" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontColor=#000000;fontSize=14;" parent="1" vertex="1">
-                    <mxGeometry x="40" y="40" width="40" height="60" as="geometry"/>
+                <mxCell id="0" />
+                <mxCell id="1" parent="0" />
+                <mxCell id="p1_title" value="&lt;b style='font-size:20px;color:#0D47A1;'&gt;AI Ecosystem for University Parking Prediction - System Architecture&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=2;arcSize=50;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="375" y="20" width="1100" height="50" as="geometry" />
                 </mxCell>
-                <mxCell id="inference_channel" value="Inference Channel" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#000000;fontSize=14;fontStyle=1;" parent="1" vertex="1">
-                    <mxGeometry x="20" y="180" width="140" height="60" as="geometry"/>
+                <mxCell id="cam1_box" value="&lt;div style='text-align:center;'&gt;&lt;div style='background:#111;color:#fff;border-radius:6px;width:55px;height:55px;margin:0 auto 4px auto;display:flex;align-items:center;justify-content:center;border:2px solid #555;'&gt;&lt;span style='font-size:28px;'&gt;📷&lt;/span&gt;&lt;/div&gt;&lt;b style='font-size:13px;color:#0D47A1;'&gt;ESP32 + Camera 1&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:11px;color:#1565C0;font-weight:bold;'&gt;(Parking Lot 1 - รถยนต์)&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#0288D1;strokeWidth=2.5;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="460" y="95" width="220" height="115" as="geometry" />
                 </mxCell>
-                <mxCell id="management_channel" value="Management Channel" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontColor=#000000;fontSize=14;fontStyle=1;" parent="1" vertex="1">
-                    <mxGeometry x="20" y="300" width="140" height="60" as="geometry"/>
+                <mxCell id="cam1_badge" value="&lt;div style='text-align:center;font-size:11px;color:#333;'&gt;&lt;span style='color:#0288D1;font-size:13px;'&gt;🖼️&lt;/span&gt; &lt;b&gt;Image + Camera Status&lt;/b&gt;&lt;br/&gt;&lt;span style='color:#2E7D32;font-size:12px;'&gt;✔️&lt;/span&gt; &lt;span style='color:#555;'&gt;(every 5s)&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#0288D1;strokeWidth=1.5;arcSize=25;" parent="1" vertex="1">
+                    <mxGeometry x="470" y="220" width="200" height="45" as="geometry" />
                 </mxCell>
-                <mxCell id="admin" value="Admin" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontColor=#000000;fontSize=14;fontStyle=1;" parent="1" vertex="1">
-                    <mxGeometry x="50" y="420" width="100" height="40" as="geometry"/>
+                <mxCell id="cam2_box" value="&lt;div style='text-align:center;'&gt;&lt;div style='background:#111;color:#fff;border-radius:6px;width:55px;height:55px;margin:0 auto 4px auto;display:flex;align-items:center;justify-content:center;border:2px solid #555;'&gt;&lt;span style='font-size:28px;'&gt;📷&lt;/span&gt;&lt;/div&gt;&lt;b style='font-size:13px;color:#1B5E20;'&gt;ESP32 + Camera 2&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:11px;color:#2E7D32;font-weight:bold;'&gt;(Parking Lot 2 - รถยนต์)&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2E7D32;strokeWidth=2.5;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="740" y="95" width="220" height="115" as="geometry" />
                 </mxCell>
-                <mxCell id="admin_users" value="" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontColor=#000000;fontSize=14;" parent="1" vertex="1">
-                    <mxGeometry x="30" y="500" width="30" height="45" as="geometry"/>
+                <mxCell id="cam2_badge" value="&lt;div style='text-align:center;font-size:11px;color:#333;'&gt;&lt;span style='color:#2E7D32;font-size:13px;'&gt;🖼️&lt;/span&gt; &lt;b&gt;Image + Camera Status&lt;/b&gt;&lt;br/&gt;&lt;span style='color:#2E7D32;font-size:12px;'&gt;✔️&lt;/span&gt; &lt;span style='color:#555;'&gt;(every 5s)&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2E7D32;strokeWidth=1.5;arcSize=25;" parent="1" vertex="1">
+                    <mxGeometry x="750" y="220" width="200" height="45" as="geometry" />
                 </mxCell>
-                <mxCell id="central_api" value="Central API Server" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#e1e5f0;strokeColor=#666699;fontColor=#000000;fontSize=14;fontStyle=1;" parent="1" vertex="1">
-                    <mxGeometry x="260" y="200" width="150" height="110" as="geometry"/>
+                <mxCell id="cam3_box" value="&lt;div style='text-align:center;'&gt;&lt;div style='background:#111;color:#fff;border-radius:6px;width:55px;height:55px;margin:0 auto 4px auto;display:flex;align-items:center;justify-content:center;border:2px solid #555;'&gt;&lt;span style='font-size:28px;'&gt;📷&lt;/span&gt;&lt;/div&gt;&lt;b style='font-size:13px;color:#4A148C;'&gt;ESP32 + Camera 3&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:11px;color:#7B1FA2;font-weight:bold;'&gt;(Parking Lot 3 - มอเตอร์ไซค์)&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#7B1FA2;strokeWidth=2.5;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="1020" y="95" width="220" height="115" as="geometry" />
                 </mxCell>
-                <mxCell id="redis_server" value="Redis Server" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#f8cecc;strokeColor=#b85450;fontColor=#000000;fontSize=13;fontStyle=1;fontBackgroundColor=#ffffff;" parent="1" vertex="1">
-                    <mxGeometry x="480" y="40" width="90" height="90" as="geometry"/>
+                <mxCell id="cam3_badge" value="&lt;div style='text-align:center;font-size:11px;color:#333;'&gt;&lt;span style='color:#7B1FA2;font-size:13px;'&gt;🖼️&lt;/span&gt; &lt;b&gt;Image + Camera Status&lt;/b&gt;&lt;br/&gt;&lt;span style='color:#2E7D32;font-size:12px;'&gt;✔️&lt;/span&gt; &lt;span style='color:#555;'&gt;(every 5s)&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#7B1FA2;strokeWidth=1.5;arcSize=25;" parent="1" vertex="1">
+                    <mxGeometry x="1030" y="220" width="200" height="45" as="geometry" />
                 </mxCell>
-                <mxCell id="brain_box" value="AI / Neural Core" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9673a6;fontSize=24;fontColor=#000000;" parent="1" vertex="1">
-                    <mxGeometry x="620" y="180" width="110" height="60" as="geometry"/>
+                <mxCell id="box_admin" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:32px;'&gt;👨‍💻&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:14px;color:#C2185B;'&gt;Admin&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:11px;color:#880E4F;'&gt;(ดูแลระบบ / ตั้งค่า)&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE4EC;strokeColor=#E91E63;strokeWidth=2;arcSize=20;" parent="1" vertex="1">
+                    <mxGeometry x="30" y="210" width="150" height="90" as="geometry" />
                 </mxCell>
-                <mxCell id="job_worker_bg2" value="" style="shape=step;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
-                    <mxGeometry x="500" y="330" width="200" height="70" as="geometry"/>
+                <mxCell id="box_user" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:32px;'&gt;📱🧍&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:14px;color:#283593;'&gt;User ทั่วไป&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:11px;color:#1A237E;'&gt;(ใช้งานผ่าน LINE)&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8EAF6;strokeColor=#3F51B5;strokeWidth=2;arcSize=20;" parent="1" vertex="1">
+                    <mxGeometry x="30" y="360" width="150" height="90" as="geometry" />
                 </mxCell>
-                <mxCell id="job_worker_bg1" value="" style="shape=step;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#bcd4f0;strokeColor=#6c8ebf;" parent="1" vertex="1">
-                    <mxGeometry x="490" y="320" width="200" height="70" as="geometry"/>
+                <mxCell id="box_react_admin" value="&lt;div style='text-align:center;padding:4px;'&gt;&lt;span style='font-size:34px;color:#00BCD4;'&gt;⚛️&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#00838F;'&gt;React Admin Interface&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:11px;color:#006064;'&gt;มอนิเตอร์ ตั้งค่า และ&lt;br/&gt;Ecosystem View&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0F7FA;strokeColor=#00BCD4;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="220" y="320" width="180" height="110" as="geometry" />
                 </mxCell>
-                <mxCell id="job_worker_1" value="Job worker 1" style="shape=step;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#6c9cd8;strokeColor=#3d6aa8;fontColor=#ffffff;fontSize=14;fontStyle=1;" parent="1" vertex="1">
-                    <mxGeometry x="480" y="310" width="200" height="70" as="geometry"/>
+                <mxCell id="box_line_bot" value="&lt;div style='text-align:center;padding:4px;'&gt;&lt;div style='background:#06C755;color:#fff;border-radius:10px;padding:2px 10px;display:inline-block;font-weight:bold;font-size:14px;margin-bottom:4px;'&gt;LINE&lt;/div&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#1B5E20;'&gt;LINE Chatbot&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:11px;color:#2E7D32;'&gt;'น้องจ๊อด หาที่จอดรถ'&lt;br/&gt;Flex Cards &amp; ภาพสด&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="220" y="465" width="180" height="115" as="geometry" />
                 </mxCell>
-                <mxCell id="training_worker_bg2" value="" style="shape=step;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#f3c6ea;strokeColor=#c266ad;" parent="1" vertex="1">
-                    <mxGeometry x="800" y="140" width="200" height="70" as="geometry"/>
+                <mxCell id="box_react_dash" value="&lt;div style='text-align:left;padding:6px;'&gt;&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;color:#00BCD4;'&gt;⚛️&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#00838F;'&gt;React Dashboard&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;(Dashboard View :5173)&lt;/span&gt;&lt;/div&gt;&lt;div style='font-size:10px;color:#006064;margin-top:4px;line-height:14px;'&gt;• ดูข้อมูลสด (Live Sync :5005)&lt;br/&gt;• ประวัติการจอด &amp; Camera Modal&lt;br/&gt;&lt;div style='background:#ffffff;border:1px solid #00BCD4;border-radius:4px;padding:3px;margin-top:3px;font-size:9px;line-height:12px;'&gt;&lt;b&gt;พยากรณ์ว่าง (+15น.) SARIMAX:&lt;/b&gt;&lt;br/&gt;&lt;span style='color:#2E7D32;font-weight:bold;'&gt;● โอกาสสูง&lt;/span&gt; (ว่าง &amp;ge; 2 คัน)&lt;br/&gt;&lt;span style='color:#F57F17;font-weight:bold;'&gt;● ปานกลาง&lt;/span&gt; (ว่าง 1 คัน)&lt;br/&gt;&lt;span style='color:#C62828;font-weight:bold;'&gt;● เต็ม&lt;/span&gt; (0 ช่องว่าง)&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0F7FA;strokeColor=#00BCD4;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="30" y="700" width="210" height="165" as="geometry" />
                 </mxCell>
-                <mxCell id="training_worker_bg1" value="" style="shape=step;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#eda6dd;strokeColor=#c266ad;" parent="1" vertex="1">
-                    <mxGeometry x="790" y="130" width="200" height="70" as="geometry"/>
+                <mxCell id="grp_backend_services" value="&lt;b style='font-size:15px;color:#01579B;'&gt;Backend Services (Core AI Platform)&lt;/b&gt;" style="swimlane;whiteSpace=wrap;html=1;fillColor=#F4FBFD;strokeColor=#0288D1;strokeWidth=2;dashed=1;dashPattern=5 5;fontSize=14;fontStyle=1;startSize=28;rounded=1;arcSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="430" y="305" width="1045" height="475" as="geometry" />
                 </mxCell>
-                <mxCell id="training_worker_1" value="Training worker 1" style="shape=step;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#e066cf;strokeColor=#a83d94;fontColor=#ffffff;fontSize=14;fontStyle=1;" parent="1" vertex="1">
-                    <mxGeometry x="780" y="120" width="200" height="70" as="geometry"/>
+                <mxCell id="box_fastapi" value="&lt;div style='text-align:left;padding:6px;'&gt;&lt;div style='text-align:center;'&gt;&lt;span style='font-size:34px;color:#009688;'&gt;⚡&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:14px;color:#00695C;'&gt;FastAPI &amp; Ingestion&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;(API Server :8000/:5005)&lt;/span&gt;&lt;/div&gt;&lt;div style='font-size:10px;color:#004D40;margin-top:6px;line-height:15px;'&gt;• รับข้อมูลภาพจาก ESP32&lt;br/&gt;• SSO: &lt;code&gt;/sso/minio&lt;/code&gt; &amp; &lt;code&gt;/sso/postgres&lt;/code&gt;&lt;br/&gt;• Proxy: &lt;code&gt;/api/parking/status&lt;/code&gt;&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0F2F1;strokeColor=#00897B;strokeWidth=2;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="450" y="340" width="190" height="175" as="geometry" />
                 </mxCell>
-                <mxCell id="postgresql" value="PostgreSQL 17" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#ffe6cc;strokeColor=#d79b00;fontColor=#000000;fontSize=13;fontStyle=1;fontBackgroundColor=#ffffff;" parent="1" vertex="1">
-                    <mxGeometry x="270" y="460" width="90" height="90" as="geometry"/>
+                <mxCell id="box_minio" value="&lt;div style='text-align:left;padding:6px;'&gt;&lt;div style='text-align:center;'&gt;&lt;span style='font-size:34px;color:#C62828;'&gt;🪣&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:14px;color:#B71C1C;'&gt;MinIO Storage&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;(S3 &amp; Console :9001)&lt;/span&gt;&lt;/div&gt;&lt;div style='font-size:10px;color:#B71C1C;margin-top:6px;line-height:15px;'&gt;• เก็บรูปภาพ (Bucket: raw-datasets)&lt;br/&gt;• จัดเก็บคู่ขนาน Disk Time-Partition&lt;br/&gt;• Seamless SSO Auto-Login Console&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFEBEE;strokeColor=#E53935;strokeWidth=2;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="660" y="340" width="185" height="160" as="geometry" />
                 </mxCell>
-                <mxCell id="label_studio" value="Label Studio" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#fff2cc;strokeColor=#d6b656;fontColor=#000000;fontSize=13;fontStyle=1;fontBackgroundColor=#ffffff;" parent="1" vertex="1">
-                    <mxGeometry x="680" y="460" width="90" height="90" as="geometry"/>
+                <mxCell id="box_postgres" value="&lt;div style='text-align:left;padding:6px;'&gt;&lt;div style='text-align:center;'&gt;&lt;span style='font-size:34px;color:#1565C0;'&gt;🐘&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:14px;color:#0D47A1;'&gt;PostgreSQL 17&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;(Metadata &amp; Logs :5432)&lt;/span&gt;&lt;/div&gt;&lt;div style='font-size:10px;color:#0D47A1;margin-top:6px;line-height:15px;'&gt;• สถานะช่องจอด (&lt;code&gt;park_status&lt;/code&gt;)&lt;br/&gt;• ข้อมูลสถิติ (&lt;code&gt;occupancy_logs&lt;/code&gt;)&lt;br/&gt;• เก็บ &lt;code&gt;chat_logs&lt;/code&gt; สำหรับจูนระบบ&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8EAF6;strokeColor=#3F51B5;strokeWidth=2;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="865" y="340" width="220" height="175" as="geometry" />
                 </mxCell>
-                <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=classic;startFill=1;endArrow=classic;endFill=1;" parent="1" source="end_user" target="inference_channel" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
+                <mxCell id="box_adminer" value="&lt;div style='text-align:left;padding:6px;'&gt;&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;color:#3F51B5;'&gt;🗄️⚡&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#1A237E;'&gt;Adminer DB UI&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;(:8088 Auto-Login SSO)&lt;/span&gt;&lt;/div&gt;&lt;div style='font-size:9px;color:#283593;margin-top:5px;line-height:14px;'&gt;• เข้าดูตาราง DB อัตโนมัติ&lt;br/&gt;• จัดการ &lt;code&gt;park_status&lt;/code&gt;&lt;br/&gt;• &lt;code&gt;parking_templates&lt;/code&gt; &amp; ROI&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#5C6BC0;strokeWidth=2;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="1105" y="340" width="165" height="160" as="geometry" />
                 </mxCell>
-                <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=classic;startFill=1;endArrow=classic;endFill=1;" parent="1" source="admin" target="management_channel" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
+                <mxCell id="box_redis" value="&lt;div style='text-align:left;padding:6px;'&gt;&lt;div style='text-align:center;'&gt;&lt;span style='font-size:34px;color:#D32F2F;'&gt;⚡&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:14px;color:#C62828;'&gt;Redis Cache &amp; Queue&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;(Task Queue &amp; Cache)&lt;/span&gt;&lt;/div&gt;&lt;div style='font-size:10px;color:#B71C1C;margin-top:6px;line-height:15px;'&gt;• คิวงานประมวลผลโมเดล&lt;br/&gt;• แคชสรุปสถานะ (&amp;lt;0.5ms)&lt;br/&gt;• แคชโอกาสว่าง +15น.&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFEBEE;strokeColor=#E53935;strokeWidth=2;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="450" y="565" width="150" height="175" as="geometry" />
                 </mxCell>
-                <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=classic;startFill=1;endArrow=classic;endFill=1;" parent="1" source="inference_channel" target="central_api" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
+                <mxCell id="box_langchain" value="&lt;div style='text-align:left;padding:6px;'&gt;&lt;div style='text-align:center;'&gt;&lt;span style='font-size:28px;'&gt;🦜🔗🤖&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:12px;color:#4A148C;'&gt;Model 3: Chatbot Agent&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:9px;background:#EDE7F6;color:#6A1B9A;padding:1px 4px;border-radius:4px;border:1px solid #BA68C8;'&gt;Inference Only (No Weights)&lt;/span&gt;&lt;/div&gt;&lt;div style='font-size:9px;color:#4A148C;margin-top:5px;line-height:14px;'&gt;• &lt;b&gt;Tool 1:&lt;/b&gt; อ่าน DB &amp; สถิติ&lt;br/&gt;• &lt;b&gt;Tool 2:&lt;/b&gt; ดึงภาพสด MinIO&lt;br/&gt;• &lt;b&gt;Tool 3:&lt;/b&gt; อ่านพยากรณ์ว่าง +15น.&lt;br/&gt;• &lt;b&gt;Log แชท:&lt;/b&gt; เก็บลง DB จูน Prompt&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#7B1FA2;strokeWidth=2.5;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="615" y="565" width="195" height="175" as="geometry" />
                 </mxCell>
-                <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=classic;startFill=1;endArrow=classic;endFill=1;" parent="1" source="management_channel" target="central_api" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
+                <mxCell id="box_inference" value="&lt;div style='text-align:left;padding:6px;'&gt;&lt;div style='text-align:center;'&gt;&lt;span style='font-size:28px;color:#EF6C00;'&gt;🚗🧠&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:12px;color:#E65100;'&gt;Model 1: YOLO Worker&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:9px;color:#E65100;background:#FFF3E0;padding:1px 4px;border-radius:4px;'&gt;CPU Real-Time Detection&lt;/span&gt;&lt;/div&gt;&lt;div style='font-size:9px;color:#E65100;margin-top:5px;line-height:14px;'&gt;• ประมวลผลภาพกล้องวงจรปิด&lt;br/&gt;• ตรวจจับ ROI Slot Polygon&lt;br/&gt;• คำนวณจำนวนรถจอดปัจจุบัน&lt;br/&gt;• Hot-Reload จาก MLflow&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#FB8C00;strokeWidth=2;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="825" y="565" width="185" height="175" as="geometry" />
                 </mxCell>
-                <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=classic;startFill=1;endArrow=classic;endFill=1;" parent="1" source="central_api" target="redis_server" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
+                <mxCell id="box_sarimax" value="&lt;div style='text-align:left;padding:6px;'&gt;&lt;div style='text-align:center;'&gt;&lt;span style='font-size:28px;color:#00897B;'&gt;📈⏱️&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:12px;color:#004D40;'&gt;Model 2: SARIMAX&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:9px;color:#004D40;background:#E0F2F1;padding:1px 4px;border-radius:4px;'&gt;Time-Series Forecaster&lt;/span&gt;&lt;/div&gt;&lt;div style='font-size:9px;color:#004D40;margin-top:5px;line-height:14px;'&gt;• &lt;b&gt;Input:&lt;/b&gt; &lt;code&gt;occupancy_logs&lt;/code&gt; + YOLO&lt;br/&gt;• &lt;b&gt;พยากรณ์:&lt;/b&gt; โอกาสว่าง (+15น.)&lt;br/&gt;• &lt;b&gt;3 ระดับ:&lt;/b&gt; สูง (&amp;ge;2), กลาง, เต็ม&lt;br/&gt;• &lt;b&gt;Tracking:&lt;/b&gt; MLflow Exp 9&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0F2F1;strokeColor=#00897B;strokeWidth=2.5;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="1025" y="565" width="195" height="175" as="geometry" />
                 </mxCell>
-                <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=classic;startFill=1;endArrow=classic;endFill=1;" parent="1" source="central_api" target="postgresql" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
+                <mxCell id="box_mlflow" value="&lt;div style='text-align:left;padding:6px;'&gt;&lt;div style='text-align:center;'&gt;&lt;span style='font-size:28px;color:#7B1FA2;'&gt;🧪📈&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:12px;color:#4A148C;'&gt;MLflow Server (:5001)&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:9px;color:#555;'&gt;Registry &amp; Metrics Store&lt;/span&gt;&lt;/div&gt;&lt;div style='font-size:9px;color:#4A148C;margin-top:5px;line-height:13px;'&gt;• &lt;b&gt;1. YOLO:&lt;/b&gt; &lt;code&gt;best.pt&lt;/code&gt;, mAP50&lt;br/&gt;• &lt;b&gt;2. Time-Series:&lt;/b&gt; Exp 9 (Brier Score)&lt;br/&gt;• &lt;b&gt;Artifacts:&lt;/b&gt; &lt;code&gt;s3://mlflow/&lt;/code&gt;&lt;br/&gt;• &lt;i&gt;*ไม่เก็บ Chatbot (ไม่มีเทรนน้ำหนัก)&lt;/i&gt;&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#5C6BC0;strokeWidth=2;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="1235" y="565" width="220" height="175" as="geometry" />
                 </mxCell>
-                <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=classic;startFill=1;endArrow=classic;endFill=1;" parent="1" source="redis_server" target="job_worker_1" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
+                <mxCell id="box_roboflow" value="&lt;div style='text-align:center;padding:6px;'&gt;&lt;span style='font-size:32px;'&gt;🌐🏷️&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:14px;color:#4A148C;'&gt;Roboflow Cloud&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:11px;color:#555;'&gt;Project: &lt;code&gt;cctv-parking&lt;/code&gt;&lt;br/&gt;30-Min &amp; Bulk 300 Sync&lt;br/&gt;Cloud Dataset &amp; Annotation&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#7B1FA2;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="380" y="880" width="230" height="130" as="geometry" />
                 </mxCell>
-                <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=none;endArrow=classic;endFill=1;" parent="1" source="redis_server" target="training_worker_1" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
+                <mxCell id="box_dotblue" value="&lt;div style='text-align:center;padding:6px;'&gt;&lt;span style='font-size:32px;'&gt;🤖🧠&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:14px;color:#4A148C;'&gt;dotBlue AI LLM&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:11px;color:#555;'&gt;&lt;code&gt;openai/gpt-5.6-luna&lt;/code&gt;&lt;br/&gt;OpenAI-Compatible Endpoint&lt;br/&gt;RAG Reasoning &amp; Chat API&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#6A1B9A;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="680" y="880" width="230" height="130" as="geometry" />
                 </mxCell>
-                <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=classic;startFill=1;endArrow=classic;endFill=1;" parent="1" source="job_worker_1" target="brain_box" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
+                <mxCell id="box_modal" value="&lt;div style='text-align:center;padding:6px;'&gt;&lt;span style='font-size:32px;'&gt;🚀🔥&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:14px;color:#E65100;'&gt;Modal Cloud GPU&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:11px;color:#555;'&gt;(Training Worker: A10G/T4)&lt;br/&gt;ฝึกโมเดล YOLOv8/v11&lt;br/&gt;สตรีม CLI Live Logs&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#EF6C00;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="980" y="880" width="215" height="130" as="geometry" />
                 </mxCell>
-                <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=classic;startFill=1;endArrow=classic;endFill=1;" parent="1" source="brain_box" target="training_worker_1" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
+                <mxCell id="box_legend" value="&lt;div style='text-align:left;padding:8px;line-height:20px;font-size:11px;'&gt;&lt;b style='color:#0D47A1;font-size:12px;'&gt;📌 โครงสร้างและนโยบาย 3 โมเดล AI&lt;/b&gt;&lt;hr style='margin:3px 0;'/&gt;• &lt;b style='color:#E65100;'&gt;1. YOLO (Vision):&lt;/b&gt; เทรนบน Modal ➔ เซฟลง MLflow ➔ รันบน CPU&lt;br/&gt;• &lt;b style='color:#004D40;'&gt;2. SARIMAX (Time-Series):&lt;/b&gt; เทรนบน &lt;code&gt;occupancy_logs&lt;/code&gt; ➔ วัด Brier Score ➔ MLflow Exp 9 ➔ ทายว่าง +15น.&lt;br/&gt;• &lt;b style='color:#4A148C;'&gt;3. Chatbot (LLM):&lt;/b&gt; &lt;i&gt;ไม่มีการเทรนน้ำหนัก&lt;/i&gt; (Pure Inference ผ่าน API) เก็บแค่ Log แชทลง DB เพื่อจูน Prompt System&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FAFAFA;strokeColor=#90CAF9;strokeWidth=2;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="1300" y="840" width="390" height="170" as="geometry" />
                 </mxCell>
-                <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=classic;startFill=1;endArrow=classic;endFill=1;" parent="1" source="job_worker_1" target="label_studio" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
+                <mxCell id="e_c1_b" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#0288D1;strokeWidth=2;endArrow=classic;" parent="1" source="cam1_box" target="cam1_badge" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
                 </mxCell>
-                <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=classic;startFill=1;endArrow=classic;endFill=1;" parent="1" edge="1">
+                <mxCell id="e_c2_b" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2E7D32;strokeWidth=2;endArrow=classic;" parent="1" source="cam2_box" target="cam2_badge" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="e_c3_b" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#7B1FA2;strokeWidth=2;endArrow=classic;" parent="1" source="cam3_box" target="cam3_badge" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="e_b1_fastapi" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#0288D1;strokeWidth=2.5;endArrow=classic;" parent="1" source="cam1_badge" target="box_fastapi" edge="1">
                     <mxGeometry relative="1" as="geometry">
-                        <mxPoint x="780" y="155" as="sourcePoint"/>
-                        <mxPoint x="725" y="460" as="targetPoint"/>
                         <Array as="points">
-                            <mxPoint x="760" y="155"/>
-                            <mxPoint x="760" y="460"/>
+                            <mxPoint x="570" y="265" />
+                            <mxPoint x="500" y="265" />
+                            <mxPoint x="500" y="340" />
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=classic;startFill=1;endArrow=classic;endFill=1;" parent="1" source="postgresql" target="label_studio" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
+                <mxCell id="e_b2_fastapi" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2E7D32;strokeWidth=2.5;endArrow=classic;" parent="1" source="cam2_badge" target="box_fastapi" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="850" y="265" />
+                            <mxPoint x="850" y="290" />
+                            <mxPoint x="550" y="290" />
+                            <mxPoint x="550" y="340" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_b3_fastapi" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#7B1FA2;strokeWidth=2.5;endArrow=classic;" parent="1" source="cam3_badge" target="box_fastapi" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1130" y="265" />
+                            <mxPoint x="1130" y="280" />
+                            <mxPoint x="600" y="280" />
+                            <mxPoint x="600" y="340" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_admin_react" value="Request / Response" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#E91E63;strokeWidth=2;endArrow=classic;fontSize=10;fontColor=#C2185B;labelBackgroundColor=#ffffff;" parent="1" source="box_admin" target="box_react_admin" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="180" y="255" />
+                            <mxPoint x="310" y="255" />
+                            <mxPoint x="310" y="320" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_react_fastapi" value="API Request / Response" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#00BCD4;strokeWidth=2;startArrow=classic;endArrow=classic;fontSize=10;fontColor=#00838F;labelBackgroundColor=#ffffff;" parent="1" source="box_react_admin" target="box_fastapi" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="400" y="375" />
+                            <mxPoint x="450" y="375" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_user_line" value="Interactive Chat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#0288D1;strokeWidth=2;startArrow=classic;endArrow=classic;fontSize=10;fontColor=#0D47A1;labelBackgroundColor=#ffffff;" parent="1" source="box_user" target="box_line_bot" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="180" y="405" />
+                            <mxPoint x="200" y="405" />
+                            <mxPoint x="200" y="522" />
+                            <mxPoint x="220" y="522" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_line_fastapi" value="Webhook POST" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2E7D32;strokeWidth=2;endArrow=classic;fontSize=10;fontColor=#1B5E20;labelBackgroundColor=#ffffff;" parent="1" source="box_line_bot" target="box_fastapi" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="400" y="505" />
+                            <mxPoint x="450" y="505" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_line_langchain" value="User Query &amp; Flex Response" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#6A1B9A;strokeWidth=2;startArrow=classic;endArrow=classic;fontSize=10;fontColor=#4A148C;labelBackgroundColor=#ffffff;" parent="1" source="box_line_bot" target="box_langchain" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="400" y="551" />
+                            <mxPoint x="600" y="551" />
+                            <mxPoint x="600" y="600" />
+                            <mxPoint x="615" y="600" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_fastapi_minio" value="Save Image" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#E53935;strokeWidth=2;endArrow=classic;fontSize=10;fontColor=#C62828;labelBackgroundColor=#ffffff;" parent="1" source="box_fastapi" target="box_minio" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="640" y="400" />
+                            <mxPoint x="660" y="400" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_minio_pg" value="Image Path" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#E91E63;strokeWidth=2;endArrow=classic;fontSize=10;fontColor=#C2185B;labelBackgroundColor=#ffffff;" parent="1" source="box_minio" target="box_postgres" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="845" y="400" />
+                            <mxPoint x="865" y="400" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_fastapi_pg" value="Save Metadata" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#0288D1;strokeWidth=2;endArrow=classic;fontSize=10;fontColor=#0D47A1;labelBackgroundColor=#ffffff;" parent="1" source="box_fastapi" target="box_postgres" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="640" y="510" />
+                            <mxPoint x="865" y="510" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_pg_adminer" value="Direct SQL &amp; UI (:8088)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#5C6BC0;strokeWidth=2;endArrow=classic;startArrow=classic;fontSize=10;fontColor=#1A237E;labelBackgroundColor=#ffffff;" parent="1" source="box_postgres" target="box_adminer" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1085" y="420" />
+                            <mxPoint x="1105" y="420" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_fastapi_redis" value="Add Task (Queue)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#0288D1;strokeWidth=2;endArrow=classic;fontSize=10;fontColor=#0D47A1;labelBackgroundColor=#ffffff;" parent="1" source="box_fastapi" target="box_redis" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="500" y="515" />
+                            <mxPoint x="500" y="565" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_redis_fastapi" value="Task Result" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#E53935;strokeWidth=2;endArrow=classic;fontSize=10;fontColor=#C62828;labelBackgroundColor=#ffffff;" parent="1" source="box_redis" target="box_fastapi" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="530" y="565" />
+                            <mxPoint x="530" y="515" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_lc_pg" value="Postgres Tool" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#3F51B5;strokeWidth=1.5;endArrow=classic;fontSize=10;fontColor=#1A237E;labelBackgroundColor=#ffffff;" parent="1" source="box_langchain" target="box_postgres" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="710" y="565" />
+                            <mxPoint x="710" y="530" />
+                            <mxPoint x="880" y="530" />
+                            <mxPoint x="880" y="515" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_lc_minio" value="MinIO Tool" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#E53935;strokeWidth=1.5;endArrow=classic;fontSize=10;fontColor=#B71C1C;labelBackgroundColor=#ffffff;" parent="1" source="box_langchain" target="box_minio" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="670" y="565" />
+                            <mxPoint x="670" y="520" />
+                            <mxPoint x="750" y="520" />
+                            <mxPoint x="750" y="500" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_lc_redis" value="Redis Tool" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#E53935;strokeWidth=1.5;endArrow=classic;fontSize=10;fontColor=#C62828;labelBackgroundColor=#ffffff;" parent="1" source="box_langchain" target="box_redis" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="615" y="650" />
+                            <mxPoint x="600" y="650" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_lc_dotblue" value="Call LLM API" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#6A1B9A;strokeWidth=2;startArrow=classic;endArrow=classic;fontSize=10;fontColor=#4A148C;labelBackgroundColor=#ffffff;" parent="1" source="box_langchain" target="box_dotblue" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="712" y="740" />
+                            <mxPoint x="712" y="880" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_infer_pg" value="Save Car Count" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#7B1FA2;strokeWidth=1.5;endArrow=classic;fontSize=10;fontColor=#4A148C;labelBackgroundColor=#ffffff;" parent="1" source="box_inference" target="box_postgres" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="920" y="565" />
+                            <mxPoint x="920" y="515" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_yolo_sarimax" value="Current Count" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#EF6C00;strokeWidth=2;endArrow=classic;fontSize=10;fontColor=#E65100;labelBackgroundColor=#ffffff;" parent="1" source="box_inference" target="box_sarimax" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1010" y="640" />
+                            <mxPoint x="1025" y="640" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_pg_sarimax" value="occupancy_logs" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#3F51B5;strokeWidth=1.5;endArrow=classic;fontSize=10;fontColor=#1A237E;labelBackgroundColor=#ffffff;" parent="1" source="box_postgres" target="box_sarimax" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1040" y="515" />
+                            <mxPoint x="1040" y="565" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_sarimax_redis" value="Cache +15m Forecast" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#00897B;strokeWidth=1.5;endArrow=classic;fontSize=10;fontColor=#004D40;labelBackgroundColor=#ffffff;" parent="1" source="box_sarimax" target="box_redis" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1100" y="740" />
+                            <mxPoint x="1100" y="755" />
+                            <mxPoint x="525" y="755" />
+                            <mxPoint x="525" y="740" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_sarimax_dash" value="3-Tier Vacancy Chance (+15m)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#00BCD4;strokeWidth=2;endArrow=classic;fontSize=10;fontColor=#00838F;labelBackgroundColor=#ffffff;" parent="1" source="box_sarimax" target="box_react_dash" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1030" y="720" />
+                            <mxPoint x="320" y="720" />
+                            <mxPoint x="320" y="780" />
+                            <mxPoint x="240" y="780" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_sarimax_mlflow" value="Log Metrics (Exp 9)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#00897B;strokeWidth=2;endArrow=classic;fontSize=10;fontColor=#004D40;labelBackgroundColor=#ffffff;" parent="1" source="box_sarimax" target="box_mlflow" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1220" y="640" />
+                            <mxPoint x="1235" y="640" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_modal_mlflow" value="Log Runs &amp; Weights (YOLO)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#7B1FA2;strokeWidth=2;endArrow=classic;fontSize=10;fontColor=#4A148C;labelBackgroundColor=#ffffff;" parent="1" source="box_modal" target="box_mlflow" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1195" y="940" />
+                            <mxPoint x="1340" y="940" />
+                            <mxPoint x="1340" y="740" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_mlflow_infer" value="Deploy YOLO Weights" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#7B1FA2;strokeWidth=1.5;dashed=1;endArrow=classic;fontSize=10;fontColor=#4A148C;labelBackgroundColor=#ffffff;" parent="1" source="box_mlflow" target="box_inference" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1235" y="680" />
+                            <mxPoint x="920" y="680" />
+                            <mxPoint x="920" y="740" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_pg_mlflow" value="Backend Store DB" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#3F51B5;strokeWidth=1.5;endArrow=classic;fontSize=10;fontColor=#1A237E;labelBackgroundColor=#ffffff;" parent="1" source="box_postgres" target="box_mlflow" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1060" y="515" />
+                            <mxPoint x="1060" y="540" />
+                            <mxPoint x="1290" y="540" />
+                            <mxPoint x="1290" y="565" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_minio_mlflow" value="s3://mlflow/" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#E53935;strokeWidth=1.5;endArrow=classic;fontSize=10;fontColor=#B71C1C;labelBackgroundColor=#ffffff;" parent="1" source="box_minio" target="box_mlflow" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="845" y="480" />
+                            <mxPoint x="845" y="525" />
+                            <mxPoint x="1360" y="525" />
+                            <mxPoint x="1360" y="565" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_rf_modal" value="Export Dataset" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#7B1FA2;strokeWidth=2;endArrow=classic;fontSize=10;fontColor=#4A148C;labelBackgroundColor=#ffffff;" parent="1" source="box_roboflow" target="box_modal" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="610" y="945" />
+                            <mxPoint x="980" y="945" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="page_capture_pipeline" name="2. CCTV Capture &amp; Ingestion Pipeline">
+        <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1750" pageHeight="950" math="0" shadow="0">
+            <root>
+                <mxCell id="0" />
+                <mxCell id="1" parent="0" />
+                <mxCell id="p2_title" value="&lt;b style='font-size:18px;color:#1B5E20;'&gt;📷 Pipeline 1: CCTV Ingestion, Real-Time Detection &amp; SARIMAX Time-Series Forecasting&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=2;arcSize=25;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="320" y="20" width="1100" height="45" as="geometry" />
+                </mxCell>
+                <mxCell id="p2_c1" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;📷&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:12px;color:#0D47A1;'&gt;CAM-01&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#1565C0;font-weight:bold;'&gt;หน้าภาค 1 (รถยนต์)&lt;/span&gt;&lt;br/&gt;&lt;span style='font-size:9px;color:#555;'&gt;ส่งภาพทุก 5-15s&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#0288D1;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="50" y="110" width="180" height="100" as="geometry" />
+                </mxCell>
+                <mxCell id="p2_c2" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;📷&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:12px;color:#1B5E20;'&gt;CAM-02&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#2E7D32;font-weight:bold;'&gt;หน้าภาค 2 (รถยนต์)&lt;/span&gt;&lt;br/&gt;&lt;span style='font-size:9px;color:#555;'&gt;ส่งภาพทุก 5-15s&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2E7D32;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="50" y="230" width="180" height="100" as="geometry" />
+                </mxCell>
+                <mxCell id="p2_c3" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;📷&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:12px;color:#4A148C;'&gt;CAM-03&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#7B1FA2;font-weight:bold;'&gt;ข้างภาคคอม (มอไซค์)&lt;/span&gt;&lt;br/&gt;&lt;span style='font-size:9px;color:#555;'&gt;ส่งภาพทุก 5-15s&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#7B1FA2;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="50" y="350" width="180" height="100" as="geometry" />
+                </mxCell>
+                <mxCell id="p2_ingest" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:32px;'&gt;🖥️⚡&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#E65100;'&gt;เซิร์ฟเวอร์รับภาพ (:5005)&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;ปรับและตรวจสอบข้อมูลภาพ&lt;br/&gt;(หมุน 180° • ปรับแสง • JSON Sidecar)&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#EF6C00;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="300" y="220" width="210" height="120" as="geometry" />
+                </mxCell>
+                <mxCell id="p2_disk" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:26px;'&gt;💾&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:11px;color:#B78103;'&gt;Local Disk&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:9px;color:#555;'&gt;&lt;code&gt;data/dataset/camX/...&lt;/code&gt;&lt;/span&gt;&lt;/div&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#FFF8E1;strokeColor=#FFA000;strokeWidth=2;" parent="1" vertex="1">
+                    <mxGeometry x="570" y="150" width="200" height="95" as="geometry" />
+                </mxCell>
+                <mxCell id="p2_minio" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:26px;'&gt;🪣&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:11px;color:#C62828;'&gt;MinIO Storage&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:9px;color:#555;'&gt;Bucket: &lt;code&gt;raw-datasets&lt;/code&gt;&lt;/span&gt;&lt;/div&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#FFEBEE;strokeColor=#E53935;strokeWidth=2;" parent="1" vertex="1">
+                    <mxGeometry x="570" y="275" width="200" height="95" as="geometry" />
+                </mxCell>
+                <mxCell id="p2_yolo" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:32px;'&gt;🧠🚗&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#4A148C;'&gt;1. YOLO ตรวจจับรถบน CPU&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;คำนวณจำนวนรถจอดปัจจุบัน&lt;br/&gt;(ROI Slot Intersection &amp; Density)&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#6A1B9A;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="830" y="215" width="230" height="130" as="geometry" />
+                </mxCell>
+                <mxCell id="p2_sarimax" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:32px;'&gt;📈⏱️&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#004D40;'&gt;2. SARIMAX Time-Series Forecaster&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#004D40;line-height:14px;'&gt;ดึงประวัติการจอด (occupancy_logs) จาก Postgres&lt;br/&gt;&lt;b&gt;พยากรณ์ความน่าจะเป็นว่าง (+15 นาที):&lt;/b&gt;&lt;br/&gt;&lt;span style='color:#2E7D32;'&gt;● สูง&lt;/span&gt; | &lt;span style='color:#F57F17;'&gt;● กลาง&lt;/span&gt; | &lt;span style='color:#C62828;'&gt;● เต็ม&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0F2F1;strokeColor=#00897B;strokeWidth=2.5;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="1130" y="215" width="270" height="130" as="geometry" />
+                </mxCell>
+                <mxCell id="p2_dash" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:32px;'&gt;💻📊&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#00838F;'&gt;แสดงผลบน Dashboard&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;แสดงผลช่องจอดสด +&lt;br/&gt;Badge คาดการณ์ว่าง +15น. (:5173)&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0F7FA;strokeColor=#00BCD4;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="1470" y="135" width="230" height="110" as="geometry" />
+                </mxCell>
+                <mxCell id="p2_line" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:32px;'&gt;💬📱&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#1B5E20;'&gt;ส่งข้อมูลให้ LINE Chatbot&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;ตอบคำถามว่างสด &amp; พยากรณ์ล่วงหน้า&lt;br/&gt;('น้องจ๊อด หาที่จอดรถ')&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="1470" y="310" width="230" height="110" as="geometry" />
+                </mxCell>
+                <mxCell id="p2_e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#0288D1;strokeWidth=2;endArrow=classic;" parent="1" source="p2_c1" target="p2_ingest" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p2_e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2E7D32;strokeWidth=2;endArrow=classic;" parent="1" source="p2_c2" target="p2_ingest" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p2_e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#7B1FA2;strokeWidth=2;endArrow=classic;" parent="1" source="p2_c3" target="p2_ingest" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p2_e4" value="บันทึกไฟล์คู่ขนาน" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#FFA000;strokeWidth=1.5;endArrow=classic;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="p2_ingest" target="p2_disk" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p2_e5" value="จัดเก็บ S3 Bucket" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#E53935;strokeWidth=1.5;endArrow=classic;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="p2_ingest" target="p2_minio" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p2_e6" value="อ่านรูปภาพ" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#6A1B9A;strokeWidth=2;endArrow=classic;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="p2_minio" target="p2_yolo" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p2_e7" value="จำนวนรถปัจจุบัน" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#EF6C00;strokeWidth=2.5;endArrow=classic;fontSize=10;fontColor=#E65100;fontStyle=1;labelBackgroundColor=#ffffff;" parent="1" source="p2_yolo" target="p2_sarimax" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p2_e8" value="สถานะสด + Badge ว่าง +15น." style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#00BCD4;strokeWidth=2;endArrow=classic;fontSize=10;fontColor=#00838F;labelBackgroundColor=#ffffff;" parent="1" source="p2_sarimax" target="p2_dash" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1400" y="250" />
+                            <mxPoint x="1440" y="250" />
+                            <mxPoint x="1440" y="190" />
+                            <mxPoint x="1470" y="190" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="p2_e9" value="แจ้งเตือน &amp; ตอบคำถามล่วงหน้า" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2E7D32;strokeWidth=2;endArrow=classic;fontSize=10;fontColor=#1B5E20;labelBackgroundColor=#ffffff;" parent="1" source="p2_sarimax" target="p2_line" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1400" y="310" />
+                            <mxPoint x="1440" y="310" />
+                            <mxPoint x="1440" y="365" />
+                            <mxPoint x="1470" y="365" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="page_device_mgmt" name="3. Camera Device Management">
+        <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="950" math="0" shadow="0">
+            <root>
+                <mxCell id="0" />
+                <mxCell id="1" parent="0" />
+                <mxCell id="p3_title" value="&lt;b style='font-size:18px;color:#4A148C;'&gt;⚙️ Pipeline 2: การจัดการและควบคุมกล้องทางไกลผ่าน Admin Interface&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#6A1B9A;strokeWidth=2;arcSize=25;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="350" y="20" width="900" height="45" as="geometry" />
+                </mxCell>
+                <mxCell id="p3_admin" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:36px;'&gt;👨‍💻&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:14px;color:#C2185B;'&gt;ผู้ดูแลระบบเข้าสู่ Admin Interface&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;ยืนยันตัวตนผ่าน JWT Security System&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE4EC;strokeColor=#E91E63;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="500" y="100" width="340" height="85" as="geometry" />
+                </mxCell>
+                <mxCell id="p3_select" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:32px;'&gt;📍🔍&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#0D47A1;'&gt;เลือกพื้นที่และจุดติดตั้งกล้อง&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;CAM-01, CAM-02, หรือ CAM-03&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="500" y="215" width="340" height="80" as="geometry" />
+                </mxCell>
+                <mxCell id="p3_check" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:32px;'&gt;📡📶&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#1B5E20;'&gt;ตรวจสอบสถานะกล้อง ESP32&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;Heartbeat ล่าสุด, WiFi RSSI, Heap Memory &amp; Uptime&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="500" y="325" width="340" height="85" as="geometry" />
+                </mxCell>
+                <mxCell id="p3_config" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:32px;'&gt;🎛️📝&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#E65100;'&gt;กำหนดค่าที่ต้องการอัปเดต&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;เช่น ค่ารับแสง (Exposure), ความละเอียด, และรอบส่งภาพ (Interval)&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#EF6C00;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="500" y="440" width="340" height="85" as="geometry" />
+                </mxCell>
+                <mxCell id="p3_send" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:32px;'&gt;🚀📡&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#00695C;'&gt;เซิร์ฟเวอร์ส่งคำสั่งไปยัง ESP32&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;ส่ง Command ผ่าน HTTP POST / OTA Sync&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0F2F1;strokeColor=#00897B;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="500" y="555" width="340" height="80" as="geometry" />
+                </mxCell>
+                <mxCell id="p3_apply" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:32px;'&gt;📥🔄&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#004D40;'&gt;ESP32 รับคำสั่งและปรับใช้การตั้งค่า&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;ปรับรีจิสเตอร์เซนเซอร์ OV2640 และบันทึกลง Flash Memory&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0F2F1;strokeColor=#00796B;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="500" y="665" width="340" height="80" as="geometry" />
+                </mxCell>
+                <mxCell id="p3_loop" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:32px;'&gt;🔁✨&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#1B5E20;'&gt;ESP32 ทำงานต่อเนื่องและส่งภาพกลับ&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;ส่งภาพทุก 5 วินาที ตามค่าใหม่ที่ปรับปรุงแล้ว&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="500" y="775" width="340" height="80" as="geometry" />
+                </mxCell>
+                <mxCell id="p3_e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#E91E63;strokeWidth=2;endArrow=classic;" parent="1" source="p3_admin" target="p3_select" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p3_e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#1565C0;strokeWidth=2;endArrow=classic;" parent="1" source="p3_select" target="p3_check" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p3_e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2E7D32;strokeWidth=2;endArrow=classic;" parent="1" source="p3_check" target="p3_config" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p3_e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#EF6C00;strokeWidth=2;endArrow=classic;" parent="1" source="p3_config" target="p3_send" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p3_e5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#00897B;strokeWidth=2;endArrow=classic;" parent="1" source="p3_send" target="p3_apply" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p3_e6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#00796B;strokeWidth=2;endArrow=classic;" parent="1" source="p3_apply" target="p3_loop" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="page_active_learning" name="4. Active Learning &amp; Feedback Loop">
+        <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="950" math="0" shadow="0">
+            <root>
+                <mxCell id="0" />
+                <mxCell id="1" parent="0" />
+                <mxCell id="p4_title" value="&lt;b style='font-size:18px;color:#0D47A1;'&gt;🎯 Pipeline 3: Active Learning &amp; Feedback Loop เมื่อค่าความมั่นใจต่ำ (&amp;lt; 40%)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=2;arcSize=25;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="320" y="20" width="950" height="45" as="geometry" />
+                </mxCell>
+                <mxCell id="p4_step1" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:34px;'&gt;🧠🚗&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#1565C0;'&gt;ระบบตรวจจับรถจากภาพ&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;รับเฟรมภาพสดจากกล้องและทำ Inference&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#1565C0;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="500" y="100" width="320" height="85" as="geometry" />
+                </mxCell>
+                <mxCell id="p4_decide" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:26px;'&gt;❓⚖️&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#E65100;'&gt;ค่าความมั่นใจต่ำกว่า 40% หรือไม่?&lt;/b&gt;&lt;/div&gt;" style="shape=rhombus;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#EF6C00;strokeWidth=2;" parent="1" vertex="1">
+                    <mxGeometry x="500" y="220" width="320" height="120" as="geometry" />
+                </mxCell>
+                <mxCell id="p4_success" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:34px;'&gt;✅📊&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#1B5E20;'&gt;บันทึกผลตรวจจับและแสดงผล&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;ความมั่นใจ &amp;ge; 40% อัปเดตขึ้น Dashboard ทันที&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="940" y="225" width="270" height="110" as="geometry" />
+                </mxCell>
+                <mxCell id="p4_store" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;📥📁&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#880E4F;'&gt;จัดเก็บภาพไว้ใน Feedback Loop&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;บันทึกลง Postgres (Flag: NEEDS_REVIEW)&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE4EC;strokeColor=#C2185B;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="530" y="390" width="260" height="85" as="geometry" />
+                </mxCell>
+                <mxCell id="p4_relabel" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;✍️🧐&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#4A148C;'&gt;ตรวจสอบและติดป้ายกำกับข้อมูลใหม่&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;Roboflow Annotate &amp; Review Queue&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#7B1FA2;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="530" y="510" width="260" height="85" as="geometry" />
+                </mxCell>
+                <mxCell id="p4_add" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;📦✨&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#4A148C;'&gt;เพิ่มข้อมูลเข้า Dataset&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;สร้างเวอร์ชันใหม่บน Roboflow (v1, v2)&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#6A1B9A;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="530" y="630" width="260" height="85" as="geometry" />
+                </mxCell>
+                <mxCell id="p4_train" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;🚀🔥&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#311B92;'&gt;ใช้ฝึกโมเดลเพิ่มเติมบน Modal GPU&lt;/b&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#512DA8;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="530" y="750" width="260" height="80" as="geometry" />
+                </mxCell>
+                <mxCell id="p4_e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#1565C0;strokeWidth=2;endArrow=classic;" parent="1" source="p4_step1" target="p4_decide" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p4_e2" value="ไม่ใช่ (&amp;ge; 40%)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2E7D32;strokeWidth=2.5;endArrow=classic;fontSize=11;fontStyle=1;labelBackgroundColor=#ffffff;" parent="1" source="p4_decide" target="p4_success" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p4_e3" value="ใช่ (&lt; 40%)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#C2185B;strokeWidth=2.5;endArrow=classic;fontSize=11;fontStyle=1;labelBackgroundColor=#ffffff;" parent="1" source="p4_decide" target="p4_store" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p4_e4" value="แสดงผลชั่วคราว" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#78909C;strokeWidth=1;dashed=1;endArrow=classic;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="p4_store" target="p4_success" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p4_e5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#C2185B;strokeWidth=2;endArrow=classic;" parent="1" source="p4_store" target="p4_relabel" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p4_e6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#7B1FA2;strokeWidth=2;endArrow=classic;" parent="1" source="p4_relabel" target="p4_add" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p4_e7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#512DA8;strokeWidth=2;endArrow=classic;" parent="1" source="p4_add" target="p4_train" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p4_e8" value="Deploy โมเดลใหม่กลับสู่ระบบ" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#512DA8;strokeWidth=2;dashed=1;endArrow=classic;fontSize=11;fontStyle=1;labelBackgroundColor=#ffffff;" parent="1" source="p4_train" target="p4_step1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="480" y="790" />
+                            <mxPoint x="380" y="790" />
+                            <mxPoint x="380" y="140" />
+                            <mxPoint x="500" y="140" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="page_modal_pipeline" name="5. AI Models Training &amp; MLflow Registry">
+        <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1850" pageHeight="1200" math="0" shadow="0">
+            <root>
+                <mxCell id="0" />
+                <mxCell id="1" parent="0" />
+                <mxCell id="p5_title" value="&lt;b style='font-size:18px;color:#0D47A1;'&gt;🚀 Pipeline 4: AI Models Lifecycle &amp; MLflow Tracking Architecture (YOLO &amp; SARIMAX)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=2;arcSize=25;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="375" y="20" width="1100" height="45" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_t1_box" value="&lt;b style='font-size:14px;color:#E65100;'&gt;Track 1: Model 1 - YOLO Object Detection &amp; Segmentation (Vision Model)&lt;/b&gt;" style="swimlane;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#EF6C00;strokeWidth=1.5;startSize=26;rounded=1;arcSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="85" width="1770" height="310" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_y_data" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;📦🏷️&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:12px;color:#0D47A1;'&gt;Roboflow Dataset&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;Annotated Frames &amp; Polygon Masks&lt;br/&gt;(Train / Val / Test Splits)&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="70" y="150" width="220" height="110" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_y_train" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;🚀🔥&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:12px;color:#E65100;'&gt;Modal Cloud GPU Training&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;NVIDIA A10G/T4 Serverless&lt;br/&gt;Fine-tuning YOLOv8/v11 (50 Epochs)&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#EF6C00;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="150" width="240" height="110" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_y_eval" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;📊📜&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:12px;color:#E65100;'&gt;Monitor Metrics &amp; Logs&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;CLI Logs, Box Loss, Cls Loss &amp;&lt;br/&gt;Validation Intersection&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#EF6C00;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="630" y="150" width="230" height="110" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_y_decide" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:22px;'&gt;🎯⚖️&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:11px;color:#4A148C;'&gt;โมเดลผ่านเกณฑ์หรือไม่?&lt;br/&gt;(mAP50 &amp;ge; 85%)&lt;/b&gt;&lt;/div&gt;" style="shape=rhombus;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#7B1FA2;strokeWidth=2;" parent="1" vertex="1">
+                    <mxGeometry x="910" y="145" width="240" height="120" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_y_fail" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:22px;'&gt;❌🔧&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:10px;color:#C62828;'&gt;ไม่ผ่าน: ปรับ Dataset หรือ Hyperparameters&lt;/b&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFEBEE;strokeColor=#C62828;strokeWidth=1;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="910" y="305" width="240" height="60" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_y_mlflow" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;🧪🏆&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:12px;color:#1B5E20;'&gt;MLflow Model Registry&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;Log Metrics &amp; Register &lt;code&gt;best.pt&lt;/code&gt;&lt;br/&gt;MinIO Artifact: &lt;code&gt;s3://mlflow/&lt;/code&gt;&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="1200" y="150" width="260" height="110" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_y_deploy" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;🖥️⚡&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:12px;color:#1B5E20;'&gt;CPU Inference Worker&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;Zero-Downtime Hot-Reload&lt;br/&gt;ประมวลผลกล้องสดทุก 5 วินาที&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="1510" y="150" width="260" height="110" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_ye1" value="ส่งออกข้อมูล" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#1565C0;strokeWidth=2;endArrow=classic;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="p5_y_data" target="p5_y_train" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_ye2" value="เทรนโมเดล" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#EF6C00;strokeWidth=2;endArrow=classic;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="p5_y_train" target="p5_y_eval" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_ye3" value="วัดผล" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#EF6C00;strokeWidth=2;endArrow=classic;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="p5_y_eval" target="p5_y_decide" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_ye4" value="ไม่ผ่าน" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#C62828;strokeWidth=2;endArrow=classic;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="p5_y_decide" target="p5_y_fail" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_ye5" value="เทรนซ้ำ" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#C62828;strokeWidth=1;dashed=1;endArrow=classic;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="p5_y_fail" target="p5_y_train" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="910" y="335" />
+                            <mxPoint x="460" y="335" />
+                            <mxPoint x="460" y="260" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="p5_ye6" value="ผ่านเกณฑ์ (&amp;ge;85%)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2E7D32;strokeWidth=2.5;endArrow=classic;fontSize=10;fontStyle=1;labelBackgroundColor=#ffffff;" parent="1" source="p5_y_decide" target="p5_y_mlflow" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_ye7" value="Deploy Hot-Reload" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2E7D32;strokeWidth=2;endArrow=classic;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="p5_y_mlflow" target="p5_y_deploy" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_t2_box" value="&lt;b style='font-size:14px;color:#00796B;'&gt;Track 2: Model 2 - SARIMAX Time-Series Forecaster (Vacancy Probability +15m)&lt;/b&gt;" style="swimlane;whiteSpace=wrap;html=1;fillColor=#E0F2F1;strokeColor=#00897B;strokeWidth=1.5;startSize=26;rounded=1;arcSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="420" width="1770" height="310" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_s_data" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;🐘📈&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:12px;color:#0D47A1;'&gt;PostgreSQL Time-Series Logs&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;ตาราง &lt;code&gt;occupancy_logs&lt;/code&gt;&lt;br/&gt;(สถิติย้อนหลัง 30 วัน, ชม., วันในสัปดาห์)&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8EAF6;strokeColor=#3F51B5;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="70" y="485" width="230" height="110" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_s_train" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;⚙️📊&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:12px;color:#004D40;'&gt;Fit SARIMAX Seasonal Model&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;ARIMA (p,d,q)(P,D,Q)s กับ s=24 ชม.&lt;br/&gt;ผนวก Exogenous Weather &amp; Hour Regressors&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0F2F1;strokeColor=#00897B;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="350" y="485" width="250" height="110" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_s_eval" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;🎯📉&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:12px;color:#004D40;'&gt;Evaluate Brier Score &amp; Curve&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;คำนวณ Reliability Calibration Curve&lt;br/&gt;Out-of-Sample Accuracy &amp; Log-Loss&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#B2DFDB;strokeColor=#00796B;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="650" y="485" width="240" height="110" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_s_decide" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:22px;'&gt;⚖️🎯&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:11px;color:#4A148C;'&gt;ผ่านเกณฑ์ Calibration?&lt;br/&gt;(Brier Score &amp;le; 0.10)&lt;/b&gt;&lt;/div&gt;" style="shape=rhombus;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#7B1FA2;strokeWidth=2;" parent="1" vertex="1">
+                    <mxGeometry x="940" y="480" width="240" height="120" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_s_fail" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:22px;'&gt;❌🔧&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:10px;color:#C62828;'&gt;ไม่ผ่าน: ปรับ Order (p,d,q) หรือ Lags&lt;/b&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFEBEE;strokeColor=#C62828;strokeWidth=1;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="940" y="640" width="240" height="60" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_s_mlflow" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;🧪📈&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:12px;color:#4A148C;'&gt;MLflow Experiment 9&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;&lt;code&gt;smart_parking_vacancy_prob&lt;/code&gt;&lt;br/&gt;Log Brier Score, ECE, Curve Artifacts&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#5C6BC0;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="1230" y="485" width="250" height="110" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_s_deploy" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;⚡🟢&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:12px;color:#004D40;'&gt;Deploy Vacancy Forecaster&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#004D40;line-height:13px;'&gt;ทำนายโอกาสว่าง (+15 นาที):&lt;br/&gt;&lt;span style='color:#2E7D32;'&gt;● สูง (&amp;ge;2)&lt;/span&gt; | &lt;span style='color:#F57F17;'&gt;● กลาง (1)&lt;/span&gt; | &lt;span style='color:#C62828;'&gt;● เต็ม (0)&lt;/span&gt;&lt;br/&gt;ส่งผลขึ้น Dashboard &amp; LINE Bot&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0F2F1;strokeColor=#00897B;strokeWidth=2.5;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="1530" y="485" width="245" height="110" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_se1" value="ดึงสถิติย้อนหลัง" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#3F51B5;strokeWidth=2;endArrow=classic;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="p5_s_data" target="p5_s_train" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_se2" value="Fit Model" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#00897B;strokeWidth=2;endArrow=classic;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="p5_s_train" target="p5_s_eval" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_se3" value="ประเมินผล" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#00796B;strokeWidth=2;endArrow=classic;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="p5_s_eval" target="p5_s_decide" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_se4" value="ไม่ผ่าน" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#C62828;strokeWidth=2;endArrow=classic;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="p5_s_decide" target="p5_s_fail" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_se5" value="จูนค่า" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#C62828;strokeWidth=1;dashed=1;endArrow=classic;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="p5_s_fail" target="p5_s_train" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="940" y="670" />
+                            <mxPoint x="475" y="670" />
+                            <mxPoint x="475" y="595" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="p5_se6" value="ผ่านเกณฑ์ (&amp;le;0.10)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2E7D32;strokeWidth=2.5;endArrow=classic;fontSize=10;fontStyle=1;labelBackgroundColor=#ffffff;" parent="1" source="p5_s_decide" target="p5_s_mlflow" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_se7" value="Deploy Real-Time" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#00897B;strokeWidth=2;endArrow=classic;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="p5_s_mlflow" target="p5_s_deploy" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_t3_box" value="&lt;b style='font-size:14px;color:#4A148C;'&gt;Track 3: Model 3 - LINE Chatbot &amp; LangChain Agent (Pure Inference / Prompt Tuning - ไม่เก็บน้ำหนักโมเดลใน MLflow)&lt;/b&gt;" style="swimlane;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#7B1FA2;strokeWidth=1.5;startSize=26;rounded=1;arcSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="755" width="1770" height="390" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_c_user" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;📱💬&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:12px;color:#1B5E20;'&gt;User ถามผ่าน LINE Chatbot&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;'อีก 15 นาที มีที่จอดรถว่างไหม?'&lt;br/&gt;ส่ง Webhook Event สู่ FastAPI&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="70" y="825" width="230" height="110" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_c_lc" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;🦜🔗🛠️&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:12px;color:#4A148C;'&gt;LangChain Tool Calling Engine&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;• Tool 1: ดึงสถานะจอดสดจาก Postgres&lt;br/&gt;• Tool 2: ดึงภาพ Snapshot จาก MinIO&lt;br/&gt;• Tool 3: ดึงผลพยากรณ์ว่าง +15น. จาก SARIMAX&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#6A1B9A;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="350" y="825" width="290" height="110" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_c_llm" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;🤖🧠&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:12px;color:#4A148C;'&gt;dotBlue AI LLM Service&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;&lt;code&gt;openai/gpt-5.6-luna&lt;/code&gt;&lt;br/&gt;&lt;b&gt;Pure API Inference&lt;/b&gt; (ไม่มีการเทรนน้ำหนัก)&lt;br/&gt;ตอบกลับด้วยบุคลิก 'น้องจ๊อด หาที่จอดรถ'&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#7B1FA2;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="690" y="825" width="270" height="110" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_c_resp" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;📲✨&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:12px;color:#1B5E20;'&gt;ตอบกลับผู้ใช้ผ่าน LINE Flex Card&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;สรุปจำนวนว่างปัจจุบัน + ภาพสด CCTV +&lt;br/&gt;โอกาสมีที่จอดล่วงหน้า 15 นาที&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="1010" y="825" width="260" height="110" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_c_dblog" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;💾🗄️&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:12px;color:#0D47A1;'&gt;บันทึก Log การสนทนาลง PostgreSQL&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;ตาราง &lt;code&gt;chat_logs&lt;/code&gt; (Session, Query, Response, Tools Used)&lt;br/&gt;เพื่อการตรวจสอบและวิเคราะห์การใช้งาน&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8EAF6;strokeColor=#3F51B5;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="1320" y="825" width="300" height="110" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_c_tune" value="&lt;div style='text-align:left;padding:8px;'&gt;&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;✍️⚙️&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:12px;color:#C2185B;'&gt;System Prompt Engineering &amp; Tuning&lt;/b&gt;&lt;/div&gt;&lt;div style='font-size:10px;color:#880E4F;margin-top:4px;line-height:14px;'&gt;• Admin เปิดดู Log สนทนา เพื่อหาเคสที่ตอบไม่ตรง&lt;br/&gt;• ปรับปรุง Prompt คำสั่งใน &lt;code&gt;line_bot_service.py&lt;/code&gt;&lt;br/&gt;• &lt;i&gt;*ไม่ต้องเทรนโมเดลใหม่ ไม่ต้องเซฟ Weights ใน MLflow&lt;/i&gt;&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE4EC;strokeColor=#E91E63;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="1320" y="970" width="300" height="120" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_ce1" value="ส่งคำถาม" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2E7D32;strokeWidth=2;endArrow=classic;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="p5_c_user" target="p5_c_lc" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_ce2" value="Tool Schemas &amp; Context" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#6A1B9A;strokeWidth=2;startArrow=classic;endArrow=classic;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="p5_c_lc" target="p5_c_llm" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_ce3" value="Generate Response" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2E7D32;strokeWidth=2;endArrow=classic;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="p5_c_llm" target="p5_c_resp" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_ce4" value="Archive Log" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#3F51B5;strokeWidth=1.5;dashed=1;endArrow=classic;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="p5_c_resp" target="p5_c_dblog" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p5_ce5" value="นำมาปรับปรุง Prompt" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#E91E63;strokeWidth=2;endArrow=classic;fontSize=10;fontColor=#C2185B;labelBackgroundColor=#ffffff;" parent="1" source="p5_c_dblog" target="p5_c_tune" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="page_ext_apis" name="6. External APIs Integration Flow">
+        <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1750" pageHeight="1100" math="0" shadow="0">
+            <root>
+                <mxCell id="0" />
+                <mxCell id="1" parent="0" />
+                <mxCell id="p6_title" value="&lt;b style='font-size:18px;color:#4A148C;'&gt;🔌 Pipeline 5: External APIs &amp; LangChain AI Agent Architecture&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#6A1B9A;strokeWidth=2;arcSize=25;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="375" y="20" width="1000" height="45" as="geometry" />
+                </mxCell>
+                <mxCell id="p6_center" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:44px;'&gt;⚡🏢⚡&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:15px;color:#01579B;'&gt;AI Ecosystem Core Platform&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:11px;color:#555;'&gt;(FastAPI Gateway &amp; Ingestion Server)&lt;/span&gt;&lt;/div&gt;" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#E1F5FE;strokeColor=#0288D1;strokeWidth=3;" parent="1" vertex="1">
+                    <mxGeometry x="695" y="360" width="360" height="190" as="geometry" />
+                </mxCell>
+                <mxCell id="p6_lc" value="&lt;div style='text-align:left;padding:6px;'&gt;&lt;div style='text-align:center;'&gt;&lt;span style='font-size:32px;'&gt;🦜🔗&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:14px;color:#4A148C;'&gt;LangChain Tool Calling Engine&lt;/b&gt;&lt;/div&gt;&lt;div style='font-size:10px;color:#4A148C;margin-top:4px;line-height:15px;'&gt;• Bind Tool 1: &lt;code&gt;query_postgres_slots()&lt;/code&gt;&lt;br/&gt;• Bind Tool 2: &lt;code&gt;fetch_minio_snapshot()&lt;/code&gt;&lt;br/&gt;• Bind Tool 3: &lt;code&gt;get_sarimax_forecast()&lt;/code&gt;&lt;br/&gt;• Bind Tool 4: &lt;code&gt;get_redis_summary()&lt;/code&gt;&lt;br/&gt;• Call dotBlue LLM with Tool Schemas&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#7B1FA2;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="705" y="590" width="340" height="140" as="geometry" />
+                </mxCell>
+                <mxCell id="p6_rf" value="&lt;div style='text-align:left;padding:6px;'&gt;&lt;div style='text-align:center;'&gt;&lt;span style='font-size:34px;'&gt;🌐🏷️&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:14px;color:#4A148C;'&gt;1. Roboflow Cloud REST API&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;&lt;code&gt;api.roboflow.com&lt;/code&gt;&lt;/span&gt;&lt;/div&gt;&lt;div style='font-size:11px;color:#4A148C;margin-top:6px;line-height:16px;'&gt;• &lt;b&gt;Endpoint:&lt;/b&gt; &lt;code&gt;https://api.roboflow.com&lt;/code&gt;&lt;br/&gt;• &lt;b&gt;Auth:&lt;/b&gt; &lt;code&gt;?api_key=7ajyoeDM5IeGYXmo5ab7&lt;/code&gt;&lt;br/&gt;• &lt;b&gt;ฟังก์ชัน:&lt;/b&gt; อัปโหลดภาพแบทช์ทุก 30 นาที &amp; Bulk 300 รูป&lt;br/&gt;• &lt;b&gt;จุดประสงค์:&lt;/b&gt; คิว Annotate และสร้าง Dataset Version&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#7B1FA2;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="80" y="110" width="390" height="190" as="geometry" />
+                </mxCell>
+                <mxCell id="p6_modal" value="&lt;div style='text-align:left;padding:6px;'&gt;&lt;div style='text-align:center;'&gt;&lt;span style='font-size:34px;'&gt;🚀🔥&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:14px;color:#E65100;'&gt;2. Modal Serverless Cloud GPU&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;&lt;code&gt;modal.com&lt;/code&gt; (NVIDIA A10G/T4)&lt;/span&gt;&lt;/div&gt;&lt;div style='font-size:11px;color:#E65100;margin-top:6px;line-height:16px;'&gt;• &lt;b&gt;Script:&lt;/b&gt; &lt;code&gt;services/modal_train.py&lt;/code&gt;&lt;br/&gt;• &lt;b&gt;Protocol:&lt;/b&gt; Modal Python Client / WebSockets&lt;br/&gt;• &lt;b&gt;ฟังก์ชัน:&lt;/b&gt; สั่งรัน Train โมเดล YOLO บน Cloud GPU&lt;br/&gt;• &lt;b&gt;จุดประสงค์:&lt;/b&gt; สตรีม Live CLI Logs และส่งออก &lt;code&gt;best.pt&lt;/code&gt;&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#EF6C00;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="1250" y="110" width="390" height="190" as="geometry" />
+                </mxCell>
+                <mxCell id="p6_line" value="&lt;div style='text-align:left;padding:6px;'&gt;&lt;div style='text-align:center;'&gt;&lt;span style='font-size:34px;'&gt;💬📱&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:14px;color:#1B5E20;'&gt;3. LINE Messaging API&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;&lt;code&gt;api.line.me/v2/bot&lt;/code&gt;&lt;/span&gt;&lt;/div&gt;&lt;div style='font-size:11px;color:#1B5E20;margin-top:6px;line-height:16px;'&gt;• &lt;b&gt;Webhook:&lt;/b&gt; &lt;code&gt;POST /api/v1/line/webhook&lt;/code&gt;&lt;br/&gt;• &lt;b&gt;Reply &amp; Push:&lt;/b&gt; ส่ง Flex Message Card สรุปช่องว่าง + ภาพ&lt;br/&gt;• &lt;b&gt;Auth:&lt;/b&gt; Channel Secret + Bearer Token&lt;br/&gt;• &lt;b&gt;จุดประสงค์:&lt;/b&gt; แจ้งเตือนผู้ขับขี่ผ่าน LINE ตลอด 24 ชม.&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="80" y="620" width="390" height="190" as="geometry" />
+                </mxCell>
+                <mxCell id="p6_dotblue" value="&lt;div style='text-align:left;padding:6px;'&gt;&lt;div style='text-align:center;'&gt;&lt;span style='font-size:34px;'&gt;🤖🧠&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:14px;color:#4A148C;'&gt;4. dotBlue AI LLM Service&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;&lt;code&gt;openai/gpt-5.6-luna&lt;/code&gt;&lt;/span&gt;&lt;/div&gt;&lt;div style='font-size:11px;color:#4A148C;margin-top:6px;line-height:16px;'&gt;• &lt;b&gt;Protocol:&lt;/b&gt; OpenAI-Compatible &lt;code&gt;POST /v1/chat/completions&lt;/code&gt;&lt;br/&gt;• &lt;b&gt;Persona:&lt;/b&gt; 'น้องจ๊อด หาที่จอดรถ' ประจำ ม.อ.&lt;br/&gt;• &lt;b&gt;Function Calling:&lt;/b&gt; ประมวลผลผลลัพธ์จาก Postgres, SARIMAX &amp; MinIO&lt;br/&gt;• &lt;b&gt;จุดประสงค์:&lt;/b&gt; ตอบคำถามอัจฉริยะแบบ RAG โดยไม่ต้องเทรนโมเดลใหม่&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#6A1B9A;strokeWidth=2;arcSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="1250" y="620" width="390" height="190" as="geometry" />
+                </mxCell>
+                <mxCell id="p6_e1" value="1. Bulk Upload &amp; Annotation Sync" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#7B1FA2;strokeWidth=2;endArrow=classic;fontSize=11;labelBackgroundColor=#ffffff;" parent="1" source="p6_center" target="p6_rf" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="695" y="410" />
+                            <mxPoint x="470" y="410" />
+                            <mxPoint x="470" y="205" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="p6_e2" value="2. Trigger Cloud GPU Fine-Tuning" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#EF6C00;strokeWidth=2;endArrow=classic;fontSize=11;labelBackgroundColor=#ffffff;" parent="1" source="p6_center" target="p6_modal" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1055" y="410" />
+                            <mxPoint x="1250" y="410" />
+                            <mxPoint x="1250" y="205" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="p6_e3" value="3. Inbound Webhook Event" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2E7D32;strokeWidth=2;endArrow=classic;fontSize=11;labelBackgroundColor=#ffffff;" parent="1" source="p6_line" target="p6_center" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="470" y="715" />
+                            <mxPoint x="550" y="715" />
+                            <mxPoint x="550" y="490" />
+                            <mxPoint x="695" y="490" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="p6_e4" value="4. Outbound Reply Flex Message Card" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2E7D32;strokeWidth=2;endArrow=classic;fontSize=11;labelBackgroundColor=#ffffff;" parent="1" source="p6_center" target="p6_line" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="695" y="515" />
+                            <mxPoint x="520" y="515" />
+                            <mxPoint x="520" y="750" />
+                            <mxPoint x="470" y="750" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="p6_e5" value="Orchestrate Function Calling" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#7B1FA2;strokeWidth=2.5;endArrow=classic;fontSize=11;labelBackgroundColor=#ffffff;" parent="1" source="p6_center" target="p6_lc" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p6_e6" value="5. RAG Chat Completion with Tools" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#6A1B9A;strokeWidth=2.5;startArrow=classic;endArrow=classic;fontSize=11;labelBackgroundColor=#ffffff;" parent="1" source="p6_lc" target="p6_dotblue" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1045" y="660" />
+                            <mxPoint x="1250" y="660" />
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="page_sso_sync" name="7. SSO &amp; Real-Time Sync Pipeline">
+        <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1750" pageHeight="1150" math="0" shadow="0">
+            <root>
+                <mxCell id="0" />
+                <mxCell id="1" parent="0" />
+                <mxCell id="p7_title" value="&lt;b style='font-size:18px;color:#0D47A1;'&gt;🔐 Pipeline 6: Seamless SSO Auto-Login, 3-Tier Vacancy Predictor &amp; Real-Time Slot Merge&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=2;arcSize=25;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="320" y="20" width="1150" height="45" as="geometry" />
+                </mxCell>
+                <mxCell id="p7_adminer_grp" value="&lt;b style='font-size:14px;color:#1A237E;'&gt;1. Adminer Database UI (:8088) - Zero-Click Auto-Login SSO&lt;/b&gt;" style="swimlane;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#5C6BC0;strokeWidth=1.5;startSize=28;rounded=1;arcSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="85" width="780" height="460" as="geometry" />
+                </mxCell>
+                <mxCell id="p7_adm_user" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;👨‍💻&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#1A237E;'&gt;Admin กดเปิด DB UI&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;จากหน้า Ecosystem View&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#3F51B5;strokeWidth=2;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="70" y="140" width="200" height="90" as="geometry" />
+                </mxCell>
+                <mxCell id="p7_adm_php" value="&lt;div style='text-align:left;padding:6px;'&gt;&lt;div style='text-align:center;'&gt;&lt;span style='font-size:28px;'&gt;🐘⚡&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:12px;color:#1A237E;'&gt;Custom Adminer Plugin (index.php)&lt;/b&gt;&lt;/div&gt;&lt;div style='font-size:10px;color:#283593;margin-top:4px;line-height:15px;'&gt;• Overrides &lt;code&gt;login()&lt;/code&gt; &amp; &lt;code&gt;credentials()&lt;/code&gt;&lt;br/&gt;• ดึงค่า &lt;code&gt;POSTGRES_USER&lt;/code&gt; &amp; &lt;code&gt;PASSWORD&lt;/code&gt; อัตโนมัติ&lt;br/&gt;• &lt;code&gt;$_POST['auth'] = [...]&lt;/code&gt; ข้ามหน้า Login ทันที&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#3F51B5;strokeWidth=2;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="310" y="130" width="270" height="110" as="geometry" />
+                </mxCell>
+                <mxCell id="p7_adm_dash" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;🗄️📊&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#1B5E20;'&gt;เข้าสู่หน้าจัดการ PostgreSQL ทันที&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;พร้อมดูตาราง &lt;code&gt;park_status&lt;/code&gt;, &lt;code&gt;occupancy_logs&lt;/code&gt;, และ ROI&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=2;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="615" y="140" width="185" height="90" as="geometry" />
+                </mxCell>
+                <mxCell id="p7_e_a1" value="คลิกลิงก์ :8088" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#3F51B5;strokeWidth=2;endArrow=classic;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="p7_adm_user" target="p7_adm_php" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p7_e_a2" value="Auto-Auth สำเร็จ" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2E7D32;strokeWidth=2;endArrow=classic;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="p7_adm_php" target="p7_adm_dash" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p7_minio_grp" value="&lt;b style='font-size:14px;color:#B71C1C;'&gt;2. MinIO S3 (:9001) &amp; Label Studio (:8080) - Seamless SSO Auto-Login&lt;/b&gt;" style="swimlane;whiteSpace=wrap;html=1;fillColor=#FFEBEE;strokeColor=#E53935;strokeWidth=1.5;startSize=28;rounded=1;arcSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="900" y="85" width="800" height="460" as="geometry" />
+                </mxCell>
+                <mxCell id="p7_min_user" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;👨‍💻&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#B71C1C;'&gt;Admin กดเข้าดูระบบ&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;ปุ่ม MinIO หรือ Label Studio&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#E53935;strokeWidth=2;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="930" y="140" width="200" height="90" as="geometry" />
+                </mxCell>
+                <mxCell id="p7_min_fastapi" value="&lt;div style='text-align:left;padding:6px;'&gt;&lt;div style='text-align:center;'&gt;&lt;span style='font-size:28px;'&gt;⚡🔑&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:12px;color:#00695C;'&gt;FastAPI SSO Endpoints&lt;/b&gt;&lt;/div&gt;&lt;div style='font-size:10px;color:#004D40;margin-top:4px;line-height:15px;'&gt;• &lt;b&gt;MinIO:&lt;/b&gt; &lt;code&gt;/auth/sso/minio&lt;/code&gt; แลก Cookie &lt;code&gt;token&lt;/code&gt;&lt;br/&gt;• &lt;b&gt;Label Studio:&lt;/b&gt; &lt;code&gt;/sso/label-studio&lt;/code&gt; ยิง Auto-Auth&lt;br/&gt;  แลก &lt;code&gt;sessionid&lt;/code&gt; + &lt;code&gt;csrftoken&lt;/code&gt; สู่ &lt;code&gt;/projects/1&lt;/code&gt;&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0F2F1;strokeColor=#00897B;strokeWidth=2;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="1170" y="130" width="280" height="110" as="geometry" />
+                </mxCell>
+                <mxCell id="p7_min_dash" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;🪣🏷️&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#1B5E20;'&gt;เข้าสู่ Console ทันที&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;เปิดดู Bucket ภาพ Snapshot MinIO หรือ&lt;br/&gt;เข้าหน้า Annotate Label Studio โดยไม่ต้อง Login ซ้ำ&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=2;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="1490" y="140" width="190" height="90" as="geometry" />
+                </mxCell>
+                <mxCell id="p7_e_m1" value="คลิก SSO Endpoint" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#E53935;strokeWidth=2;endArrow=classic;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="p7_min_user" target="p7_min_fastapi" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p7_e_m2" value="Redirect 307 + Cookie" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2E7D32;strokeWidth=2;endArrow=classic;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="p7_min_fastapi" target="p7_min_dash" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p7_pred_grp" value="&lt;b style='font-size:14px;color:#2E7D32;'&gt;3. 3-Tier Vacancy Predictor &amp; SARIMAX Time-Series Horizon (+15m)&lt;/b&gt;" style="swimlane;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=1.5;startSize=28;rounded=1;arcSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="570" width="830" height="520" as="geometry" />
+                </mxCell>
+                <mxCell id="p7_rule_high" value="&lt;div style='text-align:left;padding:6px;'&gt;&lt;b style='font-size:13px;color:#2E7D32;'&gt;🟢 ระดับ 1: โอกาสมีที่จอดสูง (High Vacancy)&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#333;'&gt;• &lt;b&gt;เงื่อนไข:&lt;/b&gt; ช่องจอดรถว่าง &amp;ge; 2 คัน (&lt;code&gt;freeCar &amp;ge; 2&lt;/code&gt;)&lt;br/&gt;• &lt;b&gt;Badge UI:&lt;/b&gt; สีเขียว &lt;code&gt;bg-emerald-500/15 text-emerald-300&lt;/code&gt;&lt;br/&gt;• &lt;b&gt;ความหมาย:&lt;/b&gt; ผู้ขับขี่ขับมาถึงแล้วมีที่จอดแน่นอน สะดวกสบาย&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2E7D32;strokeWidth=2;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="70" y="620" width="360" height="95" as="geometry" />
+                </mxCell>
+                <mxCell id="p7_rule_med" value="&lt;div style='text-align:left;padding:6px;'&gt;&lt;b style='font-size:13px;color:#F57F17;'&gt;🟡 ระดับ 2: โอกาสปานกลาง (Medium Vacancy)&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#333;'&gt;• &lt;b&gt;เงื่อนไข:&lt;/b&gt; ช่องจอดรถว่าง 1 คัน (&lt;code&gt;freeCar == 1&lt;/code&gt;)&lt;br/&gt;• &lt;b&gt;Badge UI:&lt;/b&gt; สีเหลือง &lt;code&gt;bg-amber-500/15 text-amber-300&lt;/code&gt;&lt;br/&gt;• &lt;b&gt;ความหมาย:&lt;/b&gt; มีที่ว่างเหลือ 1 คันสุดท้าย อาจต้องรีบมา&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#FFA000;strokeWidth=2;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="70" y="730" width="360" height="85" as="geometry" />
+                </mxCell>
+                <mxCell id="p7_rule_full" value="&lt;div style='text-align:left;padding:6px;'&gt;&lt;b style='font-size:13px;color:#C62828;'&gt;🔴 ระดับ 3: เต็ม (Full Capacity)&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#333;'&gt;• &lt;b&gt;เงื่อนไข:&lt;/b&gt; ช่องจอดรถว่าง 0 คัน (&lt;code&gt;freeCar == 0&lt;/code&gt;)&lt;br/&gt;• &lt;b&gt;Badge UI:&lt;/b&gt; สีแดง &lt;code&gt;bg-rose-500/15 text-rose-300&lt;/code&gt;&lt;br/&gt;• &lt;b&gt;ความหมาย:&lt;/b&gt; ที่จอดเต็ม แนะนำให้วนไปจุดจอดอื่น&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#E53935;strokeWidth=2;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="70" y="830" width="360" height="85" as="geometry" />
+                </mxCell>
+                <mxCell id="p7_rule_desc" value="&lt;div style='text-align:left;padding:8px;line-height:16px;'&gt;&lt;b style='font-size:12px;color:#1B5E20;'&gt;💡 การแก้ไขปัญหา False Positives &amp; พยากรณ์ล่วงหน้า:&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;1. ยกเลิกระบบ Binary เดิม ที่ใช้ค่าความมั่นใจเฉลี่ยโมเดล (&amp;gt;70%) เพราะทำให้สับสนเมื่อรถจอดเต็ม&lt;br/&gt;2. ใช้จำนวนช่องว่างจริง (Physical Vacant Slots) เป็นเกณฑ์แม่นยำ 100%&lt;br/&gt;3. ผสาน &lt;b&gt;SARIMAX Time-Series Forecaster&lt;/b&gt; คำนวณแนวโน้มเข้า-ออกล่วงหน้า 15 นาที พร้อมประเมิน Brier Score บน MLflow Exp 9&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#00897B;strokeWidth=2;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="460" y="620" width="390" height="295" as="geometry" />
+                </mxCell>
+                <mxCell id="p7_proxy_grp" value="&lt;b style='font-size:14px;color:#0288D1;'&gt;4. Ingestion Server Proxy (:5005) &amp; Real-Time Slot Merge&lt;/b&gt;" style="swimlane;whiteSpace=wrap;html=1;fillColor=#F4FBFD;strokeColor=#0288D1;strokeWidth=1.5;startSize=28;rounded=1;arcSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="900" y="570" width="800" height="520" as="geometry" />
+                </mxCell>
+                <mxCell id="p7_vite_proxy" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;⚡🌐&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#0288D1;'&gt;Frontend Vite Proxy (:5173)&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;&lt;code&gt;vite.config.js&lt;/code&gt; Forwarding Routes:&lt;br/&gt;• &lt;code&gt;/api/parking&lt;/code&gt; ➔ &lt;code&gt;:5005&lt;/code&gt;&lt;br/&gt;• &lt;code&gt;/api/forecast&lt;/code&gt; ➔ &lt;code&gt;:5005&lt;/code&gt;&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1F5FE;strokeColor=#0288D1;strokeWidth=2;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="930" y="620" width="340" height="140" as="geometry" />
+                </mxCell>
+                <mxCell id="p7_sync_func" value="&lt;div style='text-align:left;padding:6px;'&gt;&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;🔄🤝&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#00695C;'&gt;syncAllSlotsFromServer()&lt;/b&gt;&lt;/div&gt;&lt;div style='font-size:10px;color:#004D40;margin-top:6px;line-height:15px;'&gt;• ยิงคู่ขนาน &lt;code&gt;Promise.all()&lt;/code&gt;:&lt;br/&gt;  1. &lt;code&gt;fetchRoiFromServer()&lt;/code&gt; (พิกัด Polygon)&lt;br/&gt;  2. &lt;code&gt;fetch(/api/parking/status)&lt;/code&gt; (สถานะจอดสด)&lt;br/&gt;• ผสาน &lt;code&gt;occupied&lt;/code&gt;, &lt;code&gt;vehicle_name&lt;/code&gt;, &lt;code&gt;conf&lt;/code&gt;&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0F2F1;strokeColor=#00897B;strokeWidth=2;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="1310" y="620" width="360" height="140" as="geometry" />
+                </mxCell>
+                <mxCell id="p7_canvas_render" value="&lt;div style='text-align:center;'&gt;&lt;span style='font-size:30px;'&gt;🎨💻&lt;/span&gt;&lt;br/&gt;&lt;b style='font-size:13px;color:#1B5E20;'&gt;เรนเดอร์ Polygon Bounding Boxes &amp; สีช่องจอดแบบเรียลไทม์&lt;/b&gt;&lt;br/&gt;&lt;span style='font-size:10px;color:#555;'&gt;ช่องว่าง (เขียว) / มีรถจอด (แดง) / คำนวณเปอร์เซ็นต์ความหนาแน่นถูกต้อง ไม่เกิด False Positives&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#2E7D32;strokeWidth=2;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="930" y="790" width="740" height="100" as="geometry" />
+                </mxCell>
+                <mxCell id="p7_e_s1" value="Forward API Calls" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#0288D1;strokeWidth=2;endArrow=classic;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="p7_vite_proxy" target="p7_sync_func" edge="1">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="p7_e_s2" value="อัปเดต Local Storage &amp; State" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#00897B;strokeWidth=2;endArrow=classic;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="p7_sync_func" target="p7_canvas_render" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1490" y="760" />
+                            <mxPoint x="1490" y="790" />
+                        </Array>
+                    </mxGeometry>
                 </mxCell>
             </root>
         </mxGraphModel>

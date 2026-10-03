@@ -15,11 +15,11 @@ import {
   Layers,
   Cpu
 } from 'lucide-react'
-import ParkingSetup from './ParkingSetup.jsx'
-import RoboflowStudio from './RoboflowStudio.jsx'
-import AutoTrainerStudio from './AutoTrainerStudio.jsx'
+import ParkingSetup from './components_setup/ParkingSetup.jsx'
+import RoboflowStudio from '../trainer/components_trainer/RoboflowStudio.jsx'
+import AutoTrainerStudio from '../trainer/AutoTrainerPage.jsx'
 
-export default function SetupView({
+export default function SetupPage({
   onNavigate,
   initialCameraId = 'cam1',
   initialTab = 'cameras',

@@ -29,7 +29,7 @@ import {
   syncAllSlotsFromServer,
   getIngestionApiBase,
   checkCameraOnlineStatus
-} from '../utils/dumpData'
+} from '../../utils/dumpData'
 
 /**
  * Evaluates 3-tier car vacancy prediction status based on actual free car count (k).
@@ -37,7 +37,7 @@ import {
  * k == 1: "โอกาสปานกลาง" (Medium vacancy chance - Yellow)
  * k == 0: "เต็ม" (Full - Red)
  */
-export function getCarVacancyStatus(freeCar) {
+function getCarVacancyStatus(freeCar) {
   if (typeof freeCar !== 'number' || freeCar < 0) return null
   if (freeCar >= 2) {
     return {
@@ -69,7 +69,7 @@ export function getCarVacancyStatus(freeCar) {
  * freeBike >= 1: "โอกาสปานกลาง" (Medium vacancy chance - Yellow)
  * freeBike == 0: "เต็ม" (Full - Red)
  */
-export function getBikeVacancyStatus(freeBike, totalBike = 25) {
+function getBikeVacancyStatus(freeBike, totalBike = 25) {
   if (typeof freeBike !== 'number' || freeBike < 0) return null
   if (freeBike >= 3 || (totalBike > 0 && freeBike / totalBike >= 0.15)) {
     return {
@@ -95,7 +95,7 @@ export function getBikeVacancyStatus(freeBike, totalBike = 25) {
   }
 }
 
-export default function DashboardView({ onOpenModal, onNavigate }) {
+export default function DashboardPage({ onOpenModal, onNavigate }) {
   const INGESTION_API = getIngestionApiBase()
   const [selectedZone, setSelectedZone] = useState('all')
   const [countdown, setCountdown] = useState(5)

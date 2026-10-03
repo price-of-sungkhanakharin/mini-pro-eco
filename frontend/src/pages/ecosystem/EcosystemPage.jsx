@@ -10,7 +10,7 @@ import {
   HardDrive
 } from 'lucide-react'
 
-export default function EcosystemView() {
+export default function EcosystemPage() {
   const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost'
   const tools = [
     {

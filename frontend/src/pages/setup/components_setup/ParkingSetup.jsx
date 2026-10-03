@@ -56,7 +56,7 @@ import {
   parsePolygonFromServer,
   isDummyTestZone,
   normalizeZones
-} from '../utils/dumpData'
+} from '../../../utils/dumpData'
 
 // Native image resolution of the camera snapshot (1600x1200)
 const NATIVE_WIDTH = 1600

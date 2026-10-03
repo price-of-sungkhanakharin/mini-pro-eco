@@ -21,17 +21,30 @@ import {
   ShieldCheck,
   Radio
 } from 'lucide-react'
-import { formatTimestampThai, formatUptime, formatHeapKb } from '../utils/dumpData'
+import { formatTimestampThai, formatUptime, formatHeapKb } from '../../utils/dumpData'
 
 export default function CameraModal({ camera, onClose, onNavigate }) {
   const [showRoi, setShowRoi] = useState(true)
   const [slotFilter, setSlotFilter] = useState('all') // 'all' | 'car' | 'bike' | 'vacant' | 'occupied'
 
+  const slots = camera?.slots || []
+
+  // Filtered slots
+  const filteredSlots = useMemo(() => {
+    return slots.filter((s) => {
+      const isBike = s.type === 'motorcycle' || s.type === 'bike'
+      if (slotFilter === 'car' && isBike) return false
+      if (slotFilter === 'bike' && !isBike) return false
+      if (slotFilter === 'vacant' && s.occupied) return false
+      if (slotFilter === 'occupied' && !s.occupied) return false
+      return true
+    })
+  }, [slots, slotFilter])
+
   if (!camera) return null
 
   const isRealCam = camera.isReal || camera.id === 1 || camera.id === 2 || camera.id === 3
   const telemetry = camera.realTelemetry || {}
-  const slots = camera.slots || []
 
   // Telemetry computations
   const chipTemp = parseFloat(telemetry.chip_temp_c || 80.0)
@@ -51,18 +64,6 @@ export default function CameraModal({ camera, onClose, onNavigate }) {
   const freePsram = parseInt(telemetry.free_psram || 3419476, 10)
   const uptimeSec = parseInt(telemetry.uptime_sec || 2139, 10)
   const aecVal = telemetry.light_aec_value || telemetry.aec_value || 490
-
-  // Filtered slots
-  const filteredSlots = useMemo(() => {
-    return slots.filter((s) => {
-      const isBike = s.type === 'motorcycle' || s.type === 'bike'
-      if (slotFilter === 'car' && isBike) return false
-      if (slotFilter === 'bike' && !isBike) return false
-      if (slotFilter === 'vacant' && s.occupied) return false
-      if (slotFilter === 'occupied' && !s.occupied) return false
-      return true
-    })
-  }, [slots, slotFilter])
 
   const carTotal = camera.car?.total ?? slots.filter(s => s.type !== 'motorcycle' && s.type !== 'bike').length
   const carFree = camera.car?.free ?? slots.filter(s => s.type !== 'motorcycle' && s.type !== 'bike' && !s.occupied).length

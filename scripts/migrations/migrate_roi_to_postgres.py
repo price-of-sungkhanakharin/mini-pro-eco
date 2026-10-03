@@ -59,9 +59,9 @@ def migrate():
                     """
                     INSERT INTO parking_templates (
                         camera_id, location_name, vehicle_type, total_capacity,
-                        zone_polygon, slots, frame_width, frame_height, is_active, updated_at
+                        zone_polygon, slots, frame_width, frame_height, is_active, created_at, updated_at
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, 1600, 1200, TRUE, NOW())
+                    VALUES (%s, %s, %s, %s, %s, %s, 1600, 1200, TRUE, NOW(), NOW())
                     ON CONFLICT (camera_id) DO UPDATE SET
                         location_name = EXCLUDED.location_name,
                         vehicle_type = EXCLUDED.vehicle_type,

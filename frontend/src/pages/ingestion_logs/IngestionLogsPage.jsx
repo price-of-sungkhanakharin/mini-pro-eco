@@ -32,9 +32,9 @@ import {
   loadDumpMetadata,
   formatTimestampThai,
   getIngestionApiBase
-} from '../utils/dumpData'
+} from '../../utils/dumpData'
 
-export default function IngestionLogsView() {
+export default function IngestionLogsPage({ onNavigate }) {
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')

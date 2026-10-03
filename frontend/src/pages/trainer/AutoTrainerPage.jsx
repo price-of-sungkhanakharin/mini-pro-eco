@@ -63,7 +63,7 @@ const BASE_MODELS = [
   }
 ]
 
-export default function AutoTrainerStudio({ apiBase }) {
+export default function AutoTrainerPage({ apiBase }) {
   const effectiveApiBase =
     apiBase ||
     import.meta.env.VITE_API_BASE_URL ||

@@ -42,10 +42,10 @@ export default function EcosystemView() {
     },
     {
       title: 'Label Studio Annotation Platform',
-      subtitle: 'Self-hosted Multi-modal Data Annotation Platform',
+      subtitle: 'Self-hosted Multi-modal Data Annotation Platform (Auto-Login)',
       port: ':8080',
-      url: `http://${host}:8080`,
-      desc: 'ระบบ Label ภาพและสร้าง Annotation สำหรับ Dataset ภายในเครื่อง',
+      url: `http://${host}:8080/projects/1`,
+      desc: 'ระบบ Label ภาพและสร้าง Annotation สำหรับ Dataset ภายในเครื่อง (เข้าสู่ระบบอัตโนมัติ Auto-Login)',
       status: 'Active',
       color: 'blue'
     },

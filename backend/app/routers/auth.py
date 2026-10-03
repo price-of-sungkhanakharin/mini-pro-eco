@@ -145,3 +145,60 @@ def postgres_sso(request: Request):
     target_url = f"http://{target_host}:{adminer_port}/"
     return RedirectResponse(url=target_url, status_code=status.HTTP_302_FOUND)
 
+
+@router.get(
+    "/sso/label-studio",
+    summary="Label Studio Single Sign-On Auto Login",
+    description="Logs in automatically to Label Studio and redirects browser seamlessly.",
+)
+async def label_studio_sso(request: Request):
+    """Log in to Label Studio and redirect user seamlessly without prompt."""
+    label_studio_port = 8080
+    target_host = request.url.hostname or "localhost"
+
+    sessionid = None
+    csrftoken = None
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r1 = await client.get(f"http://127.0.0.1:{label_studio_port}/user/login/")
+            csrf = r1.cookies.get("csrftoken")
+            data = {
+                "email": "admin@parking.local",
+                "password": "Admin@12345",
+                "csrfmiddlewaretoken": csrf,
+                "persist_session": "on",
+            }
+            headers = {"Referer": f"http://127.0.0.1:{label_studio_port}/user/login/"}
+            r2 = await client.post(
+                f"http://127.0.0.1:{label_studio_port}/user/login/",
+                data=data,
+                headers=headers,
+            )
+            sessionid = r2.cookies.get("sessionid")
+            csrftoken = r2.cookies.get("csrftoken") or csrf
+    except Exception:
+        pass
+
+    target_url = f"http://{target_host}:{label_studio_port}/projects/1"
+    response = RedirectResponse(url=target_url, status_code=status.HTTP_302_FOUND)
+    if sessionid:
+        response.set_cookie(
+            key="sessionid",
+            value=sessionid,
+            path="/",
+            httponly=True,
+            samesite="lax",
+            max_age=1209600,
+        )
+    if csrftoken:
+        response.set_cookie(
+            key="csrftoken",
+            value=csrftoken,
+            path="/",
+            httponly=False,
+            samesite="lax",
+            max_age=31449600,
+        )
+    return response
+
+

@@ -27,6 +27,7 @@ import {
   getCameraImage,
   SLOTS_STORAGE_KEY,
   syncAllSlotsFromServer,
+  fetchLiveParkStatus,
   getIngestionApiBase,
   checkCameraOnlineStatus
 } from '../../utils/dumpData'
@@ -117,6 +118,7 @@ export default function DashboardPage({ onOpenModal, onNavigate }) {
   const [dumpRecords, setDumpRecords] = useState([])
   const [frameIndex, setFrameIndex] = useState(29) // Default to latest snapshot (index 29)
   const [liveData, setLiveData] = useState(null)
+  const [liveParkStatus, setLiveParkStatus] = useState({})
   const [imgKey, setImgKey] = useState(() => Date.now())
 
   const fetchLiveTelemetry = async () => {
@@ -136,6 +138,19 @@ export default function DashboardPage({ onOpenModal, onNavigate }) {
       }
     } catch (err) {
       // Fallback silently if ingestion API is not reachable
+    }
+
+    try {
+      const pData = await fetchLiveParkStatus()
+      if (Array.isArray(pData) && pData.length > 0) {
+        const map = {}
+        pData.forEach((item) => {
+          if (item && item.camera_id) map[item.camera_id] = item
+        })
+        setLiveParkStatus(map)
+      }
+    } catch (err) {
+      // Fallback silently
     }
   }
 
@@ -220,10 +235,29 @@ export default function DashboardPage({ onOpenModal, onNavigate }) {
     }
   }, [])
 
-  // Calculate live slot metrics for all 3 cameras
-  const cam1Counts = calculateSlotCounts(cam1Slots)
-  const cam2Counts = calculateSlotCounts(cam2Slots)
-  const cam3Counts = calculateSlotCounts(cam3Slots)
+  // Calculate live slot metrics for all 3 cameras dynamically from real-time AI detection status
+  const getCameraCounts = (camId, localSlots) => {
+    const s = liveParkStatus[camId]
+    if (s && (s.total_capacity > 0 || s.car_capacity !== undefined || s.bike_capacity !== undefined)) {
+      const carCap = s.car_capacity ?? (s.vehicle_type === 'car' ? s.total_capacity : (camId === 'cam1' ? 6 : (camId === 'cam2' ? 5 : 0)))
+      const carOcc = s.car_occupied ?? (s.vehicle_type === 'car' ? s.occupied_count : (camId === 'cam3' ? 0 : Math.min(carCap, s.occupied_count)))
+      const carFree = s.car_vacant ?? Math.max(0, carCap - carOcc)
+
+      const bikeCap = s.bike_capacity ?? (s.vehicle_type === 'motorcycle' ? s.total_capacity : (camId === 'cam1' ? 9 : (camId === 'cam2' ? 13 : 25)))
+      const bikeOcc = s.bike_occupied ?? (s.vehicle_type === 'motorcycle' ? s.occupied_count : Math.max(0, s.occupied_count - carOcc))
+      const bikeFree = s.bike_vacant ?? Math.max(0, bikeCap - bikeOcc)
+
+      return {
+        car: { free: carFree, total: carCap, occupied: carOcc },
+        bike: { free: bikeFree, total: bikeCap, occupied: bikeOcc }
+      }
+    }
+    return calculateSlotCounts(localSlots)
+  }
+
+  const cam1Counts = getCameraCounts('cam1', cam1Slots)
+  const cam2Counts = getCameraCounts('cam2', cam2Slots)
+  const cam3Counts = getCameraCounts('cam3', cam3Slots)
 
   // Load real dump metadata from /dump_data/metadata.json
   useEffect(() => {
@@ -294,9 +328,9 @@ export default function DashboardPage({ onOpenModal, onNavigate }) {
   const cam2Status = checkCameraOnlineStatus(cam2Live?.timestamp, 15)
   const cam3Status = checkCameraOnlineStatus(cam3Live?.timestamp, 15)
 
-  const cam1Image = cam1CustomImage || `${INGESTION_API}/api/latest?camera_id=cam1&image=true&t=${imgKey}`
-  const cam2Image = cam2CustomImage || `${INGESTION_API}/api/latest?camera_id=cam2&image=true&t=${imgKey}`
-  const cam3Image = cam3CustomImage || `${INGESTION_API}/api/latest?camera_id=cam3&image=true&t=${imgKey}`
+  const cam1Image = cam1CustomImage || `${INGESTION_API}/api/v1/line/snapshot/cam1?mode=${showRoiOverlay ? 'dashboard' : 'raw'}&t=${imgKey}`
+  const cam2Image = cam2CustomImage || `${INGESTION_API}/api/v1/line/snapshot/cam2?mode=${showRoiOverlay ? 'dashboard' : 'raw'}&t=${imgKey}`
+  const cam3Image = cam3CustomImage || `${INGESTION_API}/api/v1/line/snapshot/cam3?mode=${showRoiOverlay ? 'dashboard' : 'raw'}&t=${imgKey}`
 
   // Camera Data incorporating real live streams, telemetry & shared slot registry
   const cameras = [
@@ -382,7 +416,7 @@ export default function DashboardPage({ onOpenModal, onNavigate }) {
       id: 3,
       camId: 'cam3',
       slotCode: 'CAM-03',
-      name: 'ลานจอดด้านหลังภาควิชา (ข้างภาคคอม)',
+      name: 'ลานข้างตึกภาคคอม (มอเตอร์ไซค์)',
       subtitle: 'Zone C - ข้างภาคคอม (มอเตอร์ไซค์)',
       device: 'Edge Node (ESP32-CAM / Cam3)',
       zone: 'zone_c',
@@ -520,49 +554,6 @@ export default function DashboardPage({ onOpenModal, onNavigate }) {
                 </div>
               )}
 
-              {/* Live ROI SVG Overlay for any camera */}
-              {showRoiOverlay && cam.slots && cam.slots.length > 0 && (
-                <svg
-                  className="cam-tile-svg-overlay"
-                  viewBox="0 0 1600 1200"
-                >
-                  {cam.slots.map((s) => {
-                    if (!s.points || s.points.length === 0) return null
-                    const isBike = s.type === 'motorcycle' || s.type === 'bike'
-                    const isOccupied = !!s.occupied
-                    const pts = s.points.map((p) => `${p.x},${p.y}`).join(' ')
-                    const center = {
-                      x: s.points.reduce((acc, p) => acc + p.x, 0) / s.points.length,
-                      y: s.points.reduce((acc, p) => acc + p.y, 0) / s.points.length
-                    }
-                    return (
-                      <g key={s.id}>
-                        <polygon
-                          points={pts}
-                          className={`slot-polygon ${isBike ? 'bike-polygon' : 'car-polygon'} ${isOccupied ? 'occupied' : 'vacant'}`}
-                        />
-                        <rect
-                          x={center.x - 32}
-                          y={center.y - 12}
-                          width={64}
-                          height={24}
-                          rx={5}
-                          className={`slot-label-bg ${isBike ? 'bike-label' : 'car-label'} ${isOccupied ? 'occupied' : 'vacant'}`}
-                        />
-                        <text
-                          x={center.x}
-                          y={center.y + 5}
-                          textAnchor="middle"
-                          className="slot-label-text text-[11px]"
-                        >
-                          {s.id}
-                        </text>
-                      </g>
-                    )
-                  })}
-                </svg>
-              )}
-
               {/* Viewport Header Overlay */}
               <div className="viewport-overlay-top">
                 <div className="cam-code-tag flex items-center gap-1.5">
@@ -603,14 +594,14 @@ export default function DashboardPage({ onOpenModal, onNavigate }) {
                   <button
                     type="button"
                     className={`btn-toggle-roi-mini ${showRoiOverlay ? 'active' : ''}`}
-                    title="เปิด/ปิด ผังพิกัดช่องจอด ROI บนภาพ"
+                    title="เปิด/ปิด การแสดงผล AI Detection และผังโซนบนภาพ"
                     onClick={(e) => {
                       e.stopPropagation()
                       setShowRoiOverlay(!showRoiOverlay)
                     }}
                   >
                     <Layers className="w-3 h-3" />
-                    <span>{showRoiOverlay ? 'ผัง ROI: เปิด' : 'ผัง ROI: ปิด'}</span>
+                    <span>{showRoiOverlay ? 'AI Overlay: เปิด' : 'AI Overlay: ปิด'}</span>
                   </button>
 
                   {onNavigate && (
@@ -709,21 +700,21 @@ export default function DashboardPage({ onOpenModal, onNavigate }) {
               {
                 code: 'CAM-01',
                 zone: 'Zone A',
-                name: 'ลานหน้าตึก',
+                name: 'ลานหน้าภาค 1',
                 counts: cam1Counts,
                 colorClass: 'emerald'
               },
               {
                 code: 'CAM-02',
                 zone: 'Zone B',
-                name: 'ลานในร่มข้างตึก',
+                name: 'ลานหน้าภาค 2',
                 counts: cam2Counts,
                 colorClass: 'amber'
               },
               {
                 code: 'CAM-03',
                 zone: 'Zone C',
-                name: 'ลานหลังตึกบุคลากร',
+                name: 'ลานข้างตึกภาคคอม',
                 counts: cam3Counts,
                 colorClass: 'cyan'
               }
@@ -748,16 +739,20 @@ export default function DashboardPage({ onOpenModal, onNavigate }) {
                   </div>
 
                   <div className="zone-breakdown-pills">
-                    <div className="breakdown-pill car">
-                      <Car className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      <span className="pill-label">รถยนต์:</span>
-                      <span className="pill-val font-mono font-bold">{z.counts.car.free}/{z.counts.car.total} ว่าง</span>
-                    </div>
-                    <div className="breakdown-pill bike">
-                      <Bike className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                      <span className="pill-label">มอเตอร์ไซค์:</span>
-                      <span className="pill-val font-mono font-bold">{z.counts.bike.free}/{z.counts.bike.total} ว่าง</span>
-                    </div>
+                    {z.counts.car.total > 0 && (
+                      <div className="breakdown-pill car">
+                        <Car className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span className="pill-label">รถยนต์:</span>
+                        <span className="pill-val font-mono font-bold">{z.counts.car.free}/{z.counts.car.total} ว่าง</span>
+                      </div>
+                    )}
+                    {z.counts.bike.total > 0 && (
+                      <div className="breakdown-pill bike">
+                        <Bike className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                        <span className="pill-label">มอเตอร์ไซค์:</span>
+                        <span className="pill-val font-mono font-bold">{z.counts.bike.free}/{z.counts.bike.total} ว่าง</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="progress-track">

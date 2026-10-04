@@ -284,16 +284,48 @@ def format_quick_response(user_msg: str) -> Tuple[Optional[str], List[str], Opti
 
     def get_cam_slots(cam_id: str):
         c = cam_map.get(cam_id, {})
+        # If pure zone metrics exist directly in Redis / DB payload
+        if "car_capacity" in c or "bike_capacity" in c:
+            car_tot = int(c.get("car_capacity") or (6 if cam_id == "cam1" else (5 if cam_id == "cam2" else 0)))
+            car_vac_count = int(c.get("car_vacant") if c.get("car_vacant") is not None else max(0, car_tot - int(c.get("car_occupied", 0))))
+            bike_tot = int(c.get("bike_capacity") or (9 if cam_id == "cam1" else (13 if cam_id == "cam2" else 25)))
+            bike_vac_count = int(c.get("bike_vacant") if c.get("bike_vacant") is not None else max(0, bike_tot - int(c.get("bike_occupied", 0))))
+            return {
+                "car_total": car_tot,
+                "car_vac": ["vacant"] * car_vac_count,
+                "bike_total": bike_tot,
+                "bike_vac": ["vacant"] * bike_vac_count,
+                "loc": c.get("location_name", cam_id.upper())
+            }
+
         slots = c.get("slots_detail") or []
         # Fallback if slots_detail empty: categorize available_slot_ids
         if not slots:
             avail = c.get("available_slot_ids", [])
             car_avail = [sid for sid in avail if (sid.startswith("A") and sid != "A07") or sid in ("B01", "B02", "B03", "B04", "B05")]
             bike_avail = [sid for sid in avail if sid not in car_avail]
+            car_tot = 6 if cam_id == "cam1" else (5 if cam_id == "cam2" else 0)
+            bike_tot = 9 if cam_id == "cam1" else (13 if cam_id == "cam2" else 25)
+            if not avail and "vacant_count" in c:
+                vac_cnt = int(c.get("vacant_count", 0))
+                occ_cnt = int(c.get("occupied_count", 0))
+                if cam_id == "cam3":
+                    bike_vac_count = vac_cnt
+                    car_vac_count = 0
+                else:
+                    car_vac_count = max(0, car_tot - min(car_tot, occ_cnt))
+                    bike_vac_count = max(0, vac_cnt - car_vac_count)
+                return {
+                    "car_total": car_tot,
+                    "car_vac": ["vacant"] * car_vac_count,
+                    "bike_total": bike_tot,
+                    "bike_vac": ["vacant"] * bike_vac_count,
+                    "loc": c.get("location_name", cam_id.upper())
+                }
             return {
-                "car_total": 6 if cam_id == "cam1" else (5 if cam_id == "cam2" else 0),
+                "car_total": car_tot,
                 "car_vac": car_avail,
-                "bike_total": 9 if cam_id == "cam1" else (13 if cam_id == "cam2" else 25),
+                "bike_total": bike_tot,
                 "bike_vac": bike_avail,
                 "loc": c.get("location_name", cam_id.upper())
             }
@@ -318,17 +350,13 @@ def format_quick_response(user_msg: str) -> Tuple[Optional[str], List[str], Opti
     if any(k in msg for k in ["หาที่จอดรถยนต์", "รถยนต์", "สี่ล้อ", "รถเก๋ง", "รถกระบะ"]) or "car" in msg_lower:
         total_car_cap = c1_data["car_total"] + c2_data["car_total"]
         total_car_vac = len(c1_data["car_vac"]) + len(c2_data["car_vac"])
-        c1_str = ", ".join(c1_data["car_vac"]) if c1_data["car_vac"] else "เต็มทุกช่อง"
-        c2_str = ", ".join(c2_data["car_vac"]) if c2_data["car_vac"] else "เต็มทุกช่อง"
 
         lines = [
             "[น้องจ๊อดส่องเลน: รถยนต์ 4 ล้อ]",
             f"รถยนต์ว่างรวม: {total_car_vac}/{total_car_cap} ช่อง",
             "",
             f"- หน้าภาค 1 (CAM1): ว่าง {len(c1_data['car_vac'])}/{c1_data['car_total']} ช่อง",
-            f"  ช่องว่าง: {c1_str}",
             f"- หน้าภาค 2 (CAM2): ว่าง {len(c2_data['car_vac'])}/{c2_data['car_total']} ช่อง",
-            f"  ช่องว่าง: {c2_str}",
             "",
             "รีบขับมาเทียบเลนก่อนโดนตัดหน้านะพี่!" if total_car_vac > 0 else "โซนรถยนต์เต็มหมดแล้วพี่ แนะนำวนดูอีกรอบนะพี่!"
         ]
@@ -339,24 +367,12 @@ def format_quick_response(user_msg: str) -> Tuple[Optional[str], List[str], Opti
         total_bike_cap = c3_data["bike_total"] + c2_data["bike_total"] + c1_data["bike_total"]
         total_bike_vac = len(c3_data["bike_vac"]) + len(c2_data["bike_vac"]) + len(c1_data["bike_vac"])
 
-        c3_preview = ", ".join(c3_data["bike_vac"][:8])
-        if len(c3_data["bike_vac"]) > 8:
-            c3_preview += f" และอีก {len(c3_data['bike_vac']) - 8} ช่อง"
-        c3_str = c3_preview if c3_data["bike_vac"] else "เต็มทุกช่อง"
-
-        c2_preview = ", ".join(c2_data["bike_vac"][:8])
-        if len(c2_data["bike_vac"]) > 8:
-            c2_preview += f" และอีก {len(c2_data['bike_vac']) - 8} ช่อง"
-        c2_str = c2_preview if c2_data["bike_vac"] else "เต็มทุกช่อง"
-
         lines = [
             "[น้องจ๊อดส่องเลน: มอไซค์ 2 ล้อ]",
             f"มอไซค์ว่างรวม: {total_bike_vac}/{total_bike_cap} ช่อง",
             "",
             f"- ข้างภาคคอม (CAM3): ว่าง {len(c3_data['bike_vac'])}/{c3_data['bike_total']} ช่อง",
-            f"  ช่องว่าง: {c3_str}",
             f"- หน้าภาค 2 (CAM2 โซนมอไซค์): ว่าง {len(c2_data['bike_vac'])}/{c2_data['bike_total']} ช่อง",
-            f"  ช่องว่าง: {c2_str}",
             f"- หน้าภาค 1 (CAM1 โซนมอไซค์): ว่าง {len(c1_data['bike_vac'])}/{c1_data['bike_total']} ช่อง",
             "",
             "บิดมาจอดข้างภาคคอมได้เลยพี่ ลานกว้างเทียบสบาย!" if total_bike_vac > 0 else "มอไซค์เต็มทุกโซนแล้วพี่!"
@@ -370,19 +386,12 @@ def format_quick_response(user_msg: str) -> Tuple[Optional[str], List[str], Opti
         total_front_bike_vac = len(c1_data["bike_vac"]) + len(c2_data["bike_vac"])
         total_front_bike_cap = c1_data["bike_total"] + c2_data["bike_total"]
 
-        c1_car_str = ", ".join(c1_data["car_vac"]) if c1_data["car_vac"] else "เต็ม"
-        c2_car_str = ", ".join(c2_data["car_vac"]) if c2_data["car_vac"] else "เต็ม"
-
         lines = [
             "[น้องจ๊อดส่องเลน: ลานหน้าภาควิชาคอม (CAM1 & CAM2)]",
             f"รถยนต์หน้าภาคว่าง: {total_front_car_vac}/{total_front_car_cap} ช่อง | มอไซค์ว่าง: {total_front_bike_vac}/{total_front_bike_cap} ช่อง",
             "",
-            f"- หน้าภาค 1 (CAM1):",
-            f"  * รถยนต์ว่าง {len(c1_data['car_vac'])}/{c1_data['car_total']} ช่อง (ว่าง: {c1_car_str})",
-            f"  * มอไซค์ว่าง {len(c1_data['bike_vac'])}/{c1_data['bike_total']} ช่อง",
-            f"- หน้าภาค 2 (CAM2):",
-            f"  * รถยนต์ว่าง {len(c2_data['car_vac'])}/{c2_data['car_total']} ช่อง (ว่าง: {c2_car_str})",
-            f"  * มอไซค์ว่าง {len(c2_data['bike_vac'])}/{c2_data['bike_total']} ช่อง",
+            f"- หน้าภาค 1 (CAM1): รถยนต์ว่าง {len(c1_data['car_vac'])}/{c1_data['car_total']} ช่อง | มอไซค์ว่าง {len(c1_data['bike_vac'])}/{c1_data['bike_total']} ช่อง",
+            f"- หน้าภาค 2 (CAM2): รถยนต์ว่าง {len(c2_data['car_vac'])}/{c2_data['car_total']} ช่อง | มอไซค์ว่าง {len(c2_data['bike_vac'])}/{c2_data['bike_total']} ช่อง",
             "",
             "รีบขับมาเทียบเลนก่อนโดนตัดหน้านะพี่!" if (total_front_car_vac + total_front_bike_vac) > 0 else "ลานหน้าภาคเต็มเอี๊ยดแล้วพี่!"
         ]
@@ -392,15 +401,10 @@ def format_quick_response(user_msg: str) -> Tuple[Optional[str], List[str], Opti
     if any(k in msg_lower for k in ["cam3", "zone c", "zonec"]) or any(k in msg_clean for k in ["กล้อง3", "ข้างภาค", "ข้างภาคคอม", "ลานข้างภาคคอม", "มอไซค์ข้างภาค"]):
         c3_vac = len(c3_data["bike_vac"])
         c3_cap = c3_data["bike_total"]
-        avail_preview = ", ".join(c3_data["bike_vac"][:10])
-        if len(c3_data["bike_vac"]) > 10:
-            avail_preview += f" และอีก {len(c3_data['bike_vac']) - 10} ช่อง"
-        avail_str = avail_preview if c3_data["bike_vac"] else "เต็มทุกช่อง"
 
         lines = [
             "[น้องจ๊อดส่องเลน: ลานข้างภาคคอม (CAM3)]",
             f"สถานะ: มอไซค์ว่าง {c3_vac}/{c3_cap} ช่อง",
-            f"ช่องที่ว่าง: {avail_str}",
             "",
             "บิดมาจอดข้างภาคคอมได้เลยพี่ ลานกว้างเทียบสบาย!" if c3_vac > 0 else "มอไซค์ข้างภาคแน่นเอี๊ยดแล้วพี่!"
         ]
@@ -408,10 +412,9 @@ def format_quick_response(user_msg: str) -> Tuple[Optional[str], List[str], Opti
 
     # 5. Camera 1 specific ("กล้อง 1", "cam1") -> Send CAM1 image
     if any(k in msg_lower for k in ["cam1", "zone a", "zonea"]) or any(k in msg_clean for k in ["กล้อง1", "ลานหน้าภาค1", "หน้าภาค1"]):
-        c1_car_str = ", ".join(c1_data["car_vac"]) if c1_data["car_vac"] else "เต็ม"
         lines = [
             "[น้องจ๊อดส่องเลน: ลานหน้าภาค 1 (CAM1)]",
-            f"รถยนต์ว่าง: {len(c1_data['car_vac'])}/{c1_data['car_total']} ช่อง (ว่าง: {c1_car_str})",
+            f"รถยนต์ว่าง: {len(c1_data['car_vac'])}/{c1_data['car_total']} ช่อง",
             f"มอเตอร์ไซค์ว่าง: {len(c1_data['bike_vac'])}/{c1_data['bike_total']} ช่อง",
             "",
             "บิดมาเทียบเลนได้เลยครับพี่!" if (len(c1_data['car_vac']) + len(c1_data['bike_vac'])) > 0 else "โซนนี้เต็มแล้วพี่!"
@@ -420,10 +423,9 @@ def format_quick_response(user_msg: str) -> Tuple[Optional[str], List[str], Opti
 
     # 6. Camera 2 specific ("กล้อง 2", "cam2") -> Send CAM2 image
     if any(k in msg_lower for k in ["cam2", "zone b", "zoneb"]) or any(k in msg_clean for k in ["กล้อง2", "ลานหน้าภาค2", "หน้าภาค2"]):
-        c2_car_str = ", ".join(c2_data["car_vac"]) if c2_data["car_vac"] else "เต็ม"
         lines = [
             "[น้องจ๊อดส่องเลน: ลานหน้าภาค 2 (CAM2)]",
-            f"รถยนต์ว่าง: {len(c2_data['car_vac'])}/{c2_data['car_total']} ช่อง (ว่าง: {c2_car_str})",
+            f"รถยนต์ว่าง: {len(c2_data['car_vac'])}/{c2_data['car_total']} ช่อง",
             f"มอเตอร์ไซค์ว่าง: {len(c2_data['bike_vac'])}/{c2_data['bike_total']} ช่อง",
             "",
             "รีบขับมาเทียบเลนก่อนโดนตัดหน้านะพี่!" if (len(c2_data['car_vac']) + len(c2_data['bike_vac'])) > 0 else "โซนนี้เต็มแล้วพี่!"
@@ -439,17 +441,14 @@ def format_quick_response(user_msg: str) -> Tuple[Optional[str], List[str], Opti
         grand_vac = total_cars_vac + total_bikes_vac
         grand_cap = total_cars_cap + total_bikes_cap
 
-        c1_car_str = ", ".join(c1_data["car_vac"]) if c1_data["car_vac"] else "เต็ม"
-        c2_car_str = ", ".join(c2_data["car_vac"]) if c2_data["car_vac"] else "เต็ม"
-
         lines = [
             "[น้องจ๊อดรายงาน: สรุปภาพรวมลานจอด CPE ทั้งหมด]",
             "ชัดเจนในเลนเรา! ส่องข้อมูลจริงแยกประเภทให้ครบเลยพี่",
             f"ว่างรวมทั้งหมด: {grand_vac}/{grand_cap} ช่อง",
             "",
             f"รถยนต์ (4 ล้อ): ว่างรวม {total_cars_vac}/{total_cars_cap} ช่อง",
-            f"- หน้าภาค 1 (CAM1): ว่าง {len(c1_data['car_vac'])}/{c1_data['car_total']} ช่อง (ว่าง: {c1_car_str})",
-            f"- หน้าภาค 2 (CAM2): ว่าง {len(c2_data['car_vac'])}/{c2_data['car_total']} ช่อง (ว่าง: {c2_car_str})",
+            f"- หน้าภาค 1 (CAM1): ว่าง {len(c1_data['car_vac'])}/{c1_data['car_total']} ช่อง",
+            f"- หน้าภาค 2 (CAM2): ว่าง {len(c2_data['car_vac'])}/{c2_data['car_total']} ช่อง",
             "",
             f"มอไซค์ (2 ล้อ): ว่างรวม {total_bikes_vac}/{total_bikes_cap} ช่อง",
             f"- ข้างภาคคอม (CAM3): ว่าง {len(c3_data['bike_vac'])}/{c3_data['bike_total']} ช่อง",
@@ -505,8 +504,8 @@ class LineBotService:
 บุคลิกภาพและน้ำเสียง:
 1. เป็นเด็กแว๊นสายซิ่ง กวนๆ เฟรนด์ลี่ เฮฮา ใช้สำนวนภาษาปากวัยรุ่นสายซิ่งแต่จริงใจ น่ารัก และสุภาพ (เช่น เรียกผู้ใช้ว่า "พี่", "ลูกพี่", ใช้คำว่า "บิดมาเลยพี่", "เทียบเลน", "เลนนี้โล่ง", "เต็มเอี๊ยด", "เสียบช่อง", "อย่าเพิ่งขับมาเสียบ", ลงท้ายด้วย "ครับพี่" หรือ "นะพี่")
 2. ห้ามใช้อิโมจิ (Emoji) ในคำตอบเด็ดขาด ให้ใช้ข้อความล้วนๆ สั้น กระชับ อ่านเข้าใจง่ายใน 2-3 บรรทัด
-3. ความถูกต้องของข้อมูลเป็นอันดับ 1: แยกแยะประเภทรถยนต์ (Car: A01-A06, B01-B05) และมอเตอร์ไซค์ (Bike: M01-M08, B06-B18, C01, MC01-MC24) ให้ถูกต้องตามข้อมูลจริงด้านล่าง ห้ามแต่งข้อมูลช่องจอดเด็ดขาด!
-4. หากผู้ใช้ถามถึงโอกาสว่างเมื่อมาถึงในอนาคต (เช่น อีก 10-15 นาที): วิเคราะห์ความน่าจะเป็นอย่างมั่นใจ เช่น "ช่อง B03 โอกาสว่างสูง 80% เพราะเพิ่งว่าง บิดมาให้ไวเลยพี่!"
+3. ความถูกต้องของข้อมูลเป็นอันดับ 1: รายงานจำนวนช่องว่างตามโซนจริง ไม่ต้องระบุรหัสช่องย่อย (A01, B06) ให้บอกจำนวนว่าง/ความจุรวมของแต่ละลานชัดเจนและเข้าใจง่าย
+4. หากผู้ใช้ถามถึงโอกาสว่างเมื่อมาถึงในอนาคต (เช่น อีก 10-15 นาที): วิเคราะห์ความน่าจะเป็นอย่างมั่นใจ เช่น "หน้าภาค 2 โอกาสว่างสูง 80% บิดมาให้ไวเลยพี่!"
 5. ตอบกระชับ สั้น ไม่เวิ่นเว้อ เหมาะสำหรับการอ่านในแชต LINE
 
 {parking_context}"""

@@ -26,6 +26,7 @@ router = APIRouter(prefix="/api/v1/training/gpu", tags=["Private GPU Compute Nod
 
 
 class StartGPUTrainRequest(BaseModel):
+    model_name: Optional[str] = "YOLO26-Parking-v2"
     base_model: str = "yolo26m.pt"
     epochs: int = 50
     batch_size: int = 16
@@ -120,6 +121,7 @@ async def start_gpu_training(
     user_id = current_user.id if current_user else 1
 
     session, is_valid, syntax_error = gpu_training_manager.create_job(
+        model_name=payload.model_name,
         base_model=payload.base_model,
         epochs=payload.epochs,
         batch_size=payload.batch_size,

@@ -121,7 +121,7 @@ export default function SetupPage({
           onClick={() => setActiveTab('slots')}
         >
           <MapPin className="w-4 h-4" />
-          <span>Parking Slot ROI Setup</span>
+          <span>Parking Zone ROI Setup</span>
         </button>
 
         <button
@@ -230,7 +230,7 @@ export default function SetupPage({
                   className="btn-setup-draw-roi"
                 >
                   <MapPin className="w-3.5 h-3.5" />
-                  <span>วาดพิกัดช่องจอด ROI (CAM-01)</span>
+                  <span>วาดพิกัดโซนจอด ROI (CAM-01)</span>
                 </button>
               </div>
 
@@ -290,7 +290,7 @@ export default function SetupPage({
                   className="btn-setup-draw-roi"
                 >
                   <MapPin className="w-3.5 h-3.5" />
-                  <span>วาดพิกัดช่องจอด ROI (CAM-02)</span>
+                  <span>วาดพิกัดโซนจอด ROI (CAM-02)</span>
                 </button>
               </div>
 
@@ -350,7 +350,7 @@ export default function SetupPage({
                   className="btn-setup-draw-roi"
                 >
                   <MapPin className="w-3.5 h-3.5" />
-                  <span>วาดพิกัดช่องจอด ROI (CAM-03)</span>
+                  <span>วาดพิกัดโซนจอด ROI (CAM-03)</span>
                 </button>
               </div>
             </div>

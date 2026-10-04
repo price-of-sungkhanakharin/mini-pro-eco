@@ -77,7 +77,7 @@ class ParkStatusResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
+    id: Optional[int] = None
     camera_id: str
     location_name: Optional[str] = None
     vehicle_type: str = "car"
@@ -87,6 +87,12 @@ class ParkStatusResponse(BaseModel):
     occupancy_rate_pct: float = 0.0
     zone_pixel_occupancy_pct: float = 0.0
     status_level: str = "AVAILABLE"
+    car_capacity: Optional[int] = None
+    car_occupied: Optional[int] = None
+    car_vacant: Optional[int] = None
+    bike_capacity: Optional[int] = None
+    bike_occupied: Optional[int] = None
+    bike_vacant: Optional[int] = None
     available_slot_ids: List[Any] = []
     occupied_slot_ids: List[Any] = []
     slots_detail: List[Any] = []

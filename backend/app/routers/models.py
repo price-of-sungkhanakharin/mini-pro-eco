@@ -235,3 +235,44 @@ def get_model_by_id(
             detail=f"Model with ID {model_id} not found",
         )
     return model_record
+
+
+@router.get(
+    "/{model_id}/download",
+    summary="Download Model Weights (.pt)",
+    description="Get download URL or directly download model weights file.",
+)
+def download_model_weights(
+    model_id: int,
+    db: Session = Depends(get_db),
+):
+    """Generate presigned download URL for model weights."""
+    model_record = (
+        db.query(ModelRegistryModel).filter(ModelRegistryModel.id == model_id).first()
+    )
+    if not model_record or not model_record.minio_weight_path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Model {model_id} weights not found",
+        )
+
+    try:
+        minio_service = MinIOService()
+        url = minio_service.get_presigned_url(
+            object_name=model_record.minio_weight_path,
+            bucket_name="ai-ecosystem",
+            expires_seconds=7200,
+        )
+        return {
+            "model_id": model_id,
+            "model_name": model_record.model_name,
+            "version": model_record.version,
+            "download_url": url,
+            "minio_path": model_record.minio_weight_path,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Could not generate download link: {e}",
+        )
+

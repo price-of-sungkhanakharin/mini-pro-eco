@@ -832,9 +832,9 @@ export function parsePolygonFromServer(serverPolygon) {
 }
 
 /**
- * Sync drawn ROI slots and zone area polygon(s) to backend Ingestion Server and detection worker
+ * Sync drawn ROI zone area polygon(s) to backend Ingestion Server and detection worker
  */
-export async function saveRoiToServer(camId, slots, zonesOrPolygon = null) {
+export async function saveRoiToServer(camId, slotsIgnored = [], zonesOrPolygon = null) {
   let activeZones = []
   if (Array.isArray(zonesOrPolygon) && zonesOrPolygon.length > 0) {
     activeZones = normalizeZones(zonesOrPolygon)
@@ -842,17 +842,20 @@ export async function saveRoiToServer(camId, slots, zonesOrPolygon = null) {
     activeZones = getSavedOrInitialZones(camId)
   }
 
+  const defaultCap = (zType) => (zType === 'car' ? 6 : (camId === 'cam1' ? 9 : (camId === 'cam2' ? 13 : 25)))
+  const totalCap = activeZones.reduce((sum, z) => sum + (Number(z.capacity) || defaultCap(z.type)), 0)
   const firstZone = activeZones.length > 0 ? activeZones[0].points : null
 
   const payload = {
     camera_id: camId,
     name: getCameraConfig(camId)?.name || camId,
-    capacity: slots.length,
-    slots: slots,
+    capacity: totalCap,
+    slots: [],
     zones: activeZones.map((z) => ({
       id: z.id,
       name: z.name,
       type: z.type,
+      capacity: Number(z.capacity) || defaultCap(z.type),
       polygon: formatPolygonForServer(z.points)
     })),
     polygon: formatPolygonForServer(firstZone)
@@ -887,21 +890,23 @@ export async function saveRoiToServer(camId, slots, zonesOrPolygon = null) {
 }
 
 /**
- * Save all 3 cameras ROI slots & Zone Polygons to the central server in a single atomic request
+ * Save all 3 cameras ROI Zone Polygons to the central server in a single atomic request
  */
 export async function saveAllCamerasRoiToServer() {
   const getCameraPayload = (camId) => {
-    const slots = getSavedOrInitialSlots(camId)
     const zones = getSavedOrInitialZones(camId)
+    const defaultCap = (zType) => (zType === 'car' ? 6 : (camId === 'cam1' ? 9 : (camId === 'cam2' ? 13 : 25)))
+    const totalCap = zones.reduce((sum, z) => sum + (Number(z.capacity) || defaultCap(z.type)), 0)
     return {
       camera_id: camId,
       name: getCameraConfig(camId)?.name || camId,
-      capacity: slots.length,
-      slots: slots,
+      capacity: totalCap,
+      slots: [],
       zones: zones.map((z) => ({
         id: z.id,
         name: z.name,
         type: z.type,
+        capacity: Number(z.capacity) || defaultCap(z.type),
         polygon: formatPolygonForServer(z.points)
       })),
       polygon: formatPolygonForServer(zones[0]?.points || null)
@@ -942,6 +947,22 @@ export async function saveAllCamerasRoiToServer() {
 
 /**
  * Synchronize slots and multi-zones for all cameras from the central server.
+/**
+ * Fetch real-time AI model parking detection metrics from FastAPI PostgreSQL/Redis backend
+ */
+export async function fetchLiveParkStatus() {
+  try {
+    const apiBase = getIngestionApiBase()
+    const res = await fetch(`${apiBase}/api/v1/parking/status`)
+    if (!res.ok) return []
+    return await res.json()
+  } catch (err) {
+    return []
+  }
+}
+
+/**
+ * Synchronize all cameras' slots & zone metadata directly from central Postgres server.
  * Ensures all connected computers and browser tabs see the exact same ROI.
  */
 export async function syncAllSlotsFromServer() {
@@ -949,7 +970,7 @@ export async function syncAllSlotsFromServer() {
     const apiBase = getIngestionApiBase()
     const [roiData, statusData] = await Promise.all([
       fetchRoiFromServer(),
-      fetch(`${apiBase}/api/parking/status`).then(r => r.ok ? r.json() : []).catch(() => [])
+      fetch(`${apiBase}/api/v1/parking/status`).then(r => r.ok ? r.json() : []).catch(() => [])
     ])
     if (!roiData || typeof roiData !== 'object') return null
 

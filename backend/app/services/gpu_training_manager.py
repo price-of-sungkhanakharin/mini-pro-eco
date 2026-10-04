@@ -244,6 +244,7 @@ class GPUTrainingManager:
 
     def create_job(
         self,
+        model_name: Optional[str] = None,
         base_model: str = "yolo26m.pt",
         epochs: int = 50,
         batch_size: int = 16,
@@ -342,6 +343,7 @@ class GPUTrainingManager:
         session = GPUTrainingJobSession(
             job_id=job_id,
             config={
+                "model_name": model_name,
                 "base_model": base_model,
                 "epochs": epochs,
                 "batch_size": batch_size,
@@ -492,10 +494,12 @@ class GPUTrainingManager:
                 })
 
                 # Register in model_registry
+                custom_name = session.config.get("model_name")
                 model_name_base = session.config.get("base_model", "yolo11n").replace(".pt", "").upper()
+                final_model_name = custom_name.strip() if (custom_name and custom_name.strip()) else f"{model_name_base}-Parking"
                 new_version = f"v{int(time.time()) % 10000}.0"
                 model_entry = ModelRegistryModel(
-                    model_name=f"{model_name_base}-Parking",
+                    model_name=final_model_name,
                     version=new_version,
                     minio_weight_path=minio_weight_path,
                     metrics=session.metrics,

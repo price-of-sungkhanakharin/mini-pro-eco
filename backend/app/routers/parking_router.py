@@ -166,8 +166,59 @@ def get_live_park_status(
     camera_id: Optional[str] = Query(None, description="Optional filter by camera_id (e.g. cam1)"),
     db: Session = Depends(get_db),
 ):
-    """Retrieve real-time parking status for all or specific camera from PostgreSQL."""
+    """Retrieve real-time parking status for all or specific camera from PostgreSQL + Redis fast cache."""
+    import json
+    import redis
+    from backend.app.core.config import settings
+
+    redis_data = {}
+    try:
+        r_client = redis.Redis(
+            host=settings.redis_host,
+            port=settings.redis_port,
+            db=0,
+            decode_responses=True,
+            socket_timeout=1.5,
+        )
+        cams = [camera_id] if camera_id else ["cam1", "cam2", "cam3"]
+        for c in cams:
+            raw = r_client.get(f"parking:status:{c}")
+            if raw:
+                redis_data[c] = json.loads(raw)
+    except Exception:
+        pass
+
     query = db.query(ParkStatusModel)
     if camera_id:
         query = query.filter(ParkStatusModel.camera_id == camera_id)
-    return query.order_by(ParkStatusModel.camera_id).all()
+    db_records = query.order_by(ParkStatusModel.camera_id).all()
+
+    results = []
+    for rec in db_records:
+        r_info = redis_data.get(rec.camera_id, {})
+        resp_item = ParkStatusResponse(
+            id=rec.id,
+            camera_id=rec.camera_id,
+            location_name=rec.location_name,
+            vehicle_type=rec.vehicle_type,
+            total_capacity=r_info.get("total_capacity", rec.total_capacity),
+            occupied_count=r_info.get("occupied_count", rec.occupied_count),
+            vacant_count=r_info.get("vacant_count", rec.vacant_count),
+            occupancy_rate_pct=r_info.get("occupancy_rate_pct", rec.occupancy_rate_pct),
+            zone_pixel_occupancy_pct=rec.zone_pixel_occupancy_pct,
+            status_level=r_info.get("status_level", rec.status_level),
+            car_capacity=r_info.get("car_capacity", 6 if rec.camera_id == "cam1" else (5 if rec.camera_id == "cam2" else 0)),
+            car_occupied=r_info.get("car_occupied", 0),
+            car_vacant=r_info.get("car_vacant", 0),
+            bike_capacity=r_info.get("bike_capacity", 9 if rec.camera_id == "cam1" else (13 if rec.camera_id == "cam2" else 25)),
+            bike_occupied=r_info.get("bike_occupied", 0),
+            bike_vacant=r_info.get("bike_vacant", 0),
+            available_slot_ids=rec.available_slot_ids or [],
+            occupied_slot_ids=rec.occupied_slot_ids or [],
+            slots_detail=rec.slots_detail or [],
+            latest_image_url=rec.latest_image_url,
+            updated_at=rec.updated_at,
+        )
+        results.append(resp_item)
+
+    return results

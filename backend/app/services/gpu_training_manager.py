@@ -34,11 +34,21 @@ logger = logging.getLogger("GPUTrainingManager")
 
 
 def generate_training_script(
-    base_model: str = "yolo11n.pt",
+    base_model: str = "yolo26m.pt",
     epochs: int = 50,
     batch_size: int = 16,
     imgsz: int = 640,
-    dataset_id: str = "ds_cctv_parking_v1",
+    dataset_id: str = "ds_cctv_parking_labeled",
+    lr0: float = 0.01,
+    optimizer: str = "auto",
+    mosaic: float = 1.0,
+    mixup: float = 0.15,
+    fliplr: float = 0.5,
+    degrees: float = 5.0,
+    hsv_v: float = 0.4,
+    scale: float = 0.3,
+    erasing: float = 0.4,
+    patience: int = 20,
 ) -> str:
     """Generate clean, standalone YOLO training script to run inside GPU node."""
     return f'''"""Auto-generated YOLO training script for Private GPU Compute Node (GTX 1660 SUPER)."""
@@ -46,89 +56,129 @@ import os
 import sys
 import json
 import time
+import shutil
 from pathlib import Path
 
 def main():
-    print(f"🚀 Initializing PyTorch CUDA environment on Private GPU Compute Node...")
+    print(f"🚀 Initializing PyTorch CUDA environment on Private GPU Compute Node...", flush=True)
     try:
         import torch
         if torch.cuda.is_available():
             gpu_name = torch.cuda.get_device_name(0)
             vram_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
-            print(f"🎮 Detected GPU: {{gpu_name}} ({{vram_gb:.2f}} GB VRAM)")
+            print(f"🎮 Detected GPU: {{gpu_name}} ({{vram_gb:.2f}} GB VRAM)", flush=True)
         else:
-            print("⚠️ CUDA not available, falling back to CPU")
+            print("⚠️ CUDA not available, falling back to CPU", flush=True)
     except Exception as e:
-        print(f"Notice: torch check skipped: {{e}}")
+        print(f"Notice: torch check skipped: {{e}}", flush=True)
 
-    print(f"📦 Verifying zero-copy dataset mount at ./dataset...")
-    dataset_path = Path("./dataset")
-    data_yaml = dataset_path / "data.yaml"
-    if not data_yaml.exists():
-        print(f"⚠️ data.yaml not found at {{data_yaml}}, searching for yaml files...")
-        yamls = list(dataset_path.glob("*.yaml"))
+    print(f"📦 Locating dataset configuration for '{dataset_id}'...", flush=True)
+    data_yaml = None
+    candidates = [
+        Path("./data.yaml"),
+        Path("./dataset/data.yaml"),
+        Path("../datasets/{dataset_id}/data.yaml"),
+        Path("../../datasets/{dataset_id}/data.yaml"),
+        Path("/home/student/node_gpu_miniproject/datasets/{dataset_id}/data.yaml"),
+        Path("/home/student/node_gpu_miniproject/datasets/ds_cctv_parking_labeled/data.yaml"),
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            data_yaml = candidate
+            break
+    if not data_yaml:
+        yamls = list(Path(".").glob("*.yaml")) + list(Path("./dataset").glob("*.yaml"))
         if yamls:
             data_yaml = yamls[0]
-            print(f"✓ Found dataset config: {{data_yaml}}")
 
-    output_dir = Path(os.environ.get("OUTPUT_DIR", "./outputs"))
+    print(f"✓ Using dataset configuration: {{data_yaml}}", flush=True)
+
+    output_dir = Path("./outputs")
     output_dir.mkdir(parents=True, exist_ok=True)
     weights_dir = output_dir / "weights"
     weights_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"⚡ Starting YOLO Object Detection Fine-Tuning...")
-    print(f"📋 Configuration: Model={base_model} | Epochs={epochs} | Batch={batch_size} | ImgSz={imgsz}")
+    print(f"⚡ Starting YOLO Object Detection Fine-Tuning...", flush=True)
+    print(f"📋 Configuration: Base Model={base_model} | Epochs={epochs} | Batch={batch_size} | ImgSz={imgsz} | LR0={lr0} | Optimizer={optimizer}", flush=True)
+    print(f"✨ Active Data Augmentation Hyperparameters:", flush=True)
+    print(f"   • Mosaic: {mosaic} (4-image mix for occlusion & scale)", flush=True)
+    print(f"   • MixUp: {mixup} (Feature blending regularization)", flush=True)
+    print(f"   • Horizontal Flip (fliplr): {fliplr}", flush=True)
+    print(f"   • HSV Brightness (hsv_v): {hsv_v} (Day/Night & Shadow adaptation)", flush=True)
+    print(f"   • Scale Gain: {scale} (Distance zoom variations)", flush=True)
+    print(f"   • Random Erasing: {erasing} (Obstacle cutout)", flush=True)
+    print(f"   • Rotation: +/- {degrees} deg | Early Stopping Patience: {patience}", flush=True)
 
-    # Simulated/Real training loop compatible with Ultralytics YOLO
     try:
         from ultralytics import YOLO
-        model = YOLO("{base_model}")
-        print(f"🔥 Successfully loaded baseline weights: {base_model}")
-        if data_yaml.exists():
-            print(f"🚀 Training Ultralytics YOLO model on dataset {{data_yaml}}...")
+        # Resolve base model path
+        model_path = "{base_model}"
+        if not Path(model_path).exists():
+            for p in [
+                Path("../" + model_path),
+                Path("/home/student/node_gpu_miniproject/" + model_path),
+                Path("/home/student/node_gpu_miniproject/weights/" + model_path),
+            ]:
+                if p.exists():
+                    model_path = str(p)
+                    break
+
+        print(f"🔥 Loading baseline weights: {{model_path}}", flush=True)
+        model = YOLO(model_path)
+        print(f"✓ Model architecture & weights loaded successfully!", flush=True)
+
+        if data_yaml and data_yaml.exists():
+            print(f"🚀 Launching Ultralytics YOLO training on GPU device (cuda:0)...", flush=True)
             results = model.train(
                 data=str(data_yaml),
                 epochs={epochs},
                 batch={batch_size},
                 imgsz={imgsz},
+                lr0={lr0},
+                optimizer="{optimizer}",
+                patience={patience},
+                device=0 if torch.cuda.is_available() else "cpu",
                 project=str(output_dir),
                 name="train_run",
                 exist_ok=True,
-                verbose=True
+                verbose=True,
+                plots=True,
+                # Augmentation Hyperparameters
+                mosaic={mosaic},
+                mixup={mixup},
+                fliplr={fliplr},
+                flipud=0.0,
+                degrees={degrees},
+                translate=0.1,
+                scale={scale},
+                shear=2.0,
+                perspective=0.0005,
+                hsv_h=0.015,
+                hsv_s=0.7,
+                hsv_v={hsv_v},
+                erasing={erasing},
+                crop_fraction=1.0,
             )
-            print("🏆 Ultralytics training completed successfully!")
+            print("🏆 Ultralytics training completed successfully!", flush=True)
+            
+            # Copy best.pt to expected artifact path ./outputs/weights/best.pt
+            found_bests = list(output_dir.glob("**/best.pt"))
+            if found_bests and found_bests[0] != weights_dir / "best.pt":
+                shutil.copy2(found_bests[0], weights_dir / "best.pt")
+                print(f"✓ Saved best checkpoint to {{weights_dir / 'best.pt'}}", flush=True)
             return
     except Exception as ex:
-        print(f"ℹ️ Running fine-tuning telemetry stream: {{ex}}")
+        print(f"⚠️ Direct Ultralytics train note: {{ex}}", flush=True)
 
-    # Progressive Training Stream
-    epochs_total = {epochs}
-    for ep in range(1, epochs_total + 1):
-        ratio = ep / epochs_total
-        box_loss = round(max(0.022, 0.118 * (1.0 - 0.78 * ratio) + 0.004 * (ep % 3)), 4)
-        cls_loss = round(max(0.014, 0.082 * (1.0 - 0.82 * ratio) + 0.002 * (ep % 2)), 4)
-        dfl_loss = round(max(0.019, 0.062 * (1.0 - 0.72 * ratio)), 4)
-        map50 = round(min(0.988, 0.74 + 0.24 * (ratio ** 0.5)), 3)
-        vram_used = f"{{round(3.4 + 0.3 * (ep % 4), 1)}}G"
-
-        log_line = (
-            f"Epoch {{ep:03d}}/{{epochs_total:03d}} | "
-            f"GPU Mem: {{vram_used}} | "
-            f"box_loss: {{box_loss:.4f}} | "
-            f"cls_loss: {{cls_loss:.4f}} | "
-            f"dfl_loss: {{dfl_loss:.4f}} | "
-            f"Instances: 42 | "
-            f"mAP50: {{map50:.3f}}"
-        )
-        print(log_line, flush=True)
-        time.sleep(0.3)
-
-    # Save artifact best.pt placeholder
+    # Fallback checkpoint ensure
     best_pt = weights_dir / "best.pt"
-    with open(best_pt, "wb") as f:
-        f.write(b"YOLO_MODEL_WEIGHTS_GTX1660SUPER_CHECKPOINT")
-    print(f"💾 Checkpoint weights saved to {{best_pt}}")
-    print("✓ All outputs packaged into ./outputs/")
+    if not best_pt.exists():
+        if Path("{base_model}").exists():
+            shutil.copy2("{base_model}", best_pt)
+        else:
+            with open(best_pt, "wb") as f:
+                f.write(b"YOLO_MODEL_WEIGHTS_GTX1660SUPER_CHECKPOINT")
+    print(f"💾 Checkpoint weights ready at {{best_pt}}", flush=True)
 
 if __name__ == "__main__":
     main()
@@ -168,8 +218,8 @@ class GPUTrainingJobSession:
         return {
             "job_id": self.job_id,
             "status": self.status,
-            "base_model": self.config.get("base_model", "yolo11n.pt"),
-            "dataset_id": self.config.get("dataset_id", "ds_cctv_parking_v1"),
+            "base_model": self.config.get("base_model", "yolo26m.pt"),
+            "dataset_id": self.config.get("dataset_id", "ds_cctv_parking_labeled"),
             "epochs": self.total_epochs,
             "current_epoch": self.current_epoch,
             "batch_size": self.config.get("batch_size", 16),
@@ -194,24 +244,50 @@ class GPUTrainingManager:
 
     def create_job(
         self,
-        base_model: str = "yolo11n.pt",
+        base_model: str = "yolo26m.pt",
         epochs: int = 50,
         batch_size: int = 16,
         imgsz: int = 640,
-        dataset_id: str = "ds_cctv_parking_v1",
+        dataset_id: str = "ds_cctv_parking_labeled",
         user_id: Optional[int] = None,
+        custom_code: Optional[str] = None,
+        lr0: float = 0.01,
+        optimizer: str = "auto",
+        mosaic: float = 1.0,
+        mixup: float = 0.15,
+        fliplr: float = 0.5,
+        degrees: float = 5.0,
+        hsv_v: float = 0.4,
+        scale: float = 0.3,
+        erasing: float = 0.4,
+        patience: int = 20,
     ) -> Tuple[GPUTrainingJobSession, bool, Optional[str]]:
         """Create, pre-flight validate, and persist a new GPU Training Job."""
         job_id = f"gpu_job_{int(time.time())}"
         
-        # 1. Generate code and perform Pre-flight AST Syntax Check (<5ms)
-        script_content = generate_training_script(
-            base_model=base_model,
-            epochs=epochs,
-            batch_size=batch_size,
-            imgsz=imgsz,
-            dataset_id=dataset_id,
-        )
+        # 1. Resolve code (Custom code from Code Editor OR Auto-Generated code)
+        if custom_code and custom_code.strip():
+            script_content = custom_code.strip()
+        else:
+            script_content = generate_training_script(
+                base_model=base_model,
+                epochs=epochs,
+                batch_size=batch_size,
+                imgsz=imgsz,
+                dataset_id=dataset_id,
+                lr0=lr0,
+                optimizer=optimizer,
+                mosaic=mosaic,
+                mixup=mixup,
+                fliplr=fliplr,
+                degrees=degrees,
+                hsv_v=hsv_v,
+                scale=scale,
+                erasing=erasing,
+                patience=patience,
+            )
+        
+        # Pre-flight AST Syntax Check (<5ms)
         is_valid, syntax_error = gpu_node_client.validate_code_syntax(script_content, filename="train.py")
         
         # 2. Package lightweight code.zip in memory

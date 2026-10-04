@@ -76,7 +76,7 @@ async def test_bot_query(payload: Dict[str, str]):
     """Test AI query response or quick response directly."""
     question = payload.get("question", "ตอนนี้มีที่จอดรถว่างไหม")
     from backend.app.services.line_bot_service import format_quick_response
-    fast_reply, target_cams = format_quick_response(question)
+    fast_reply, target_cams, vehicle_filter = format_quick_response(question)
     if fast_reply:
         answer = fast_reply
         mode = "quick_reply"
@@ -84,14 +84,17 @@ async def test_bot_query(payload: Dict[str, str]):
         answer = line_bot_service.query_dotblue_advisor(question)
         mode = "dotblue_ai"
         target_cams = []
+        vehicle_filter = None
 
-    image_urls = [f"/api/v1/line/snapshot/{cam}?mode=chatbot" for cam in target_cams]
+    v_param = f"&vehicle_type={vehicle_filter}" if vehicle_filter else ""
+    image_urls = [f"/api/v1/line/snapshot/{cam}?mode=chatbot{v_param}" for cam in target_cams]
 
     return {
         "question": question,
         "answer": answer,
         "handler": mode,
         "target_cams": target_cams,
+        "vehicle_filter": vehicle_filter,
         "image_urls": image_urls,
     }
 
@@ -115,30 +118,49 @@ except Exception as _e:
     summary="Get real-time parking overlay image for camera",
     description="Generates and serves the latest parking overlay image (chatbot, dashboard, or raw) for the camera."
 )
-def get_camera_snapshot(cam_id: str, mode: str = "chatbot"):
+def get_camera_snapshot(cam_id: str, mode: str = "chatbot", vehicle_type: str = None, type: str = None):
     """Serve fresh real-time parking overlay image for LINE / web consumers."""
     cam_clean = cam_id.lower().strip()
-    
+    v_type = vehicle_type or type
+    if v_type:
+        v_type = v_type.lower().strip()
+        if v_type in ("bike", "motorcycle", "moto", "มอไซ", "มอเตอร์ไซค์", "2wheel", "2ล้อ"):
+            v_type = "motorcycle"
+        elif v_type in ("car", "truck", "bus", "auto", "รถยนต์", "4wheel", "4ล้อ"):
+            v_type = "car"
+        else:
+            v_type = None
+
     # 1. Try dynamic generator if available
     if get_parking_snapshot is not None:
         try:
-            img_file = get_parking_snapshot(cam_id=cam_clean, mode=mode)
+            img_file = get_parking_snapshot(cam_id=cam_clean, mode=mode, vehicle_type=v_type)
             if img_file and os.path.exists(img_file):
                 return FileResponse(img_file, media_type="image/jpeg")
         except Exception as e:
             logger.warning("Dynamic snapshot generation error for %s: %s", cam_clean, e)
 
     # 2. Fallback to cached static snapshot files
-    candidate_paths = [
-        Path(f"/app/data/snapshots/{cam_clean}_chatbot_latest.jpg"),
-        Path(f"/app/data/snapshots/{cam_clean}_detected.jpg"),
-        Path(f"/app/data/snapshots/{cam_clean}_{mode}_latest.jpg"),
-        Path(f"/home/r211admin/project-eco/ai-ecosystem-workspace/data/snapshots/{cam_clean}_chatbot_latest.jpg"),
-        Path(f"/home/r211admin/project-eco/ai-ecosystem-workspace/data/snapshots/{cam_clean}_detected.jpg"),
-        Path(f"/home/r211admin/project-eco/ai-ecosystem-workspace/frontend/public/{cam_clean}_detected.jpg"),
-        Path(f"/home/r211admin/parking-detect/status_overlay/{cam_clean}_{mode}_latest.jpg"),
-        Path(f"/home/r211admin/parking-detect/status_overlay/{cam_clean}_chatbot_latest.jpg"),
-    ]
+    candidate_paths = []
+    if mode == "chatbot":
+        if v_type:
+            candidate_paths.extend([
+                Path(f"/app/data/snapshots/{cam_clean}_chatbot_{v_type}.jpg"),
+                Path(f"/home/r211admin/project-eco/ai-ecosystem-workspace/data/snapshots/{cam_clean}_chatbot_{v_type}.jpg"),
+                Path(f"/home/r211admin/parking-detect/status_overlay/{cam_clean}_chatbot_{v_type}.jpg"),
+            ])
+        candidate_paths.extend([
+            Path(f"/app/data/snapshots/{cam_clean}_chatbot_latest.jpg"),
+            Path(f"/home/r211admin/project-eco/ai-ecosystem-workspace/data/snapshots/{cam_clean}_chatbot_latest.jpg"),
+            Path(f"/home/r211admin/parking-detect/status_overlay/{cam_clean}_chatbot_latest.jpg"),
+        ])
+    else:
+        candidate_paths.extend([
+            Path(f"/app/data/snapshots/{cam_clean}_detected.jpg"),
+            Path(f"/home/r211admin/project-eco/ai-ecosystem-workspace/data/snapshots/{cam_clean}_detected.jpg"),
+            Path(f"/home/r211admin/project-eco/ai-ecosystem-workspace/frontend/public/{cam_clean}_detected.jpg"),
+            Path(f"/home/r211admin/parking-detect/status_overlay/{cam_clean}_dashboard_overlay.jpg"),
+        ])
     cache_headers = {
         "Cache-Control": "no-cache, no-store, must-revalidate",
         "Pragma": "no-cache",

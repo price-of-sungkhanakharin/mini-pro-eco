@@ -26,13 +26,48 @@ router = APIRouter(prefix="/api/v1/training/gpu", tags=["Private GPU Compute Nod
 
 
 class StartGPUTrainRequest(BaseModel):
-    base_model: str = "yolo11n.pt"
+    base_model: str = "yolo26m.pt"
     epochs: int = 50
     batch_size: int = 16
     imgsz: int = 640
-    dataset_id: str = "ds_cctv_parking_v1"
+    dataset_id: str = "ds_cctv_parking_labeled"
     roboflow_version: Optional[int] = 1
     gpu_type: str = "GTX 1660 SUPER (6GB)"
+    custom_code: Optional[str] = None
+    lr0: Optional[float] = 0.01
+    optimizer: Optional[str] = "auto"
+    mosaic: Optional[float] = 1.0
+    mixup: Optional[float] = 0.15
+    fliplr: Optional[float] = 0.5
+    degrees: Optional[float] = 5.0
+    hsv_v: Optional[float] = 0.4
+    scale: Optional[float] = 0.3
+    erasing: Optional[float] = 0.4
+    patience: Optional[int] = 20
+
+
+@router.post("/generate-code", summary="Generate YOLO Training Script Preview")
+async def generate_code_preview(payload: StartGPUTrainRequest) -> Dict[str, Any]:
+    """Generate YOLO Python training script from hyperparameters."""
+    from backend.app.services.gpu_training_manager import generate_training_script
+    code = generate_training_script(
+        base_model=payload.base_model,
+        epochs=payload.epochs,
+        batch_size=payload.batch_size,
+        imgsz=payload.imgsz,
+        dataset_id=payload.dataset_id,
+        lr0=payload.lr0 or 0.01,
+        optimizer=payload.optimizer or "auto",
+        mosaic=payload.mosaic if payload.mosaic is not None else 1.0,
+        mixup=payload.mixup if payload.mixup is not None else 0.15,
+        fliplr=payload.fliplr if payload.fliplr is not None else 0.5,
+        degrees=payload.degrees if payload.degrees is not None else 5.0,
+        hsv_v=payload.hsv_v if payload.hsv_v is not None else 0.4,
+        scale=payload.scale if payload.scale is not None else 0.3,
+        erasing=payload.erasing if payload.erasing is not None else 0.4,
+        patience=payload.patience if payload.patience is not None else 20,
+    )
+    return {"code": code}
 
 
 @router.get("/telemetry", summary="Get Remote GPU Telemetry")
@@ -91,6 +126,17 @@ async def start_gpu_training(
         imgsz=payload.imgsz,
         dataset_id=payload.dataset_id,
         user_id=user_id,
+        custom_code=payload.custom_code,
+        lr0=payload.lr0 or 0.01,
+        optimizer=payload.optimizer or "auto",
+        mosaic=payload.mosaic if payload.mosaic is not None else 1.0,
+        mixup=payload.mixup if payload.mixup is not None else 0.15,
+        fliplr=payload.fliplr if payload.fliplr is not None else 0.5,
+        degrees=payload.degrees if payload.degrees is not None else 5.0,
+        hsv_v=payload.hsv_v if payload.hsv_v is not None else 0.4,
+        scale=payload.scale if payload.scale is not None else 0.3,
+        erasing=payload.erasing if payload.erasing is not None else 0.4,
+        patience=payload.patience if payload.patience is not None else 20,
     )
 
     if not is_valid:
@@ -112,6 +158,7 @@ async def start_gpu_training(
             "dataset_id": payload.dataset_id,
             "epochs": payload.epochs,
             "batch_size": payload.batch_size,
+            "mode": "Advanced Custom Code" if payload.custom_code else "Easy UI Hyperparameters",
             "device": "NVIDIA GeForce GTX 1660 SUPER (6GB)",
         },
     }

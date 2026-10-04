@@ -263,20 +263,21 @@ def build_quick_reply_payload():
     }
 
 
-def format_quick_response(user_msg: str) -> Tuple[Optional[str], List[str]]:
+def format_quick_response(user_msg: str) -> Tuple[Optional[str], List[str], Optional[str]]:
     """
     Provide punchy, concise, emoji-free responses pulling directly from real system data.
-    Accurately separates car slots vs motorcycle slots and returns all relevant camera snapshots.
+    Accurately separates car slots vs motorcycle slots and returns all relevant camera snapshots with vehicle type filter.
     Returns:
-        (reply_text, target_cam_ids)
+        (reply_text, target_cam_ids, vehicle_filter)
         - target_cam_ids: list of camera IDs (e.g. ['cam1', 'cam2'], ['cam3'], ['cam1', 'cam2', 'cam3'])
+        - vehicle_filter: 'car', 'motorcycle', or None
     """
     msg = user_msg.strip()
     msg_lower = msg.lower()
     msg_clean = msg.replace(" ", "")
     rows = get_parking_records()
     if not rows:
-        return None, []
+        return None, [], None
 
     # Map cameras and extract precise slot categorization
     cam_map = {r.get("camera_id"): r for r in rows}
@@ -313,7 +314,7 @@ def format_quick_response(user_msg: str) -> Tuple[Optional[str], List[str]]:
     c2_data = get_cam_slots("cam2")
     c3_data = get_cam_slots("cam3")
 
-    # 1. Car Only (หาที่จอดรถยนต์) -> Send CAM1 and CAM2 images
+    # 1. Car Only (หาที่จอดรถยนต์) -> Send CAM1 and CAM2 images with car filter
     if any(k in msg for k in ["หาที่จอดรถยนต์", "รถยนต์", "สี่ล้อ", "รถเก๋ง", "รถกระบะ"]) or "car" in msg_lower:
         total_car_cap = c1_data["car_total"] + c2_data["car_total"]
         total_car_vac = len(c1_data["car_vac"]) + len(c2_data["car_vac"])
@@ -331,9 +332,9 @@ def format_quick_response(user_msg: str) -> Tuple[Optional[str], List[str]]:
             "",
             "รีบขับมาเทียบเลนก่อนโดนตัดหน้านะพี่!" if total_car_vac > 0 else "โซนรถยนต์เต็มหมดแล้วพี่ แนะนำวนดูอีกรอบนะพี่!"
         ]
-        return "\n".join(lines), ["cam1", "cam2"]
+        return "\n".join(lines), ["cam1", "cam2"], "car"
 
-    # 2. Motorcycle Only (หาที่จอดมอไซค์) -> Send CAM3 and CAM2 images
+    # 2. Motorcycle Only (หาที่จอดมอไซค์) -> Send CAM3 and CAM2 images with motorcycle filter
     if any(k in msg for k in ["หาที่จอดมอไซค์", "หาที่จอดมอเตอร์ไซค์", "มอไซ", "มอเตอร์ไซค์", "สองล้อ"]) or "bike" in msg_lower:
         total_bike_cap = c3_data["bike_total"] + c2_data["bike_total"] + c1_data["bike_total"]
         total_bike_vac = len(c3_data["bike_vac"]) + len(c2_data["bike_vac"]) + len(c1_data["bike_vac"])
@@ -360,7 +361,7 @@ def format_quick_response(user_msg: str) -> Tuple[Optional[str], List[str]]:
             "",
             "บิดมาจอดข้างภาคคอมได้เลยพี่ ลานกว้างเทียบสบาย!" if total_bike_vac > 0 else "มอไซค์เต็มทุกโซนแล้วพี่!"
         ]
-        return "\n".join(lines), ["cam3", "cam2"]
+        return "\n".join(lines), ["cam3", "cam2"], "motorcycle"
 
     # 3. Combined Front Plaza (ลานหน้าภาค) -> Send CAM1 and CAM2 images
     if any(k in msg_clean for k in ["ลานหน้าภาค", "หน้าภาค", "ลานจอดหน้าภาค"]):
@@ -385,7 +386,7 @@ def format_quick_response(user_msg: str) -> Tuple[Optional[str], List[str]]:
             "",
             "รีบขับมาเทียบเลนก่อนโดนตัดหน้านะพี่!" if (total_front_car_vac + total_front_bike_vac) > 0 else "ลานหน้าภาคเต็มเอี๊ยดแล้วพี่!"
         ]
-        return "\n".join(lines), ["cam1", "cam2"]
+        return "\n".join(lines), ["cam1", "cam2"], None
 
     # 4. Side Plaza (ลานข้างภาคคอม) -> Send CAM3 image
     if any(k in msg_lower for k in ["cam3", "zone c", "zonec"]) or any(k in msg_clean for k in ["กล้อง3", "ข้างภาค", "ข้างภาคคอม", "ลานข้างภาคคอม", "มอไซค์ข้างภาค"]):
@@ -403,7 +404,7 @@ def format_quick_response(user_msg: str) -> Tuple[Optional[str], List[str]]:
             "",
             "บิดมาจอดข้างภาคคอมได้เลยพี่ ลานกว้างเทียบสบาย!" if c3_vac > 0 else "มอไซค์ข้างภาคแน่นเอี๊ยดแล้วพี่!"
         ]
-        return "\n".join(lines), ["cam3"]
+        return "\n".join(lines), ["cam3"], "motorcycle"
 
     # 5. Camera 1 specific ("กล้อง 1", "cam1") -> Send CAM1 image
     if any(k in msg_lower for k in ["cam1", "zone a", "zonea"]) or any(k in msg_clean for k in ["กล้อง1", "ลานหน้าภาค1", "หน้าภาค1"]):
@@ -415,7 +416,7 @@ def format_quick_response(user_msg: str) -> Tuple[Optional[str], List[str]]:
             "",
             "บิดมาเทียบเลนได้เลยครับพี่!" if (len(c1_data['car_vac']) + len(c1_data['bike_vac'])) > 0 else "โซนนี้เต็มแล้วพี่!"
         ]
-        return "\n".join(lines), ["cam1"]
+        return "\n".join(lines), ["cam1"], None
 
     # 6. Camera 2 specific ("กล้อง 2", "cam2") -> Send CAM2 image
     if any(k in msg_lower for k in ["cam2", "zone b", "zoneb"]) or any(k in msg_clean for k in ["กล้อง2", "ลานหน้าภาค2", "หน้าภาค2"]):
@@ -427,7 +428,7 @@ def format_quick_response(user_msg: str) -> Tuple[Optional[str], List[str]]:
             "",
             "รีบขับมาเทียบเลนก่อนโดนตัดหน้านะพี่!" if (len(c2_data['car_vac']) + len(c2_data['bike_vac'])) > 0 else "โซนนี้เต็มแล้วพี่!"
         ]
-        return "\n".join(lines), ["cam2"]
+        return "\n".join(lines), ["cam2"], None
 
     # 7. Aggregated Overview Summary (สรุปภาพรวม / ทั้งหมด / สรุป / ภาพรวม) -> Send CAM1, CAM2, CAM3 images
     if any(k in msg for k in ["สรุปภาพรวม", "สรุปทั้งหมด", "สรุป", "ภาพรวม", "ทั้งหมด", "สถานะ"]) or "overview" in msg_lower or "all" in msg_lower:
@@ -457,20 +458,20 @@ def format_quick_response(user_msg: str) -> Tuple[Optional[str], List[str]]:
             "",
             "กดปุ่มเมนูด้านล่างเพื่อเจาะดูแต่ละโซนได้เลยครับพี่!"
         ]
-        return "\n".join(lines), ["cam1", "cam2", "cam3"]
+        return "\n".join(lines), ["cam1", "cam2", "cam3"], None
 
     # 8. User asks for pictures / snapshots
     if any(k in msg_clean for k in ["ขอดูรูป", "ส่งรูป", "ดูรูป", "ภาพสด", "รูปภาพ", "กล้อง"]):
         if "3" in msg_clean or "มอไซ" in msg_clean or "ข้างภาค" in msg_clean:
-            return f"[น้องจ๊อดจัดให้: ภาพสด ลานข้างภาคคอม (CAM3)]\nสถานะ: มอไซค์ว่าง {len(c3_data['bike_vac'])}/{c3_data['bike_total']} ช่อง บิดมาได้เลยพี่!", ["cam3"]
+            return f"[น้องจ๊อดจัดให้: ภาพสด ลานข้างภาคคอม (CAM3)]\nสถานะ: มอไซค์ว่าง {len(c3_data['bike_vac'])}/{c3_data['bike_total']} ช่อง บิดมาได้เลยพี่!", ["cam3"], "motorcycle"
         elif "1" in msg_clean:
-            return f"[น้องจ๊อดจัดให้: ภาพสด ลานหน้าภาค 1 (CAM1)]\nสถานะ: รถยนต์ว่าง {len(c1_data['car_vac'])}/{c1_data['car_total']} ช่อง, มอไซค์ว่าง {len(c1_data['bike_vac'])}/{c1_data['bike_total']} ช่อง!", ["cam1"]
+            return f"[น้องจ๊อดจัดให้: ภาพสด ลานหน้าภาค 1 (CAM1)]\nสถานะ: รถยนต์ว่าง {len(c1_data['car_vac'])}/{c1_data['car_total']} ช่อง, มอไซค์ว่าง {len(c1_data['bike_vac'])}/{c1_data['bike_total']} ช่อง!", ["cam1"], None
         elif "2" in msg_clean:
-            return f"[น้องจ๊อดจัดให้: ภาพสด ลานหน้าภาค 2 (CAM2)]\nสถานะ: รถยนต์ว่าง {len(c2_data['car_vac'])}/{c2_data['car_total']} ช่อง, มอไซค์ว่าง {len(c2_data['bike_vac'])}/{c2_data['bike_total']} ช่อง!", ["cam2"]
+            return f"[น้องจ๊อดจัดให้: ภาพสด ลานหน้าภาค 2 (CAM2)]\nสถานะ: รถยนต์ว่าง {len(c2_data['car_vac'])}/{c2_data['car_total']} ช่อง, มอไซค์ว่าง {len(c2_data['bike_vac'])}/{c2_data['bike_total']} ช่อง!", ["cam2"], None
         else:
-            return f"[น้องจ๊อดจัดให้: ภาพสดลานจอดหน้าภาค (CAM1 & CAM2)]\nรถยนต์ว่าง {len(c1_data['car_vac'])+len(c2_data['car_vac'])} ช่อง บิดมาเทียบเลนได้เลยพี่!", ["cam1", "cam2"]
+            return f"[น้องจ๊อดจัดให้: ภาพสดลานจอดหน้าภาค (CAM1 & CAM2)]\nรถยนต์ว่าง {len(c1_data['car_vac'])+len(c2_data['car_vac'])} ช่อง บิดมาเทียบเลนได้เลยพี่!", ["cam1", "cam2"], None
 
-    return None, []
+    return None, [], None
 
 
 def verify_line_signature(body_str: str, signature: str, secret: str) -> bool:
@@ -576,20 +577,22 @@ class LineBotService:
                     continue
 
                 # 1. Pull Real Data directly / Format Response with real snapshots
-                fast_reply, target_cams = format_quick_response(user_msg)
+                fast_reply, target_cams, vehicle_filter = format_quick_response(user_msg)
                 if fast_reply:
                     final_text = fast_reply
                 else:
                     # 2. Conversational fallback: Query dotBlue AI with real-time parking data
                     final_text = self.query_dotblue_advisor(user_msg)
+                    vehicle_filter = None
 
                 reply_messages = []
                 public_base = get_public_https_url()
                 ts = int(datetime.now().timestamp())
+                v_param = f"&vehicle_type={vehicle_filter}" if vehicle_filter else ""
 
                 # Add images (LINE API allows max 5 messages total, so max 4 images + 1 text)
                 for cam in target_cams[:4]:
-                    snapshot_url = f"{public_base}/api/v1/line/snapshot/{cam}?mode=chatbot&t={ts}"
+                    snapshot_url = f"{public_base}/api/v1/line/snapshot/{cam}?mode=chatbot{v_param}&t={ts}"
                     reply_messages.append({
                         "type": "image",
                         "originalContentUrl": snapshot_url,

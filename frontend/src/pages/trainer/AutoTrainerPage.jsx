@@ -16,10 +16,14 @@ import {
   FolderGit2,
   Terminal,
   Sliders,
+  SlidersHorizontal,
   TrendingUp,
   Award,
   Check,
   FileCode,
+  Code2,
+  Upload,
+  RotateCcw,
   Copy,
   CheckCheck,
   Maximize2,
@@ -30,36 +34,20 @@ import {
 
 const BASE_MODELS = [
   {
-    id: 'yolo11n.pt',
-    name: 'YOLOv11 Nano (yolo11n.pt)',
-    shortName: 'YOLOv11 Nano',
-    params: '2.6M params',
-    desc: 'เร็วที่สุด (Ultra Fast 2.6M) เหมาะสำหรับ Edge & Live Stream',
+    id: 'yolo26m.pt',
+    name: 'YOLO26 Medium (yolo26m.pt)',
+    shortName: 'yolo26m',
+    params: '25.9M params',
+    desc: 'โมเดลตั้งต้นหลัก (Base Pretrained Model) สำหรับตรวจจับรถยนต์และมอเตอร์ไซค์',
+    badge: 'BASE MODEL'
+  },
+  {
+    id: 'best.pt',
+    name: 'YOLO26 Best (best.pt)',
+    shortName: 'best',
+    params: '25.9M params',
+    desc: 'โมเดลที่ผ่านการ Finetuned ล่าสุด (Active Production) พร้อม Cross-class NMS',
     badge: 'RECOMMENDED'
-  },
-  {
-    id: 'yolo11s.pt',
-    name: 'YOLOv11 Small (yolo11s.pt)',
-    shortName: 'YOLOv11 Small',
-    params: '9.4M params',
-    desc: 'ความแม่นยำสูง (High Precision) แยกแยะมุมอับได้ดี',
-    badge: 'ACCURATE'
-  },
-  {
-    id: 'yolov8n.pt',
-    name: 'YOLOv8 Nano (yolov8n.pt)',
-    shortName: 'YOLOv8 Nano',
-    params: '3.2M params',
-    desc: 'เสถียรภาพสูง (Stable Baseline 3.2M)',
-    badge: 'STABLE'
-  },
-  {
-    id: 'yolov8s.pt',
-    name: 'YOLOv8 Small (yolov8s.pt)',
-    shortName: 'YOLOv8 Small',
-    params: '11.2M params',
-    desc: 'มาตรฐานอุตสาหกรรม (Industry Benchmark)',
-    badge: 'STANDARD'
   }
 ]
 
@@ -71,11 +59,15 @@ export default function AutoTrainerPage({ apiBase }) {
       ? `http://${window.location.hostname}:8000`
       : 'http://localhost:8000')
 
-  // Training Config State
-  const [baseModel, setBaseModel] = useState('yolo11n.pt')
-  const [datasetId, setDatasetId] = useState('ds_cctv_parking_v1')
+  // Training Mode State: 'easy' | 'advanced'
+  const [trainingMode, setTrainingMode] = useState('easy')
+
+  // Training Config State (Common)
+  const [baseModel, setBaseModel] = useState('yolo26m.pt')
+  const [datasetId, setDatasetId] = useState('ds_cctv_parking_labeled')
   const [datasetsList, setDatasetsList] = useState([
-    { dataset_id: 'ds_cctv_parking_v1', name: 'CCTV Parking Main Gate (3,179 Images)', file_count: 3179, size_mb: 245.5 },
+    { dataset_id: 'ds_cctv_parking_labeled', name: 'CCTV Parking (152 Labeled Images)', file_count: 152, size_mb: 30.7 },
+    { dataset_id: 'ds_cctv_parking_v1', name: 'CCTV Parking Main Gate (152 Images)', file_count: 152, size_mb: 30.7 },
     { dataset_id: 'ds_dogcat_v1', name: 'Dog Cat Small (Demo Dataset)', file_count: 4, size_mb: 0.1 }
   ])
   const [roboflowVersion, setRoboflowVersion] = useState(1)
@@ -83,6 +75,70 @@ export default function AutoTrainerPage({ apiBase }) {
   const [batchSize, setBatchSize] = useState(16)
   const [imgsz, setImgsz] = useState(640)
   const [gpuType, setGpuType] = useState('GTX 1660 SUPER (6GB)')
+
+  // Easy Mode Hyperparameters & Augmentations
+  const [lr0, setLr0] = useState(0.01)
+  const [optimizer, setOptimizer] = useState('auto')
+  const [patience, setPatience] = useState(20)
+  const [mosaic, setMosaic] = useState(1.0)
+  const [mixup, setMixup] = useState(0.15)
+  const [fliplr, setFliplr] = useState(0.5)
+  const [hsvV, setHsvV] = useState(0.4)
+  const [scale, setScale] = useState(0.3)
+  const [erasing, setErasing] = useState(0.4)
+  const [degrees, setDegrees] = useState(5.0)
+
+  // Augmentation Preset State
+  const [augmentPreset, setAugmentPreset] = useState('cctv')
+  const [showCustomAugment, setShowCustomAugment] = useState(false)
+
+  const handleApplyPreset = (presetKey) => {
+    setAugmentPreset(presetKey)
+    if (presetKey === 'cctv') {
+      setMosaic(1.0)
+      setMixup(0.15)
+      setFliplr(0.5)
+      setHsvV(0.4)
+      setScale(0.3)
+      setErasing(0.4)
+      setDegrees(5.0)
+      setShowCustomAugment(false)
+    } else if (presetKey === 'light') {
+      setMosaic(0.0)
+      setMixup(0.0)
+      setFliplr(0.5)
+      setHsvV(0.2)
+      setScale(0.1)
+      setErasing(0.0)
+      setDegrees(0.0)
+      setShowCustomAugment(false)
+    } else if (presetKey === 'heavy') {
+      setMosaic(1.0)
+      setMixup(0.3)
+      setFliplr(0.5)
+      setHsvV(0.6)
+      setScale(0.4)
+      setErasing(0.5)
+      setDegrees(10.0)
+      setShowCustomAugment(false)
+    } else if (presetKey === 'off') {
+      setMosaic(0.0)
+      setMixup(0.0)
+      setFliplr(0.0)
+      setHsvV(0.0)
+      setScale(0.0)
+      setErasing(0.0)
+      setDegrees(0.0)
+      setShowCustomAugment(false)
+    } else if (presetKey === 'custom') {
+      setShowCustomAugment(true)
+    }
+  }
+
+  // Advanced Mode State (Code Editor & Upload)
+  const [editorCode, setEditorCode] = useState('')
+  const [isGeneratingCode, setIsGeneratingCode] = useState(false)
+  const fileInputRef = useRef(null)
 
   // Hardware Telemetry State
   const [gpuTelemetry, setGpuTelemetry] = useState({
@@ -257,6 +313,67 @@ export default function AutoTrainerPage({ apiBase }) {
     }
   }, [logs, autoScroll, logSearch])
 
+  // Generate Code from UI settings
+  const handleGenerateCode = async (showSuccessToast = true) => {
+    setIsGeneratingCode(true)
+    try {
+      const res = await fetch(`${effectiveApiBase}/api/v1/training/gpu/generate-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          base_model: baseModel,
+          epochs: Number(epochs),
+          batch_size: Number(batchSize),
+          imgsz: Number(imgsz),
+          dataset_id: datasetId,
+          lr0: Number(lr0),
+          optimizer: optimizer,
+          patience: Number(patience),
+          mosaic: Number(mosaic),
+          mixup: Number(mixup),
+          fliplr: Number(fliplr),
+          degrees: Number(degrees),
+          hsv_v: Number(hsvV),
+          scale: Number(scale),
+          erasing: Number(erasing)
+        })
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setEditorCode(data.code)
+        if (showSuccessToast) {
+          showToast('⚡ สร้างสคริปต์ train.py จากการตั้งค่า UI เรียบร้อยแล้ว!', 'success', 3000)
+        }
+      }
+    } catch (e) {
+      showToast('ไม่สามารถเชื่อมต่อเพื่อสร้างโค้ดได้', 'error')
+    } finally {
+      setIsGeneratingCode(false)
+    }
+  }
+
+  // Auto-generate code when switching to advanced mode if editor is empty
+  useEffect(() => {
+    if (trainingMode === 'advanced' && !editorCode) {
+      handleGenerateCode(false)
+    }
+  }, [trainingMode])
+
+  // Handle file upload (.py / .txt)
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const content = ev.target?.result
+      if (typeof content === 'string') {
+        setEditorCode(content)
+        showToast(`📁 โหลดไฟล์ ${file.name} เข้าสู่ Code Editor สำเร็จ!`, 'success')
+      }
+    }
+    reader.readAsText(file)
+  }
+
   // Start Private GPU Node Training Handler
   const handleStartTraining = async () => {
     setIsStarting(true)
@@ -271,7 +388,18 @@ export default function AutoTrainerPage({ apiBase }) {
         epochs: Number(epochs),
         batch_size: Number(batchSize),
         imgsz: Number(imgsz),
-        gpu_type: 'GTX 1660 SUPER (6GB)'
+        gpu_type: 'GTX 1660 SUPER (6GB)',
+        lr0: Number(lr0),
+        optimizer: optimizer,
+        patience: Number(patience),
+        mosaic: Number(mosaic),
+        mixup: Number(mixup),
+        fliplr: Number(fliplr),
+        degrees: Number(degrees),
+        hsv_v: Number(hsvV),
+        scale: Number(scale),
+        erasing: Number(erasing),
+        custom_code: trainingMode === 'advanced' && editorCode.trim() ? editorCode : null
       }
 
       let res = await fetch(`${effectiveApiBase}/api/v1/training/gpu/start`, {
@@ -291,7 +419,7 @@ export default function AutoTrainerPage({ apiBase }) {
       if (res.ok) {
         const data = await res.json()
         setPreflightStatus('PASSED')
-        showToast(`✅ Pre-flight ผ่าน! ส่งงานเข้า GPU Task Queue สำเร็จ (Job ID: ${data.job_id})`, 'success')
+        showToast(`✅ Pre-flight ผ่าน! ส่งงานเข้า GPU Task Queue สำเร็จ (${trainingMode === 'advanced' ? 'Advanced Code' : 'Easy Mode'})`, 'success')
         fetchActiveJob()
       } else {
         const err = await res.json()
@@ -605,9 +733,9 @@ export default function AutoTrainerPage({ apiBase }) {
           </div>
           <div className="rf-metric-body">
             <span className="rf-metric-num" style={{ color: '#fbbf24' }}>
-              3,179
+              {datasetsList.find((d) => d.dataset_id === datasetId)?.file_count || 152}
             </span>
-            <span className="rf-metric-unit">รูป พร้อมเทรน</span>
+            <span className="rf-metric-unit">รูป (Labeled Pool)</span>
           </div>
           <span className="rf-metric-hint">Single Unified MinIO: {datasetId}</span>
         </div>
@@ -646,7 +774,7 @@ export default function AutoTrainerPage({ apiBase }) {
               <span>ตั้งค่าและสั่งเทรนโมเดล (Private GPU Compute Pipeline)</span>
             </h3>
             <p className="rf-block-desc">
-              เลือกสถาปัตยกรรมโมเดล YOLO, จำนวนรอบ Epochs, และ Dataset เพื่อรันงานเทรนบน NVIDIA GTX 1660 SUPER พร้อมระบบ Pre-flight AST Validation (&lt;5ms)
+              เลือกระหว่างโหมดปรับค่าผ่าน UI หรือโหมดเขียน/แก้โค้ด Python (train.py) รันบน NVIDIA GTX 1660 SUPER
             </p>
           </div>
 
@@ -670,101 +798,411 @@ export default function AutoTrainerPage({ apiBase }) {
               >
                 <Play className="w-3.5 h-3.5 fill-current" />
                 <span>
-                  {isStarting ? 'กำลังรัน Pre-flight Check...' : '🚀 สั่งเทรนบน Private GPU Node (Start)'}
+                  {isStarting ? 'กำลังรัน Pre-flight Check...' : `🚀 สั่งเทรนบน GPU Node (${trainingMode === 'advanced' ? 'Custom Code' : 'Start'})`}
                 </span>
               </button>
             )}
           </div>
         </div>
 
-        {/* Base Model Selector Grid */}
-        <div>
-          <span className="rf-form-label block mb-2">เลือกสถาปัตยกรรมโมเดลเริ่มต้น (Base Model Architecture):</span>
-          <div className="rf-cam-grid">
-            {BASE_MODELS.map((bm) => {
-              const isSelected = baseModel === bm.id
-              return (
-                <div
-                  key={bm.id}
-                  onClick={() => setBaseModel(bm.id)}
-                  className={`rf-cam-card ${isSelected ? 'selected' : ''}`}
+        {/* Mode Selector Tabs (Easy UI Mode vs Advanced Code Editor Mode) */}
+        <div className="flex items-center gap-2 mb-4 p-1 rounded-lg bg-slate-900/80 border border-slate-800 w-fit">
+          <button
+            type="button"
+            onClick={() => setTrainingMode('easy')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-medium transition-all ${
+              trainingMode === 'easy'
+                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/40'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span>โหมดง่าย (UI Parameter & Augmentation Controls)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setTrainingMode('advanced')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-medium transition-all ${
+              trainingMode === 'advanced'
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <Code2 className="w-3.5 h-3.5" />
+            <span>โหมดขั้นสูง (Python Code Editor & Script Upload)</span>
+          </button>
+        </div>
+
+        {/* ─── MODE 1: EASY MODE (UI CONTROLS) ─── */}
+        {trainingMode === 'easy' && (
+          <div className="space-y-4">
+            {/* Base Model Selector Grid */}
+            <div>
+              <span className="rf-form-label block mb-2">เลือกสถาปัตยกรรมโมเดลเริ่มต้น (Base Model Architecture):</span>
+              <div className="rf-cam-grid">
+                {BASE_MODELS.map((bm) => {
+                  const isSelected = baseModel === bm.id
+                  return (
+                    <div
+                      key={bm.id}
+                      onClick={() => setBaseModel(bm.id)}
+                      className={`rf-cam-card ${isSelected ? 'selected' : ''}`}
+                    >
+                      <div className="rf-cam-card-top">
+                        <span className="font-bold">{bm.shortName}</span>
+                        {isSelected ? (
+                          <Check className="w-4 h-4 text-emerald-400" />
+                        ) : (
+                          <span className="text-[10px] text-slate-500 font-mono">{bm.badge}</span>
+                        )}
+                      </div>
+                      <div className="rf-cam-card-bottom">
+                        <span className="rf-cam-num text-sm">{bm.params}</span>
+                      </div>
+                      <span className="text-[11px] text-slate-400 leading-snug">{bm.desc}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Hyperparameters & Dataset Form Controls */}
+            <div className="rf-form-grid">
+              <div className="rf-form-group">
+                <label className="rf-form-label">เลือกชุดข้อมูล (Target Dataset):</label>
+                <select
+                  value={datasetId}
+                  onChange={(e) => setDatasetId(e.target.value)}
+                  className="rf-form-select font-mono"
                 >
-                  <div className="rf-cam-card-top">
-                    <span className="font-bold">{bm.shortName}</span>
-                    {isSelected ? (
-                      <Check className="w-4 h-4 text-emerald-400" />
-                    ) : (
-                      <span className="text-[10px] text-slate-500 font-mono">{bm.badge}</span>
-                    )}
-                  </div>
-                  <div className="rf-cam-card-bottom">
-                    <span className="rf-cam-num text-sm">{bm.params}</span>
-                  </div>
-                  <span className="text-[11px] text-slate-400 leading-snug">{bm.desc}</span>
+                  {datasetsList.map((ds) => (
+                    <option key={ds.dataset_id} value={ds.dataset_id}>
+                      {ds.name} ({ds.file_count || 0} รูป)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="rf-form-group">
+                <label className="rf-form-label">Epochs (รอบการเทรน):</label>
+                <select
+                  value={epochs}
+                  onChange={(e) => setEpochs(Number(e.target.value))}
+                  className="rf-form-select font-mono"
+                >
+                  <option value={5}>5 Epochs (Quick Test)</option>
+                  <option value={25}>25 Epochs (Fast Train)</option>
+                  <option value={50}>50 Epochs (Recommended)</option>
+                  <option value={100}>100 Epochs (Deep Training)</option>
+                  <option value={200}>200 Epochs (Full Convergence)</option>
+                </select>
+              </div>
+
+              <div className="rf-form-group">
+                <label className="rf-form-label">Batch Size (VRAM 6GB Optimized):</label>
+                <select
+                  value={batchSize}
+                  onChange={(e) => setBatchSize(Number(e.target.value))}
+                  className="rf-form-select font-mono"
+                >
+                  <option value={8}>8 (Low VRAM Footprint ~2.5GB)</option>
+                  <option value={16}>16 (Recommended for GTX 1660S ~3.8GB)</option>
+                  <option value={32}>32 (High Throughput ~5.2GB)</option>
+                </select>
+              </div>
+
+              <div className="rf-form-group">
+                <label className="rf-form-label">Learning Rate (lr0):</label>
+                <select
+                  value={lr0}
+                  onChange={(e) => setLr0(Number(e.target.value))}
+                  className="rf-form-select font-mono"
+                >
+                  <option value={0.01}>0.01 (Standard Default)</option>
+                  <option value={0.005}>0.005 (Gentle Fine-Tune)</option>
+                  <option value={0.001}>0.001 (Small Steps)</option>
+                  <option value={0.0001}>0.0001 (Ultra-Fine Tuning)</option>
+                </select>
+              </div>
+
+              <div className="rf-form-group">
+                <label className="rf-form-label">Optimizer:</label>
+                <select
+                  value={optimizer}
+                  onChange={(e) => setOptimizer(e.target.value)}
+                  className="rf-form-select font-mono"
+                >
+                  <option value="auto">auto (Ultralytics Recommended)</option>
+                  <option value="AdamW">AdamW (High Generalization)</option>
+                  <option value="SGD">SGD (Classic Momentum)</option>
+                  <option value="Adam">Adam (Adaptive Learning)</option>
+                </select>
+              </div>
+
+              <div className="rf-form-group">
+                <label className="rf-form-label">Early Stopping (Patience):</label>
+                <select
+                  value={patience}
+                  onChange={(e) => setPatience(Number(e.target.value))}
+                  className="rf-form-select font-mono"
+                >
+                  <option value={10}>10 Epochs (Fast Stop)</option>
+                  <option value={20}>20 Epochs (Balanced)</option>
+                  <option value={50}>50 Epochs (Patient)</option>
+                  <option value={100}>100 Epochs (Full Exploration)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Minimal & Elegant Data Augmentation Card */}
+            <div className="p-3.5 rounded-xl bg-slate-900/40 border border-slate-800/80 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-emerald-400" />
+                  <span className="font-semibold text-xs text-slate-200">Data Augmentation (การสังเคราะห์ภาพ):</span>
                 </div>
-              )
-            })}
-          </div>
-        </div>
+                <div className="flex flex-wrap items-center gap-1 text-xs">
+                  <span className="text-slate-400 text-[11px] mr-1">สูตร:</span>
+                  {[
+                    { key: 'cctv', label: '🌟 CCTV ลานจอด (แนะนำ)' },
+                    { key: 'light', label: '🍃 แบบเบา' },
+                    { key: 'heavy', label: '🔥 เข้มข้น' },
+                    { key: 'off', label: '⛔ ปิด' },
+                  ].map((p) => (
+                    <button
+                      key={p.key}
+                      type="button"
+                      onClick={() => handleApplyPreset(p.key)}
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+                        augmentPreset === p.key && !showCustomAugment
+                          ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-900/50'
+                          : 'bg-slate-800/70 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-700/50'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAugmentPreset('custom')
+                      setShowCustomAugment(!showCustomAugment)
+                    }}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all flex items-center gap-1 ${
+                      showCustomAugment || augmentPreset === 'custom'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'bg-slate-800/70 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-700/50'
+                    }`}
+                  >
+                    <Sliders className="w-3 h-3" />
+                    <span>{showCustomAugment ? 'ซ่อนตัวปรับ' : '⚙️ ปรับละเอียด'}</span>
+                  </button>
+                </div>
+              </div>
 
-        {/* Hyperparameters & Dataset Form Controls */}
-        <div className="rf-form-grid">
-          <div className="rf-form-group">
-            <label className="rf-form-label">เลือกชุดข้อมูล (Target Dataset):</label>
-            <select
-              value={datasetId}
-              onChange={(e) => setDatasetId(e.target.value)}
-              className="rf-form-select font-mono"
-            >
-              {datasetsList.map((ds) => (
-                <option key={ds.dataset_id} value={ds.dataset_id}>
-                  {ds.name} ({ds.file_count || 0} รูป)
-                </option>
-              ))}
-            </select>
-          </div>
+              {/* Active Augmentation Summary Line (When not expanding custom sliders) */}
+              {!showCustomAugment && (
+                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 bg-slate-950/40 px-3 py-2 rounded-lg border border-slate-800/50 font-mono">
+                  <span className="text-emerald-400 font-medium flex items-center gap-1.5">
+                    <Check className="w-3 h-3" />
+                    {augmentPreset === 'cctv' && 'สูตร CCTV: ปรับแสงแดด/เงา/สลัว + รวม 4 ภาพจับรถซ้อนและระยะไกล'}
+                    {augmentPreset === 'light' && 'สูตร Light: พลิกภาพซ้าย-ขวา + ปรับแสงเล็กน้อย'}
+                    {augmentPreset === 'heavy' && 'สูตร Heavy: สังเคราะห์ภาพขั้นสุด ป้องกัน Overfitting'}
+                    {augmentPreset === 'off' && 'ปิดการสังเคราะห์: ใช้เฉพาะภาพต้นฉบับ'}
+                    {augmentPreset === 'custom' && 'ปรับแต่งค่า Augmentation เอง'}
+                  </span>
+                  {augmentPreset !== 'off' && (
+                    <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                      <span className="bg-slate-900/80 px-1.5 py-0.5 rounded text-emerald-300 border border-slate-800">Mosaic: {(mosaic * 100).toFixed(0)}%</span>
+                      <span className="bg-slate-900/80 px-1.5 py-0.5 rounded text-emerald-300 border border-slate-800">MixUp: {(mixup * 100).toFixed(0)}%</span>
+                      <span className="bg-slate-900/80 px-1.5 py-0.5 rounded text-emerald-300 border border-slate-800">Flip: {(fliplr * 100).toFixed(0)}%</span>
+                      <span className="bg-slate-900/80 px-1.5 py-0.5 rounded text-amber-300 border border-slate-800">HSV Bright: {(hsvV * 100).toFixed(0)}%</span>
+                      <span className="bg-slate-900/80 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800">Scale: &plusmn;{(scale * 100).toFixed(0)}%</span>
+                      <span className="bg-slate-900/80 px-1.5 py-0.5 rounded text-purple-300 border border-slate-800">Erasing: {(erasing * 100).toFixed(0)}%</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
-          <div className="rf-form-group">
-            <label className="rf-form-label">Epochs (รอบการเทรน):</label>
-            <select
-              value={epochs}
-              onChange={(e) => setEpochs(e.target.value)}
-              className="rf-form-select font-mono"
-            >
-              <option value="5">5 Epochs (Quick Test)</option>
-              <option value="25">25 Epochs (Fast Train)</option>
-              <option value="50">50 Epochs (Recommended)</option>
-              <option value="100">100 Epochs (Deep Training)</option>
-              <option value="200">200 Epochs (Full Convergence)</option>
-            </select>
-          </div>
+              {/* Minimal Clean Sliders List (Only when 'ปรับละเอียด' is expanded) */}
+              {showCustomAugment && (
+                <div className="pt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2.5 text-xs bg-slate-950/40 p-3 rounded-lg border border-slate-800/60">
+                  {/* Mosaic */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="w-32 shrink-0">
+                      <span className="text-slate-300 font-medium block">Mosaic (รวม 4 ภาพ)</span>
+                      <span className="text-[10px] text-slate-500">จับรถเล็ก/ซ้อนกัน</span>
+                    </div>
+                    <input
+                      type="range" min="0" max="1" step="0.05"
+                      value={mosaic} onChange={(e) => { setMosaic(Number(e.target.value)); setAugmentPreset('custom') }}
+                      className="flex-1 accent-emerald-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
+                    />
+                    <span className="w-10 text-right font-mono text-emerald-400 font-bold">{(mosaic * 100).toFixed(0)}%</span>
+                  </div>
 
-          <div className="rf-form-group">
-            <label className="rf-form-label">Batch Size (VRAM 6GB Optimized):</label>
-            <select
-              value={batchSize}
-              onChange={(e) => setBatchSize(e.target.value)}
-              className="rf-form-select font-mono"
-            >
-              <option value="8">8 (Low VRAM Footprint ~2.5GB)</option>
-              <option value="16">16 (Recommended for GTX 1660S ~3.8GB)</option>
-              <option value="32">32 (High Throughput ~5.2GB)</option>
-            </select>
-          </div>
+                  {/* MixUp */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="w-32 shrink-0">
+                      <span className="text-slate-300 font-medium block">MixUp (ผสานภาพ)</span>
+                      <span className="text-[10px] text-slate-500">ลด Overfitting</span>
+                    </div>
+                    <input
+                      type="range" min="0" max="0.5" step="0.05"
+                      value={mixup} onChange={(e) => { setMixup(Number(e.target.value)); setAugmentPreset('custom') }}
+                      className="flex-1 accent-emerald-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
+                    />
+                    <span className="w-10 text-right font-mono text-emerald-400 font-bold">{(mixup * 100).toFixed(0)}%</span>
+                  </div>
 
-          <div className="rf-form-group">
-            <label className="rf-form-label">Compute Device:</label>
-            <input
-              type="text"
-              readOnly
-              value="NVIDIA GeForce GTX 1660 SUPER (6GB GDDR6)"
-              className="rf-form-input font-mono text-emerald-300 bg-slate-900 cursor-not-allowed"
-            />
+                  {/* FlipLR */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="w-32 shrink-0">
+                      <span className="text-slate-300 font-medium block">Flip (พลิกซ้าย-ขวา)</span>
+                      <span className="text-[10px] text-slate-500">ทิศทางรถเข้า-ออก</span>
+                    </div>
+                    <input
+                      type="range" min="0" max="1" step="0.1"
+                      value={fliplr} onChange={(e) => { setFliplr(Number(e.target.value)); setAugmentPreset('custom') }}
+                      className="flex-1 accent-emerald-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
+                    />
+                    <span className="w-10 text-right font-mono text-emerald-400 font-bold">{(fliplr * 100).toFixed(0)}%</span>
+                  </div>
+
+                  {/* HSV Brightness */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="w-32 shrink-0">
+                      <span className="text-slate-300 font-medium block">HSV แสงแดด/เงา</span>
+                      <span className="text-[10px] text-slate-500">แดดจ้า/แสงสลัว/เงา</span>
+                    </div>
+                    <input
+                      type="range" min="0" max="0.8" step="0.05"
+                      value={hsvV} onChange={(e) => { setHsvV(Number(e.target.value)); setAugmentPreset('custom') }}
+                      className="flex-1 accent-amber-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
+                    />
+                    <span className="w-10 text-right font-mono text-amber-400 font-bold">{(hsvV * 100).toFixed(0)}%</span>
+                  </div>
+
+                  {/* Scale */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="w-32 shrink-0">
+                      <span className="text-slate-300 font-medium block">Scale (ซูมภาพ)</span>
+                      <span className="text-[10px] text-slate-500">ระยะรถใกล้-ไกล</span>
+                    </div>
+                    <input
+                      type="range" min="0" max="0.5" step="0.05"
+                      value={scale} onChange={(e) => { setScale(Number(e.target.value)); setAugmentPreset('custom') }}
+                      className="flex-1 accent-indigo-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
+                    />
+                    <span className="w-10 text-right font-mono text-indigo-400 font-bold">&plusmn;{(scale * 100).toFixed(0)}%</span>
+                  </div>
+
+                  {/* Erasing */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="w-32 shrink-0">
+                      <span className="text-slate-300 font-medium block">Erasing (สิ่งกีดขวาง)</span>
+                      <span className="text-[10px] text-slate-500">จำลองเสา/ต้นไม้บัง</span>
+                    </div>
+                    <input
+                      type="range" min="0" max="0.5" step="0.05"
+                      value={erasing} onChange={(e) => { setErasing(Number(e.target.value)); setAugmentPreset('custom') }}
+                      className="flex-1 accent-purple-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
+                    />
+                    <span className="w-10 text-right font-mono text-purple-400 font-bold">{(erasing * 100).toFixed(0)}%</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* ─── MODE 2: ADVANCED CODE EDITOR & SCRIPT UPLOAD ─── */}
+        {trainingMode === 'advanced' && (
+          <div className="space-y-3">
+            {/* Editor Toolbar */}
+            <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 text-xs">
+              <div className="flex items-center gap-2">
+                <FileCode className="w-4 h-4 text-indigo-400" />
+                <span className="font-mono text-slate-200 font-semibold">train.py</span>
+                <span className="text-[10px] text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded font-mono">Python 3.12 / Ultralytics</span>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleGenerateCode(true)}
+                  disabled={isGeneratingCode}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 transition-all text-xs font-mono"
+                  title="สร้างโค้ด train.py ใหม่ตามค่าพารามิเตอร์ที่เลือกในโหมดง่าย"
+                >
+                  <Sparkles className={`w-3 h-3 ${isGeneratingCode ? 'animate-spin' : ''}`} />
+                  <span>{isGeneratingCode ? 'กำลังเจนโค้ด...' : '⚡ ซิงค์ค่าจาก UI (Regenerate)'}</span>
+                </button>
+
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  accept=".py,.txt"
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all text-xs font-mono"
+                  title="อัปโหลดไฟล์ train.py จากเครื่องของคุณ"
+                >
+                  <Upload className="w-3 h-3 text-sky-400" />
+                  <span>📁 อัปโหลดไฟล์ .py</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(editorCode)
+                    showToast('📋 คัดลอกโค้ดสคริปต์เรียบร้อยแล้ว', 'info', 2500)
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all text-xs font-mono"
+                  title="คัดลอกโค้ดทั้งหมด"
+                >
+                  <Copy className="w-3 h-3" />
+                  <span>Copy</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Code Editor Textarea */}
+            <div className="relative rounded-lg overflow-hidden border border-slate-800 bg-[#0d1117] font-mono text-xs">
+              <textarea
+                value={editorCode}
+                onChange={(e) => setEditorCode(e.target.value)}
+                rows={16}
+                spellCheck={false}
+                placeholder="# พิมพ์หรือแก้ไขโค้ด train.py สำหรับรันบนเซิร์ฟเวอร์ GPU ที่นี่..."
+                className="w-full p-3.5 bg-transparent text-emerald-200 font-mono text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-y"
+                style={{ tabSize: 4 }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
+              <span>💡 คุณสามารถแก้ไขไฮเปอร์พารามิเตอร์, เพิ่ม Callback, หรือแก้ฟังก์ชันเทรนได้ตามต้องการ</span>
+              <span className="text-emerald-400 font-mono flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                Pre-flight AST Syntax Checking Active
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Status & Partitioning Banner */}
-        <div className="rf-status-banner">
+        <div className="rf-status-banner mt-3.5">
+          <div className="rf-status-item">
+            <span className="rf-status-item-label">โหมดการสั่งงาน (Execution Mode)</span>
+            <span className="rf-status-item-val font-mono text-indigo-300">
+              {trainingMode === 'advanced' ? 'Advanced Code Editor' : 'Easy UI Hyperparameters'}
+            </span>
+          </div>
+
           <div className="rf-status-item">
             <span className="rf-status-item-label">โมเดลเป้าหมาย (Architecture)</span>
             <span className="rf-status-item-val font-mono text-emerald-300">
@@ -776,14 +1214,6 @@ export default function AutoTrainerPage({ apiBase }) {
             <span className="rf-status-item-label">ชุดข้อมูลเป้าหมาย (Dataset)</span>
             <span className="rf-status-item-val font-mono text-amber-300">
               {datasetId}
-            </span>
-          </div>
-
-          <div className="rf-status-item">
-            <span className="rf-status-item-label">Pre-flight AST Syntax</span>
-            <span className="rf-status-item-val font-mono text-emerald-400 flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>PASSED (&lt;5ms)</span>
             </span>
           </div>
 

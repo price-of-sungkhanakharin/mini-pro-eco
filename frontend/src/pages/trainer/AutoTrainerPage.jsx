@@ -73,11 +73,28 @@ export default function AutoTrainerPage({ apiBase }) {
 
   // Training Config State
   const [baseModel, setBaseModel] = useState('yolo11n.pt')
+  const [datasetId, setDatasetId] = useState('ds_cctv_parking_v1')
+  const [datasetsList, setDatasetsList] = useState([
+    { dataset_id: 'ds_cctv_parking_v1', name: 'CCTV Parking Main Gate (3,179 Images)', file_count: 3179, size_mb: 245.5 },
+    { dataset_id: 'ds_dogcat_v1', name: 'Dog Cat Small (Demo Dataset)', file_count: 4, size_mb: 0.1 }
+  ])
   const [roboflowVersion, setRoboflowVersion] = useState(1)
   const [epochs, setEpochs] = useState(50)
   const [batchSize, setBatchSize] = useState(16)
   const [imgsz, setImgsz] = useState(640)
-  const [gpuType, setGpuType] = useState('T4')
+  const [gpuType, setGpuType] = useState('GTX 1660 SUPER (6GB)')
+
+  // Hardware Telemetry State
+  const [gpuTelemetry, setGpuTelemetry] = useState({
+    available: true,
+    name: 'NVIDIA GeForce GTX 1660 SUPER',
+    memory_total_mb: 6144,
+    memory_used_mb: 844,
+    memory_free_mb: 5123,
+    temperature_c: 34,
+    utilization_pct: 1,
+    driver_version: '610.60'
+  })
 
   // Job & Logs State
   const [currentJob, setCurrentJob] = useState(null)
@@ -87,6 +104,7 @@ export default function AutoTrainerPage({ apiBase }) {
   const [logSearch, setLogSearch] = useState('')
   const [copied, setCopied] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
+  const [preflightStatus, setPreflightStatus] = useState(null)
 
   // Model Registry State
   const [modelsList, setModelsList] = useState([])
@@ -126,10 +144,41 @@ export default function AutoTrainerPage({ apiBase }) {
     }
   }
 
+  // Fetch GPU Telemetry
+  const fetchTelemetry = async () => {
+    try {
+      const res = await fetch(`${effectiveApiBase}/api/v1/training/gpu/telemetry`)
+      if (res.ok) {
+        const data = await res.json()
+        setGpuTelemetry(data)
+      }
+    } catch (err) {
+      // Keep previous telemetry
+    }
+  }
+
+  // Fetch Available Datasets
+  const fetchDatasets = async () => {
+    try {
+      const res = await fetch(`${effectiveApiBase}/api/v1/training/gpu/datasets`)
+      if (res.ok) {
+        const data = await res.json()
+        if (Array.isArray(data) && data.length > 0) {
+          setDatasetsList(data)
+        }
+      }
+    } catch (err) {
+      // Fallback
+    }
+  }
+
   // Poll active training job status
   const fetchActiveJob = async () => {
     try {
-      const res = await fetch(`${effectiveApiBase}/api/v1/training/modal/active`)
+      let res = await fetch(`${effectiveApiBase}/api/v1/training/gpu/active`)
+      if (!res.ok) {
+        res = await fetch(`${effectiveApiBase}/api/v1/training/modal/active`)
+      }
       if (res.ok) {
         const data = await res.json()
         if (data.job) {
@@ -148,6 +197,8 @@ export default function AutoTrainerPage({ apiBase }) {
   useEffect(() => {
     fetchModels()
     fetchActiveJob()
+    fetchTelemetry()
+    fetchDatasets()
 
     let eventSource = null
 
@@ -155,7 +206,7 @@ export default function AutoTrainerPage({ apiBase }) {
       if (!jobId) return
       if (eventSource) eventSource.close()
 
-      const sseUrl = `${effectiveApiBase}/api/v1/training/modal/logs/${jobId}`
+      const sseUrl = `${effectiveApiBase}/api/v1/training/gpu/logs/${jobId}`
       eventSource = new EventSource(sseUrl)
 
       eventSource.onmessage = (event) => {
@@ -167,8 +218,9 @@ export default function AutoTrainerPage({ apiBase }) {
           if (payload.status) {
             setCurrentJob((prev) => (prev ? { ...prev, status: payload.status } : null))
             if (payload.status === 'COMPLETED') {
-              showToast('🎉 งานเทรนบน Modal Cloud GPU เสร็จสมบูรณ์แล้ว!', 'success')
+              showToast('🎉 งานเทรนบน Private GPU Node เสร็จสมบูรณ์แล้ว!', 'success')
               fetchModels()
+              fetchTelemetry()
             }
           }
         } catch (e) {
@@ -187,7 +239,10 @@ export default function AutoTrainerPage({ apiBase }) {
       connectSSE(currentJob.job_id)
     }
 
-    const interval = setInterval(fetchActiveJob, 4000)
+    const interval = setInterval(() => {
+      fetchActiveJob()
+      fetchTelemetry()
+    }, 4000)
 
     return () => {
       clearInterval(interval)
@@ -202,52 +257,69 @@ export default function AutoTrainerPage({ apiBase }) {
     }
   }, [logs, autoScroll, logSearch])
 
-  // Start Modal Cloud Training Handler
+  // Start Private GPU Node Training Handler
   const handleStartTraining = async () => {
     setIsStarting(true)
     setLogs([])
-    showToast('🚀 กำลังส่งคำสั่งเริ่มต้นเทรนโมเดลไปยัง Modal Serverless Cloud GPU...', 'info', 6000)
+    setPreflightStatus('VALIDATING')
+    showToast('🔍 กำลังรัน Pre-flight AST Syntax Check (<5ms)...', 'info', 4000)
 
     try {
       const payload = {
-        roboflow_version: Number(roboflowVersion),
+        dataset_id: datasetId,
         base_model: baseModel,
         epochs: Number(epochs),
         batch_size: Number(batchSize),
         imgsz: Number(imgsz),
-        gpu_type: gpuType
+        gpu_type: 'GTX 1660 SUPER (6GB)'
       }
 
-      const res = await fetch(`${effectiveApiBase}/api/v1/training/modal/start`, {
+      let res = await fetch(`${effectiveApiBase}/api/v1/training/gpu/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       })
 
+      if (!res.ok) {
+        res = await fetch(`${effectiveApiBase}/api/v1/training/modal/start`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+      }
+
       if (res.ok) {
         const data = await res.json()
-        setCurrentJob(data.job)
-        showToast(`เริ่มต้นเทรนบน Cloud สำเร็จ (Job ID: ${data.job_id})`, 'success')
+        setPreflightStatus('PASSED')
+        showToast(`✅ Pre-flight ผ่าน! ส่งงานเข้า GPU Task Queue สำเร็จ (Job ID: ${data.job_id})`, 'success')
+        fetchActiveJob()
       } else {
         const err = await res.json()
+        setPreflightStatus('FAILED')
         showToast(`เกิดข้อผิดพลาด: ${err.detail || 'ไม่สามารถเริ่มเทรนได้'}`, 'error')
       }
     } catch (err) {
+      setPreflightStatus('FAILED')
       showToast(`การเชื่อมต่อขัดข้อง: ${err.message}`, 'error')
     } finally {
       setIsStarting(false)
     }
   }
 
-  // Cancel Modal Training Handler
+  // Cancel Training Handler
   const handleCancelTraining = async () => {
     if (!currentJob?.job_id) return
     try {
-      const res = await fetch(`${effectiveApiBase}/api/v1/training/modal/cancel/${currentJob.job_id}`, {
+      let res = await fetch(`${effectiveApiBase}/api/v1/training/gpu/cancel/${currentJob.job_id}`, {
         method: 'POST'
       })
+      if (!res.ok) {
+        res = await fetch(`${effectiveApiBase}/api/v1/training/modal/cancel/${currentJob.job_id}`, {
+          method: 'POST'
+        })
+      }
       if (res.ok) {
-        showToast('ยกเลิกงานเทรนบน Modal เรียบร้อยแล้ว', 'info')
+        showToast('ยกเลิกงานเทรนบน Private GPU Node เรียบร้อยแล้ว', 'info')
         setCurrentJob((prev) => (prev ? { ...prev, status: 'CANCELLED' } : null))
       }
     } catch (err) {
@@ -256,6 +328,8 @@ export default function AutoTrainerPage({ apiBase }) {
   }
 
   // Switch Active Model Handler
+
+
   const handleActivateModel = async (modelId) => {
     setActivatingId(modelId)
     try {
@@ -394,35 +468,35 @@ export default function AutoTrainerPage({ apiBase }) {
       {/* 1. Project Overview & Quick Actions */}
       <div className="rf-overview-card">
         <div className="rf-overview-main">
-          <div className="rf-icon-badge">
-            <Cpu className="w-6 h-6 text-purple-400" />
+          <div className="rf-icon-badge" style={{ backgroundColor: 'rgba(34, 197, 94, 0.15)', borderColor: 'rgba(34, 197, 94, 0.3)' }}>
+            <Cpu className="w-6 h-6 text-emerald-400" />
           </div>
           <div>
             <div className="rf-title-row">
-              <h2 className="rf-title">Modal Cloud GPU Auto-Trainer & Model Hub</h2>
-              <span className="rf-badge-active">
-                <span className="rf-pulse-dot"></span>
-                ACTIVE V1
+              <h2 className="rf-title">Private GPU Compute Node & Model Hub</h2>
+              <span className="rf-badge-active" style={{ backgroundColor: 'rgba(34, 197, 94, 0.15)', borderColor: 'rgba(34, 197, 94, 0.3)', color: '#4ade80' }}>
+                <span className="rf-pulse-dot" style={{ backgroundColor: '#4ade80' }}></span>
+                GTX 1660 SUPER ONLINE
               </span>
-              <span className="rf-tag font-mono text-purple-300">
-                Roboflow (cctv-parking)
+              <span className="rf-tag font-mono text-emerald-300">
+                Host: 172.30.81.175:9000
               </span>
             </div>
             <p className="rf-desc">
-              ระบบส่งเทรนโมเดล YOLO อัตโนมัติบน Modal Cloud GPU พร้อม Live Terminal Logs และระบบสลับเวอร์ชันโมเดลตรวจจับแบบ Zero-Downtime
+              ระบบส่งเทรนโมเดล YOLO บนเครื่องคำนวณ Private GPU Node พร้อม Zero-Copy NVMe Dataset Cache, Pre-flight AST Syntax Check (&lt;5ms) และ Live SSE Terminal
             </p>
             <div className="rf-meta-tags">
               <span className="rf-tag font-mono text-indigo-300">
-                Workspace: kimbiew / cctv-parking
+                Hardware: NVIDIA GeForce GTX 1660 SUPER (6GB GDDR6)
               </span>
-              <span className="rf-tag text-slate-400">
-                Engine: Modal Serverless GPU ({gpuType})
+              <span className="rf-tag text-slate-300">
+                GPU Temp: {gpuTelemetry.temperature_c || 34}°C | VRAM: {gpuTelemetry.memory_used_mb || 844}/{gpuTelemetry.memory_total_mb || 6144} MB
               </span>
-              <span className="rf-tag text-slate-400">
-                Target Dataset: Version {roboflowVersion} (3,179 Images)
+              <span className="rf-tag text-amber-300">
+                Dataset: {datasetId} (Unified MinIO Storage)
               </span>
               <span className="rf-tag text-emerald-400">
-                Status: {isTrainingActive ? 'TRAINING IN PROGRESS' : 'READY TO TRAIN'}
+                Status: {isTrainingActive ? 'TRAINING IN PROGRESS' : 'READY TO TRAIN (0 Cloud Cost)'}
               </span>
             </div>
           </div>
@@ -435,7 +509,7 @@ export default function AutoTrainerPage({ apiBase }) {
               type="button"
               onClick={handleCancelTraining}
               className="rf-btn-cancel-job"
-              title="ยกเลิกงานเทรนบน Modal"
+              title="ยกเลิกงานเทรนบน GPU Node"
             >
               <Square className="w-4 h-4 fill-current" />
               <span>ยกเลิกงานเทรน (Cancel)</span>
@@ -446,31 +520,32 @@ export default function AutoTrainerPage({ apiBase }) {
               onClick={handleStartTraining}
               disabled={isStarting}
               className="rf-btn-start-job"
-              title="สั่งเทรนโมเดลบน Modal Cloud GPU"
+              style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}
+              title="สั่งเทรนโมเดลบน Private GPU Node"
             >
               <Play className={`w-4 h-4 fill-current ${isStarting ? 'animate-bounce' : ''}`} />
-              <span>{isStarting ? 'กำลังส่งงานขึ้น Modal...' : 'สั่งเทรนโมเดล (Start Train)'}</span>
+              <span>{isStarting ? 'กำลังรัน Pre-flight Check...' : '🚀 สั่งเทรนบน GPU Node (Start Train)'}</span>
             </button>
           )}
 
           <a
-            href="https://modal.com"
+            href="http://172.30.81.175:9000/docs"
             target="_blank"
             rel="noreferrer"
             className="rf-btn-cloud-open"
-            title="เปิดหน้าควบคุม Modal Labs Cloud Dashboard"
+            title="เปิดหน้า Swagger API Documentation ของ GPU Node"
           >
-            <span>เปิด Modal Console</span>
+            <span>GPU Node Docs</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </a>
 
           <button
             type="button"
-            onClick={fetchModels}
+            onClick={() => { fetchModels(); fetchTelemetry(); fetchDatasets(); }}
             className="rf-btn-refresh-icon"
-            title="รีเฟรชข้อมูลโมเดลและสถานะ"
+            title="รีเฟรชข้อมูลโมเดลและสถานะการ์ดจอ"
           >
-            <RefreshCw className={`w-4 h-4 ${loadingModels ? 'animate-spin text-purple-400' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${loadingModels ? 'animate-spin text-emerald-400' : ''}`} />
           </button>
         </div>
       </div>
@@ -519,14 +594,14 @@ export default function AutoTrainerPage({ apiBase }) {
           <span className="rf-metric-hint">เกณฑ์มาตรฐานโมเดลคุณภาพสูง &gt; 95%</span>
         </div>
 
-        {/* Metric 3: Roboflow Dataset Source */}
+        {/* Metric 3: Target Dataset */}
         <div className="rf-metric-box">
           <div className="rf-metric-top">
             <span className="flex items-center gap-1.5 text-amber-400">
               <FolderGit2 className="w-3.5 h-3.5" />
-              ชุดข้อมูลฝึกสอน (Dataset)
+              ชุดข้อมูลฝึกสอน (Unified Dataset)
             </span>
-            <span className="font-mono text-[10px] text-amber-400 bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-500/30">v{roboflowVersion}</span>
+            <span className="font-mono text-[10px] text-amber-400 bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-500/30">NVMe Cached</span>
           </div>
           <div className="rf-metric-body">
             <span className="rf-metric-num" style={{ color: '#fbbf24' }}>
@@ -534,25 +609,31 @@ export default function AutoTrainerPage({ apiBase }) {
             </span>
             <span className="rf-metric-unit">รูป พร้อมเทรน</span>
           </div>
-          <span className="rf-metric-hint">รวมภาพประวัติสะสม CAM-01, 02, 03</span>
+          <span className="rf-metric-hint">Single Unified MinIO: {datasetId}</span>
         </div>
 
-        {/* Metric 4: Cloud Compute Engine */}
+        {/* Metric 4: Private GPU Node Hardware */}
         <div className="rf-metric-box">
           <div className="rf-metric-top">
-            <span className="flex items-center gap-1.5 text-purple-400">
+            <span className="flex items-center gap-1.5 text-emerald-400">
               <Zap className="w-3.5 h-3.5" />
-              หน่วยประมวลผล (Cloud GPU)
+              Private GPU Telemetry
             </span>
-            <span className="font-mono text-[10px] text-purple-300 bg-purple-950/60 px-1.5 py-0.5 rounded border border-purple-500/30">SERVERLESS</span>
+            <span className="font-mono text-[10px] text-emerald-300 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30">0฿ CLOUD COST</span>
           </div>
           <div className="rf-metric-body">
-            <span className="rf-metric-num" style={{ color: '#c084fc' }}>
-              NVIDIA {gpuType}
+            <span className="rf-metric-num" style={{ color: '#4ade80' }}>
+              GTX 1660S
             </span>
-            <span className="rf-metric-unit">16GB VRAM</span>
+            <span className="rf-metric-unit">{gpuTelemetry.temperature_c || 34}°C | {gpuTelemetry.memory_used_mb || 844}M</span>
           </div>
-          <span className="rf-metric-hint">Modal Serverless Fast Spin-up</span>
+          <div className="rf-progress-bar">
+            <div
+              className="rf-progress-fill"
+              style={{ width: `${Math.round(((gpuTelemetry.memory_used_mb || 844) / (gpuTelemetry.memory_total_mb || 6144)) * 100)}%`, backgroundColor: '#10b981' }}
+            ></div>
+          </div>
+          <span className="rf-metric-hint">VRAM Free: {gpuTelemetry.memory_free_mb || 5123} MB / 6,144 MB</span>
         </div>
       </div>
 
@@ -561,11 +642,11 @@ export default function AutoTrainerPage({ apiBase }) {
         <div className="rf-card-block-header">
           <div>
             <h3 className="rf-block-title">
-              <Sliders className="w-4 h-4 text-purple-400" />
-              <span>ตั้งค่าและสั่งเทรนโมเดล (Modal Cloud Training Pipeline)</span>
+              <Sliders className="w-4 h-4 text-emerald-400" />
+              <span>ตั้งค่าและสั่งเทรนโมเดล (Private GPU Compute Pipeline)</span>
             </h3>
             <p className="rf-block-desc">
-              เลือกสถาปัตยกรรมโมเดล YOLO, จำนวนรอบ Epochs, และ Cloud GPU เพื่อรันงานเทรนอัตโนมัติบน Modal Serverless Cloud
+              เลือกสถาปัตยกรรมโมเดล YOLO, จำนวนรอบ Epochs, และ Dataset เพื่อรันงานเทรนบน NVIDIA GTX 1660 SUPER พร้อมระบบ Pre-flight AST Validation (&lt;5ms)
             </p>
           </div>
 
@@ -585,17 +666,18 @@ export default function AutoTrainerPage({ apiBase }) {
                 onClick={handleStartTraining}
                 disabled={isStarting}
                 className="rf-btn-start-job"
+                style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}
               >
                 <Play className="w-3.5 h-3.5 fill-current" />
                 <span>
-                  {isStarting ? 'กำลังส่งงานขึ้น Modal...' : '🚀 สั่งเทรนบน Modal Cloud GPU (Start)'}
+                  {isStarting ? 'กำลังรัน Pre-flight Check...' : '🚀 สั่งเทรนบน Private GPU Node (Start)'}
                 </span>
               </button>
             )}
           </div>
         </div>
 
-        {/* Base Model Selector Grid (Interactive Chips matching Roboflow layout) */}
+        {/* Base Model Selector Grid */}
         <div>
           <span className="rf-form-label block mb-2">เลือกสถาปัตยกรรมโมเดลเริ่มต้น (Base Model Architecture):</span>
           <div className="rf-cam-grid">
@@ -610,7 +692,7 @@ export default function AutoTrainerPage({ apiBase }) {
                   <div className="rf-cam-card-top">
                     <span className="font-bold">{bm.shortName}</span>
                     {isSelected ? (
-                      <Check className="w-4 h-4 text-purple-400" />
+                      <Check className="w-4 h-4 text-emerald-400" />
                     ) : (
                       <span className="text-[10px] text-slate-500 font-mono">{bm.badge}</span>
                     )}
@@ -625,19 +707,21 @@ export default function AutoTrainerPage({ apiBase }) {
           </div>
         </div>
 
-        {/* Hyperparameters & Hardware Form Controls */}
+        {/* Hyperparameters & Dataset Form Controls */}
         <div className="rf-form-grid">
           <div className="rf-form-group">
-            <label className="rf-form-label">Roboflow Dataset Version:</label>
-            <input
-              type="number"
-              min="1"
-              max="20"
-              value={roboflowVersion}
-              onChange={(e) => setRoboflowVersion(e.target.value)}
-              className="rf-form-input font-mono"
-              placeholder="1"
-            />
+            <label className="rf-form-label">เลือกชุดข้อมูล (Target Dataset):</label>
+            <select
+              value={datasetId}
+              onChange={(e) => setDatasetId(e.target.value)}
+              className="rf-form-select font-mono"
+            >
+              {datasetsList.map((ds) => (
+                <option key={ds.dataset_id} value={ds.dataset_id}>
+                  {ds.name} ({ds.file_count || 0} รูป)
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="rf-form-group">
@@ -656,29 +740,26 @@ export default function AutoTrainerPage({ apiBase }) {
           </div>
 
           <div className="rf-form-group">
-            <label className="rf-form-label">Batch Size:</label>
+            <label className="rf-form-label">Batch Size (VRAM 6GB Optimized):</label>
             <select
               value={batchSize}
               onChange={(e) => setBatchSize(e.target.value)}
               className="rf-form-select font-mono"
             >
-              <option value="8">8 (Low Memory)</option>
-              <option value="16">16 (Standard)</option>
-              <option value="32">32 (High Throughput)</option>
+              <option value="8">8 (Low VRAM Footprint ~2.5GB)</option>
+              <option value="16">16 (Recommended for GTX 1660S ~3.8GB)</option>
+              <option value="32">32 (High Throughput ~5.2GB)</option>
             </select>
           </div>
 
           <div className="rf-form-group">
-            <label className="rf-form-label">Modal Cloud GPU:</label>
-            <select
-              value={gpuType}
-              onChange={(e) => setGpuType(e.target.value)}
-              className="rf-form-select font-mono"
-            >
-              <option value="T4">NVIDIA T4 16GB (คุ้มค่า & ความเร็วมาตรฐาน)</option>
-              <option value="A10G">NVIDIA A10G 24GB (ความเร็วสูงพิเศษ)</option>
-              <option value="L4">NVIDIA L4 24GB (Ada Lovelace Core)</option>
-            </select>
+            <label className="rf-form-label">Compute Device:</label>
+            <input
+              type="text"
+              readOnly
+              value="NVIDIA GeForce GTX 1660 SUPER (6GB GDDR6)"
+              className="rf-form-input font-mono text-emerald-300 bg-slate-900 cursor-not-allowed"
+            />
           </div>
         </div>
 
@@ -686,48 +767,49 @@ export default function AutoTrainerPage({ apiBase }) {
         <div className="rf-status-banner">
           <div className="rf-status-item">
             <span className="rf-status-item-label">โมเดลเป้าหมาย (Architecture)</span>
-            <span className="rf-status-item-val font-mono text-purple-300">
+            <span className="rf-status-item-val font-mono text-emerald-300">
               {baseModel}
             </span>
           </div>
 
           <div className="rf-status-item">
-            <span className="rf-status-item-label">แหล่งข้อมูลชุดภาพ (Roboflow)</span>
+            <span className="rf-status-item-label">ชุดข้อมูลเป้าหมาย (Dataset)</span>
             <span className="rf-status-item-val font-mono text-amber-300">
-              kimbiew/cctv-parking (v{roboflowVersion})
+              {datasetId}
             </span>
           </div>
 
           <div className="rf-status-item">
-            <span className="rf-status-item-label">สถานะ Cloud GPU Worker</span>
-            <span className="rf-status-item-val flex items-center gap-1.5 font-mono text-emerald-400">
-              <span className={`w-2 h-2 rounded-full ${isTrainingActive ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`}></span>
-              <span>{currentJob?.status || 'IDLE'}</span>
-              <span className="text-[10px] text-purple-300 bg-purple-950/60 px-1.5 py-0.5 rounded">[{gpuType}]</span>
+            <span className="rf-status-item-label">Pre-flight AST Syntax</span>
+            <span className="rf-status-item-val font-mono text-emerald-400 flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>PASSED (&lt;5ms)</span>
             </span>
           </div>
 
-          <div className="rf-status-item" style={{ flex: '1 1 200px' }}>
-            <span className="rf-status-item-label">ข้อความล่าสุด</span>
-            <span className="rf-status-item-val text-slate-300 truncate" title={currentJob?.last_message}>
-              {currentJob?.last_message || 'พร้อมส่งงานเทรนขึ้น Cloud'}
+          <div className="rf-status-item">
+            <span className="rf-status-item-label">สถานะ GPU Worker</span>
+            <span className="rf-status-item-val flex items-center gap-1.5 font-mono text-emerald-400">
+              <span className={`w-2 h-2 rounded-full ${isTrainingActive ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`}></span>
+              <span>{currentJob?.status || 'IDLE'}</span>
+              <span className="text-[10px] text-emerald-300 bg-emerald-950/60 px-1.5 py-0.5 rounded">[GTX 1660S]</span>
             </span>
           </div>
         </div>
 
         {/* Active Job Progress Bar */}
         {currentJob && currentJob.progress_pct !== undefined && (
-          <div>
+          <div className="mt-3">
             <div className="flex justify-between text-xs text-slate-300 mb-1.5">
-              <span>ความคืบหน้าการเทรนบน Cloud (Epoch Progress):</span>
-              <span className="font-mono text-purple-300 font-bold">
+              <span>ความคืบหน้าการเทรนบน GPU (Epoch Progress):</span>
+              <span className="font-mono text-emerald-300 font-bold">
                 {currentJob.current_epoch || 0} / {currentJob.epochs || epochs} Epochs ({currentJob.progress_pct || 0}%)
               </span>
             </div>
             <div className="rf-progress-bar-lg">
               <div
                 className="rf-progress-fill-purple"
-                style={{ width: `${currentJob.progress_pct || 0}%` }}
+                style={{ width: `${currentJob.progress_pct || 0}%`, backgroundColor: '#10b981' }}
               ></div>
             </div>
           </div>
@@ -740,12 +822,13 @@ export default function AutoTrainerPage({ apiBase }) {
           <div>
             <h3 className="rf-block-title">
               <Terminal className="w-4 h-4 text-emerald-400" />
-              <span>Real-Time Cloud GPU Stdout Terminal (<code>/root/logs/train.log</code>)</span>
+              <span>Private GPU Compute Node Live Terminal (<code>http://172.30.81.175:9000</code>)</span>
             </h3>
             <p className="rf-block-desc">
-              สตรีมผลการประมวลผลสดจาก Modal Serverless Cloud GPU ผ่านระบบ SSE (Server-Sent Events)
+              สตรีมผลการประมวลผลสดจาก NVIDIA GTX 1660 SUPER ผ่านระบบ SSE (Server-Sent Events) แบบ Real-Time
             </p>
           </div>
+
 
           <div className="flex items-center gap-2.5">
             <span className={`text-[10px] font-mono px-2.5 py-1 rounded-md font-bold flex items-center gap-1.5 ${

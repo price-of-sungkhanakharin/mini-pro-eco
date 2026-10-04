@@ -76,25 +76,23 @@ async def test_bot_query(payload: Dict[str, str]):
     """Test AI query response or quick response directly."""
     question = payload.get("question", "ตอนนี้มีที่จอดรถว่างไหม")
     from backend.app.services.line_bot_service import format_quick_response
-    fast_reply, target_cam = format_quick_response(question)
+    fast_reply, target_cams = format_quick_response(question)
     if fast_reply:
         answer = fast_reply
         mode = "quick_reply"
     else:
         answer = line_bot_service.query_dotblue_advisor(question)
         mode = "dotblue_ai"
-        target_cam = None
+        target_cams = []
 
-    image_url = None
-    if target_cam:
-        image_url = f"/api/v1/line/snapshot/{target_cam}?mode=chatbot"
+    image_urls = [f"/api/v1/line/snapshot/{cam}?mode=chatbot" for cam in target_cams]
 
     return {
         "question": question,
         "answer": answer,
         "handler": mode,
-        "target_cam": target_cam,
-        "image_url": image_url,
+        "target_cams": target_cams,
+        "image_urls": image_urls,
     }
 
 

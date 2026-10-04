@@ -63,6 +63,10 @@ class Settings(BaseSettings):
     roboflow_project: str = Field(default="")
     roboflow_version: int = Field(default=1)
 
+    # Private GPU Compute Node Settings
+    gpu_node_base_url: str = Field(default="http://localhost:9000")
+    gpu_node_api_key: str = Field(default="")
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:

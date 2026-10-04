@@ -26,12 +26,10 @@ _ssl_ctx.verify_mode = ssl.CERT_NONE
 
 def get_public_https_url() -> str:
     """Return an active public HTTPS endpoint for LINE image messages."""
-    # 1. Check environment variable / settings
     url = os.getenv("LINE_PUBLIC_URL") or getattr(settings, "line_public_url", "")
     if url and url.startswith("https://"):
         return url.rstrip("/")
 
-    # 2. Check workspace tunnel_url.txt
     candidate_paths = [
         Path("/home/r211admin/project-eco/ai-ecosystem-workspace/tunnel_url.txt"),
         Path("/app/tunnel_url.txt"),
@@ -46,8 +44,39 @@ def get_public_https_url() -> str:
             except Exception:
                 pass
 
-    # 3. Fallback active TryCloudflare domain
     return "https://donations-plug-desktops-newer.trycloudflare.com"
+
+
+def is_car_slot(slot: Dict[str, Any]) -> bool:
+    """Check if slot is specifically designated for cars."""
+    s_type = (slot.get("type") or "").lower()
+    s_id = str(slot.get("id") or "").upper()
+    if s_type == "car":
+        return True
+    if s_type == "motorcycle":
+        return False
+    # Fallback to ID taxonomy
+    if s_id.startswith("A") and s_id != "A07":
+        return True
+    if s_id in ("B01", "B02", "B03", "B04", "B05"):
+        return True
+    return False
+
+
+def is_bike_slot(slot: Dict[str, Any]) -> bool:
+    """Check if slot is specifically designated for motorcycles."""
+    s_type = (slot.get("type") or "").lower()
+    s_id = str(slot.get("id") or "").upper()
+    if s_type == "motorcycle":
+        return True
+    if s_type == "car":
+        return False
+    # Fallback to ID taxonomy
+    if s_id.startswith(("M", "MC", "C")) or s_id == "A07":
+        return True
+    if s_id.startswith("B") and s_id not in ("B01", "B02", "B03", "B04", "B05"):
+        return True
+    return False
 
 
 def get_parking_records() -> List[Dict[str, Any]]:
@@ -103,11 +132,10 @@ def get_parking_records() -> List[Dict[str, Any]]:
     except Exception as re_err:
         logger.debug("Redis read error: %s", re_err)
 
-    # Return sorted by camera_id
     if records_dict:
         return [records_dict[k] for k in sorted(records_dict.keys())]
 
-    # 3. Fallback only if both DB and Redis are completely unreachable
+    # 3. Safe fallback if database is completely offline
     return [
         {
             "camera_id": "cam1",
@@ -118,8 +146,24 @@ def get_parking_records() -> List[Dict[str, Any]]:
             "vacant_count": 14,
             "occupancy_rate_pct": 6.7,
             "status_level": "AVAILABLE",
-            "available_slot_ids": ["A01", "A02", "A04", "A05", "A06", "A07"],
-            "slots_detail": [],
+            "available_slot_ids": ["A01", "A02", "A04", "A05", "A06", "M01", "M02", "M03", "M04", "M05", "A07", "M06", "M07", "M08"],
+            "slots_detail": [
+                {"id": "A01", "type": "car", "occupied": False},
+                {"id": "A02", "type": "car", "occupied": False},
+                {"id": "A03", "type": "car", "occupied": True},
+                {"id": "A04", "type": "car", "occupied": False},
+                {"id": "A05", "type": "car", "occupied": False},
+                {"id": "A06", "type": "car", "occupied": False},
+                {"id": "M01", "type": "motorcycle", "occupied": False},
+                {"id": "M02", "type": "motorcycle", "occupied": False},
+                {"id": "M03", "type": "motorcycle", "occupied": False},
+                {"id": "M04", "type": "motorcycle", "occupied": False},
+                {"id": "M05", "type": "motorcycle", "occupied": False},
+                {"id": "A07", "type": "motorcycle", "occupied": False},
+                {"id": "M06", "type": "motorcycle", "occupied": False},
+                {"id": "M07", "type": "motorcycle", "occupied": False},
+                {"id": "M08", "type": "motorcycle", "occupied": False},
+            ],
             "updated_at": datetime.now().strftime("%H:%M:%S"),
         },
         {
@@ -132,7 +176,26 @@ def get_parking_records() -> List[Dict[str, Any]]:
             "occupancy_rate_pct": 61.1,
             "status_level": "AVAILABLE",
             "available_slot_ids": ["B03", "B04", "B08", "B09", "B10", "B11", "B13"],
-            "slots_detail": [],
+            "slots_detail": [
+                {"id": "B01", "type": "car", "occupied": True},
+                {"id": "B02", "type": "car", "occupied": True},
+                {"id": "B03", "type": "car", "occupied": False},
+                {"id": "B04", "type": "car", "occupied": False},
+                {"id": "B05", "type": "car", "occupied": True},
+                {"id": "B06", "type": "motorcycle", "occupied": True},
+                {"id": "B07", "type": "motorcycle", "occupied": True},
+                {"id": "B08", "type": "motorcycle", "occupied": False},
+                {"id": "B09", "type": "motorcycle", "occupied": False},
+                {"id": "B10", "type": "motorcycle", "occupied": False},
+                {"id": "B11", "type": "motorcycle", "occupied": False},
+                {"id": "B12", "type": "motorcycle", "occupied": True},
+                {"id": "B13", "type": "motorcycle", "occupied": False},
+                {"id": "B14", "type": "motorcycle", "occupied": True},
+                {"id": "B15", "type": "motorcycle", "occupied": True},
+                {"id": "B16", "type": "motorcycle", "occupied": True},
+                {"id": "B17", "type": "motorcycle", "occupied": True},
+                {"id": "B18", "type": "motorcycle", "occupied": True},
+            ],
             "updated_at": datetime.now().strftime("%H:%M:%S"),
         },
         {
@@ -140,11 +203,11 @@ def get_parking_records() -> List[Dict[str, Any]]:
             "location_name": "ลานข้างภาคคอม (มอเตอร์ไซค์)",
             "vehicle_type": "motorcycle",
             "total_capacity": 25,
-            "occupied_count": 6,
-            "vacant_count": 19,
-            "occupancy_rate_pct": 24.0,
+            "occupied_count": 7,
+            "vacant_count": 18,
+            "occupancy_rate_pct": 28.0,
             "status_level": "AVAILABLE",
-            "available_slot_ids": ["C01", "MC01", "MC02", "MC03", "MC04", "MC05", "MC06", "MC07", "MC08", "MC09", "MC10", "MC11", "MC12", "MC13", "MC19", "MC21", "MC22", "MC23", "MC24"],
+            "available_slot_ids": ["C01", "MC01", "MC02", "MC03", "MC04", "MC05", "MC06", "MC07", "MC08", "MC09", "MC10", "MC11", "MC12", "MC13", "MC21", "MC22", "MC23", "MC24"],
             "slots_detail": [],
             "updated_at": datetime.now().strftime("%H:%M:%S"),
         }
@@ -156,14 +219,20 @@ def get_current_parking_summary() -> str:
     rows = get_parking_records()
     lines = ["[ข้อมูลสถานะลานจอดรถภาควิชาคอมพิวเตอร์ ณ ปัจจุบัน จากระบบตรวจจับจริง]:\n"]
     for r in rows:
-        avail_count = r.get("vacant_count", 0)
-        total_count = r.get("total_capacity", 0)
-        avail_slots = r.get("available_slot_ids", [])
-        avail_str = ", ".join(avail_slots) if avail_slots else "ไม่มีช่องว่าง"
-        lines.append(f"""- พื้นที่: {r.get('location_name')} (กล้อง {r.get('camera_id')}, ประเภท: {r.get('vehicle_type')})
-  * ความจุรวม: {total_count} ช่อง | ว่าง: {avail_count} ช่อง | ไม่ว่าง: {r.get('occupied_count', 0)} ช่อง (อัตราการจอด {r.get('occupancy_rate_pct', 0)}%)
-  * ช่องที่ว่างพร้อมจอด: {avail_str}
-  * สถานะรวม: {r.get('status_level', 'AVAILABLE')}
+        slots = r.get("slots_detail") or []
+        car_slots = [s for s in slots if is_car_slot(s)]
+        bike_slots = [s for s in slots if is_bike_slot(s)]
+        car_vac = [s["id"] for s in car_slots if not s.get("occupied")]
+        bike_vac = [s["id"] for s in bike_slots if not s.get("occupied")]
+
+        car_info = f"รถยนต์: ว่าง {len(car_vac)}/{len(car_slots)} ช่อง ({', '.join(car_vac) if car_vac else 'เต็ม'})" if car_slots else "ไม่มีช่องรถยนต์"
+        bike_info = f"มอเตอร์ไซค์: ว่าง {len(bike_vac)}/{len(bike_slots)} ช่อง ({', '.join(bike_vac[:8]) if bike_vac else 'เต็ม'})" if bike_slots else "ไม่มีช่องมอเตอร์ไซค์"
+
+        lines.append(f"""- พื้นที่: {r.get('location_name')} (กล้อง {r.get('camera_id')})
+  * ความจุรวม: {r.get('total_capacity', 0)} ช่อง | ว่างรวม: {r.get('vacant_count', 0)} ช่อง
+  * {car_info}
+  * {bike_info}
+  * สถานะ: {r.get('status_level', 'AVAILABLE')}
   * อัปเดตล่าสุด: {r.get('updated_at', datetime.now().strftime('%H:%M:%S'))}""")
     return "\n".join(lines)
 
@@ -172,12 +241,12 @@ def get_current_parking_summary() -> str:
 CURRENT_PARKING_STATE: Dict[str, Any] = {
     "location": "หน้าภาควิชาวิศวกรรมคอมพิวเตอร์ (CPE Department)",
     "camera_id": "cam2",
-    "updated_at": "2026-10-04 15:30:00",
+    "updated_at": "2026-10-04 15:45:00",
     "total_slots": 58,
-    "available_slots": ["B03", "B04", "B08", "B09", "MC01", "MC02"],
-    "occupied_slots": ["B01", "B02", "B05"],
-    "car_summary": {"free": 21, "total": 33},
-    "bike_summary": {"free": 19, "total": 25},
+    "available_slots": ["A01", "A02", "A04", "A05", "A06", "B03", "B04", "MC01", "MC02"],
+    "occupied_slots": ["A03", "B01", "B02", "B05"],
+    "car_summary": {"free": 7, "total": 11},
+    "bike_summary": {"free": 32, "total": 47},
 }
 
 
@@ -194,193 +263,214 @@ def build_quick_reply_payload():
     }
 
 
-def format_quick_response(user_msg: str) -> Tuple[Optional[str], Optional[str]]:
+def format_quick_response(user_msg: str) -> Tuple[Optional[str], List[str]]:
     """
     Provide punchy, concise, emoji-free responses pulling directly from real system data.
+    Accurately separates car slots vs motorcycle slots and returns all relevant camera snapshots.
     Returns:
-        (reply_text, target_cam_id)
-        - target_cam_id is 'cam1', 'cam2', 'cam3' if a specific camera snapshot image should be sent.
-        - target_cam_id is None if text-only summary should be sent.
+        (reply_text, target_cam_ids)
+        - target_cam_ids: list of camera IDs (e.g. ['cam1', 'cam2'], ['cam3'], ['cam1', 'cam2', 'cam3'])
     """
     msg = user_msg.strip()
     msg_lower = msg.lower()
     msg_clean = msg.replace(" ", "")
     rows = get_parking_records()
     if not rows:
-        return None, None
+        return None, []
 
-    # Map cameras for quick lookup
+    # Map cameras and extract precise slot categorization
     cam_map = {r.get("camera_id"): r for r in rows}
 
-    # 1. Specific Camera Overlays with Images (CAM1, CAM2, CAM3)
-    if any(k in msg_lower for k in ["cam1", "zone a", "zonea"]) or any(k in msg_clean for k in ["กล้อง1", "ลานหน้าภาค1", "หน้าภาค1"]):
-        match = cam_map.get("cam1")
-        if match:
-            loc = match.get("location_name", "ลานหน้าภาค 1")
-            vac = match.get("vacant_count", 0)
-            cap = match.get("total_capacity", 0)
-            avail_slots = match.get("available_slot_ids", [])
-            avail_str = ", ".join(avail_slots) if avail_slots else "เต็มทุกช่อง"
-            lines = [
-                f"[น้องจ๊อดส่องเลน: {loc} (CAM1)]",
-                f"สถานะ: ว่าง {vac}/{cap} ช่อง",
-                f"ช่องที่ว่าง: {avail_str}",
-                "",
-                "บิดมาเทียบเลนได้เลยครับพี่!" if vac > 0 else "โซนนี้เต็มแล้วพี่ แนะนำไปดูโซนอื่นก่อนนะพี่!"
-            ]
-            return "\n".join(lines), "cam1"
+    def get_cam_slots(cam_id: str):
+        c = cam_map.get(cam_id, {})
+        slots = c.get("slots_detail") or []
+        # Fallback if slots_detail empty: categorize available_slot_ids
+        if not slots:
+            avail = c.get("available_slot_ids", [])
+            car_avail = [sid for sid in avail if (sid.startswith("A") and sid != "A07") or sid in ("B01", "B02", "B03", "B04", "B05")]
+            bike_avail = [sid for sid in avail if sid not in car_avail]
+            return {
+                "car_total": 6 if cam_id == "cam1" else (5 if cam_id == "cam2" else 0),
+                "car_vac": car_avail,
+                "bike_total": 9 if cam_id == "cam1" else (13 if cam_id == "cam2" else 25),
+                "bike_vac": bike_avail,
+                "loc": c.get("location_name", cam_id.upper())
+            }
 
-    if any(k in msg_lower for k in ["cam2", "zone b", "zoneb"]) or any(k in msg_clean for k in ["กล้อง2", "ลานหน้าภาค2", "หน้าภาค2"]):
-        match = cam_map.get("cam2")
-        if match:
-            loc = match.get("location_name", "ลานหน้าภาค 2")
-            vac = match.get("vacant_count", 0)
-            cap = match.get("total_capacity", 0)
-            avail_slots = match.get("available_slot_ids", [])
-            avail_str = ", ".join(avail_slots) if avail_slots else "เต็มทุกช่อง"
-            lines = [
-                f"[น้องจ๊อดส่องเลน: {loc} (CAM2)]",
-                f"สถานะ: ว่าง {vac}/{cap} ช่อง",
-                f"ช่องที่ว่าง: {avail_str}",
-                "",
-                "รีบขับมาเทียบเลนก่อนโดนตัดหน้านะพี่!" if vac > 0 else "โซนนี้เต็มแล้วพี่ แนะนำไปดูโซนอื่นก่อนนะพี่!"
-            ]
-            return "\n".join(lines), "cam2"
+        car_slots = [s for s in slots if is_car_slot(s)]
+        bike_slots = [s for s in slots if is_bike_slot(s)]
+        car_vac = [s["id"] for s in car_slots if not s.get("occupied")]
+        bike_vac = [s["id"] for s in bike_slots if not s.get("occupied")]
+        return {
+            "car_total": len(car_slots),
+            "car_vac": car_vac,
+            "bike_total": len(bike_slots),
+            "bike_vac": bike_vac,
+            "loc": c.get("location_name", cam_id.upper())
+        }
 
-    if any(k in msg_lower for k in ["cam3", "zone c", "zonec"]) or any(k in msg_clean for k in ["กล้อง3", "ข้างภาค", "ข้างภาคคอม", "ลานข้างภาคคอม", "มอไซค์ข้างภาค"]):
-        match = cam_map.get("cam3")
-        if match:
-            loc = match.get("location_name", "ลานข้างภาคคอม")
-            vac = match.get("vacant_count", 0)
-            cap = match.get("total_capacity", 0)
-            avail_slots = match.get("available_slot_ids", [])
-            avail_str = ", ".join(avail_slots) if avail_slots else "เต็มทุกช่อง"
-            lines = [
-                f"[น้องจ๊อดส่องเลน: {loc} (CAM3)]",
-                f"สถานะ: มอไซค์ว่าง {vac}/{cap} ช่อง",
-                f"ช่องที่ว่าง: {avail_str}",
-                "",
-                "บิดมาจอดข้างภาคคอมได้เลยพี่ ลานกว้างเทียบสบาย!" if vac > 0 else "มอไซค์ข้างภาคแน่นเอี๊ยดแล้วพี่!"
-            ]
-            return "\n".join(lines), "cam3"
+    c1_data = get_cam_slots("cam1")
+    c2_data = get_cam_slots("cam2")
+    c3_data = get_cam_slots("cam3")
 
-    # 2. Combined Front Plaza (ลานหน้าภาค)
+    # 1. Car Only (หาที่จอดรถยนต์) -> Send CAM1 and CAM2 images
+    if any(k in msg for k in ["หาที่จอดรถยนต์", "รถยนต์", "สี่ล้อ", "รถเก๋ง", "รถกระบะ"]) or "car" in msg_lower:
+        total_car_cap = c1_data["car_total"] + c2_data["car_total"]
+        total_car_vac = len(c1_data["car_vac"]) + len(c2_data["car_vac"])
+        c1_str = ", ".join(c1_data["car_vac"]) if c1_data["car_vac"] else "เต็มทุกช่อง"
+        c2_str = ", ".join(c2_data["car_vac"]) if c2_data["car_vac"] else "เต็มทุกช่อง"
+
+        lines = [
+            "[น้องจ๊อดส่องเลน: รถยนต์ 4 ล้อ]",
+            f"รถยนต์ว่างรวม: {total_car_vac}/{total_car_cap} ช่อง",
+            "",
+            f"- หน้าภาค 1 (CAM1): ว่าง {len(c1_data['car_vac'])}/{c1_data['car_total']} ช่อง",
+            f"  ช่องว่าง: {c1_str}",
+            f"- หน้าภาค 2 (CAM2): ว่าง {len(c2_data['car_vac'])}/{c2_data['car_total']} ช่อง",
+            f"  ช่องว่าง: {c2_str}",
+            "",
+            "รีบขับมาเทียบเลนก่อนโดนตัดหน้านะพี่!" if total_car_vac > 0 else "โซนรถยนต์เต็มหมดแล้วพี่ แนะนำวนดูอีกรอบนะพี่!"
+        ]
+        return "\n".join(lines), ["cam1", "cam2"]
+
+    # 2. Motorcycle Only (หาที่จอดมอไซค์) -> Send CAM3 and CAM2 images
+    if any(k in msg for k in ["หาที่จอดมอไซค์", "หาที่จอดมอเตอร์ไซค์", "มอไซ", "มอเตอร์ไซค์", "สองล้อ"]) or "bike" in msg_lower:
+        total_bike_cap = c3_data["bike_total"] + c2_data["bike_total"] + c1_data["bike_total"]
+        total_bike_vac = len(c3_data["bike_vac"]) + len(c2_data["bike_vac"]) + len(c1_data["bike_vac"])
+
+        c3_preview = ", ".join(c3_data["bike_vac"][:8])
+        if len(c3_data["bike_vac"]) > 8:
+            c3_preview += f" และอีก {len(c3_data['bike_vac']) - 8} ช่อง"
+        c3_str = c3_preview if c3_data["bike_vac"] else "เต็มทุกช่อง"
+
+        c2_preview = ", ".join(c2_data["bike_vac"][:8])
+        if len(c2_data["bike_vac"]) > 8:
+            c2_preview += f" และอีก {len(c2_data['bike_vac']) - 8} ช่อง"
+        c2_str = c2_preview if c2_data["bike_vac"] else "เต็มทุกช่อง"
+
+        lines = [
+            "[น้องจ๊อดส่องเลน: มอไซค์ 2 ล้อ]",
+            f"มอไซค์ว่างรวม: {total_bike_vac}/{total_bike_cap} ช่อง",
+            "",
+            f"- ข้างภาคคอม (CAM3): ว่าง {len(c3_data['bike_vac'])}/{c3_data['bike_total']} ช่อง",
+            f"  ช่องว่าง: {c3_str}",
+            f"- หน้าภาค 2 (CAM2 โซนมอไซค์): ว่าง {len(c2_data['bike_vac'])}/{c2_data['bike_total']} ช่อง",
+            f"  ช่องว่าง: {c2_str}",
+            f"- หน้าภาค 1 (CAM1 โซนมอไซค์): ว่าง {len(c1_data['bike_vac'])}/{c1_data['bike_total']} ช่อง",
+            "",
+            "บิดมาจอดข้างภาคคอมได้เลยพี่ ลานกว้างเทียบสบาย!" if total_bike_vac > 0 else "มอไซค์เต็มทุกโซนแล้วพี่!"
+        ]
+        return "\n".join(lines), ["cam3", "cam2"]
+
+    # 3. Combined Front Plaza (ลานหน้าภาค) -> Send CAM1 and CAM2 images
     if any(k in msg_clean for k in ["ลานหน้าภาค", "หน้าภาค", "ลานจอดหน้าภาค"]):
-        c1 = cam_map.get("cam1", {})
-        c2 = cam_map.get("cam2", {})
-        c1_vac = c1.get("vacant_count", 0)
-        c1_cap = c1.get("total_capacity", 0)
-        c1_slots = ", ".join(c1.get("available_slot_ids", [])) or "เต็ม"
-        c2_vac = c2.get("vacant_count", 0)
-        c2_cap = c2.get("total_capacity", 0)
-        c2_slots = ", ".join(c2.get("available_slot_ids", [])) or "เต็ม"
-        total_front_vac = c1_vac + c2_vac
-        total_front_cap = c1_cap + c2_cap
+        total_front_car_vac = len(c1_data["car_vac"]) + len(c2_data["car_vac"])
+        total_front_car_cap = c1_data["car_total"] + c2_data["car_total"]
+        total_front_bike_vac = len(c1_data["bike_vac"]) + len(c2_data["bike_vac"])
+        total_front_bike_cap = c1_data["bike_total"] + c2_data["bike_total"]
+
+        c1_car_str = ", ".join(c1_data["car_vac"]) if c1_data["car_vac"] else "เต็ม"
+        c2_car_str = ", ".join(c2_data["car_vac"]) if c2_data["car_vac"] else "เต็ม"
 
         lines = [
             "[น้องจ๊อดส่องเลน: ลานหน้าภาควิชาคอม (CAM1 & CAM2)]",
-            f"ว่างรวมหน้าภาค: {total_front_vac}/{total_front_cap} ช่อง",
+            f"รถยนต์หน้าภาคว่าง: {total_front_car_vac}/{total_front_car_cap} ช่อง | มอไซค์ว่าง: {total_front_bike_vac}/{total_front_bike_cap} ช่อง",
             "",
-            f"- หน้าภาค 1 (CAM1): ว่าง {c1_vac}/{c1_cap} ช่อง",
-            f"  ช่องว่าง: {c1_slots}",
-            f"- หน้าภาค 2 (CAM2): ว่าง {c2_vac}/{c2_cap} ช่อง",
-            f"  ช่องว่าง: {c2_slots}",
+            f"- หน้าภาค 1 (CAM1):",
+            f"  * รถยนต์ว่าง {len(c1_data['car_vac'])}/{c1_data['car_total']} ช่อง (ว่าง: {c1_car_str})",
+            f"  * มอไซค์ว่าง {len(c1_data['bike_vac'])}/{c1_data['bike_total']} ช่อง",
+            f"- หน้าภาค 2 (CAM2):",
+            f"  * รถยนต์ว่าง {len(c2_data['car_vac'])}/{c2_data['car_total']} ช่อง (ว่าง: {c2_car_str})",
+            f"  * มอไซค์ว่าง {len(c2_data['bike_vac'])}/{c2_data['bike_total']} ช่อง",
             "",
-            "รีบขับมาเทียบเลนก่อนโดนตัดหน้านะพี่!" if total_front_vac > 0 else "ลานหน้าภาคเต็มเอี๊ยดแล้วพี่!"
+            "รีบขับมาเทียบเลนก่อนโดนตัดหน้านะพี่!" if (total_front_car_vac + total_front_bike_vac) > 0 else "ลานหน้าภาคเต็มเอี๊ยดแล้วพี่!"
         ]
-        return "\n".join(lines), "cam2"
+        return "\n".join(lines), ["cam1", "cam2"]
 
-    # 3. Aggregated Overview Summary (สรุปภาพรวม / ทั้งหมด / สรุป / ภาพรวม)
+    # 4. Side Plaza (ลานข้างภาคคอม) -> Send CAM3 image
+    if any(k in msg_lower for k in ["cam3", "zone c", "zonec"]) or any(k in msg_clean for k in ["กล้อง3", "ข้างภาค", "ข้างภาคคอม", "ลานข้างภาคคอม", "มอไซค์ข้างภาค"]):
+        c3_vac = len(c3_data["bike_vac"])
+        c3_cap = c3_data["bike_total"]
+        avail_preview = ", ".join(c3_data["bike_vac"][:10])
+        if len(c3_data["bike_vac"]) > 10:
+            avail_preview += f" และอีก {len(c3_data['bike_vac']) - 10} ช่อง"
+        avail_str = avail_preview if c3_data["bike_vac"] else "เต็มทุกช่อง"
+
+        lines = [
+            "[น้องจ๊อดส่องเลน: ลานข้างภาคคอม (CAM3)]",
+            f"สถานะ: มอไซค์ว่าง {c3_vac}/{c3_cap} ช่อง",
+            f"ช่องที่ว่าง: {avail_str}",
+            "",
+            "บิดมาจอดข้างภาคคอมได้เลยพี่ ลานกว้างเทียบสบาย!" if c3_vac > 0 else "มอไซค์ข้างภาคแน่นเอี๊ยดแล้วพี่!"
+        ]
+        return "\n".join(lines), ["cam3"]
+
+    # 5. Camera 1 specific ("กล้อง 1", "cam1") -> Send CAM1 image
+    if any(k in msg_lower for k in ["cam1", "zone a", "zonea"]) or any(k in msg_clean for k in ["กล้อง1", "ลานหน้าภาค1", "หน้าภาค1"]):
+        c1_car_str = ", ".join(c1_data["car_vac"]) if c1_data["car_vac"] else "เต็ม"
+        lines = [
+            "[น้องจ๊อดส่องเลน: ลานหน้าภาค 1 (CAM1)]",
+            f"รถยนต์ว่าง: {len(c1_data['car_vac'])}/{c1_data['car_total']} ช่อง (ว่าง: {c1_car_str})",
+            f"มอเตอร์ไซค์ว่าง: {len(c1_data['bike_vac'])}/{c1_data['bike_total']} ช่อง",
+            "",
+            "บิดมาเทียบเลนได้เลยครับพี่!" if (len(c1_data['car_vac']) + len(c1_data['bike_vac'])) > 0 else "โซนนี้เต็มแล้วพี่!"
+        ]
+        return "\n".join(lines), ["cam1"]
+
+    # 6. Camera 2 specific ("กล้อง 2", "cam2") -> Send CAM2 image
+    if any(k in msg_lower for k in ["cam2", "zone b", "zoneb"]) or any(k in msg_clean for k in ["กล้อง2", "ลานหน้าภาค2", "หน้าภาค2"]):
+        c2_car_str = ", ".join(c2_data["car_vac"]) if c2_data["car_vac"] else "เต็ม"
+        lines = [
+            "[น้องจ๊อดส่องเลน: ลานหน้าภาค 2 (CAM2)]",
+            f"รถยนต์ว่าง: {len(c2_data['car_vac'])}/{c2_data['car_total']} ช่อง (ว่าง: {c2_car_str})",
+            f"มอเตอร์ไซค์ว่าง: {len(c2_data['bike_vac'])}/{c2_data['bike_total']} ช่อง",
+            "",
+            "รีบขับมาเทียบเลนก่อนโดนตัดหน้านะพี่!" if (len(c2_data['car_vac']) + len(c2_data['bike_vac'])) > 0 else "โซนนี้เต็มแล้วพี่!"
+        ]
+        return "\n".join(lines), ["cam2"]
+
+    # 7. Aggregated Overview Summary (สรุปภาพรวม / ทั้งหมด / สรุป / ภาพรวม) -> Send CAM1, CAM2, CAM3 images
     if any(k in msg for k in ["สรุปภาพรวม", "สรุปทั้งหมด", "สรุป", "ภาพรวม", "ทั้งหมด", "สถานะ"]) or "overview" in msg_lower or "all" in msg_lower:
-        total_cap = sum(r.get("total_capacity", 0) for r in rows)
-        total_vac = sum(r.get("vacant_count", 0) for r in rows)
-        total_occ = sum(r.get("occupied_count", 0) for r in rows)
+        total_cars_vac = len(c1_data["car_vac"]) + len(c2_data["car_vac"])
+        total_cars_cap = c1_data["car_total"] + c2_data["car_total"]
+        total_bikes_vac = len(c1_data["bike_vac"]) + len(c2_data["bike_vac"]) + len(c3_data["bike_vac"])
+        total_bikes_cap = c1_data["bike_total"] + c2_data["bike_total"] + c3_data["bike_total"]
+        grand_vac = total_cars_vac + total_bikes_vac
+        grand_cap = total_cars_cap + total_bikes_cap
+
+        c1_car_str = ", ".join(c1_data["car_vac"]) if c1_data["car_vac"] else "เต็ม"
+        c2_car_str = ", ".join(c2_data["car_vac"]) if c2_data["car_vac"] else "เต็ม"
 
         lines = [
             "[น้องจ๊อดรายงาน: สรุปภาพรวมลานจอด CPE ทั้งหมด]",
-            "ชัดเจนในเลนเรา! ส่องข้อมูลจริงให้สดๆ ครบทั้ง 3 จุดเลยพี่",
-            f"ว่างรวมทั้งหมด: {total_vac}/{total_cap} ช่อง (จอดแล้ว {total_occ} คัน)",
+            "ชัดเจนในเลนเรา! ส่องข้อมูลจริงแยกประเภทให้ครบเลยพี่",
+            f"ว่างรวมทั้งหมด: {grand_vac}/{grand_cap} ช่อง",
             "",
-        ]
-        for r in rows:
-            cam = r.get("camera_id", "").upper()
-            loc = r.get("location_name", cam)
-            vac = r.get("vacant_count", 0)
-            cap = r.get("total_capacity", 0)
-            avail_slots = r.get("available_slot_ids", [])
-            avail_str = ", ".join(avail_slots[:6]) if avail_slots else "เต็มทุกช่อง"
-            lines.append(f"- {loc} ({cam}): ว่าง {vac}/{cap} ช่อง (ว่าง: {avail_str})")
-
-        lines.append("")
-        lines.append("กดปุ่มเมนูด้านล่างเพื่อเจาะดูแต่ละโซนได้เลยครับพี่!")
-        return "\n".join(lines), "cam2"
-
-    # 4. Motorcycle Only (หาที่จอดมอไซค์)
-    if any(k in msg for k in ["หาที่จอดมอไซค์", "หาที่จอดมอเตอร์ไซค์", "มอไซ", "มอเตอร์ไซค์", "สองล้อ"]) or "bike" in msg_lower:
-        bike_rows = [r for r in rows if r.get("vehicle_type") in ("motorcycle", "mixed") or r.get("camera_id") == "cam3"]
-        total_vac = sum(r.get("vacant_count", 0) for r in bike_rows)
-        lines = [
-            "[น้องจ๊อดส่องเลน: มอไซค์ 2 ล้อ]",
-            f"มอไซค์ว่างรวม: {total_vac} ช่อง",
+            f"รถยนต์ (4 ล้อ): ว่างรวม {total_cars_vac}/{total_cars_cap} ช่อง",
+            f"- หน้าภาค 1 (CAM1): ว่าง {len(c1_data['car_vac'])}/{c1_data['car_total']} ช่อง (ว่าง: {c1_car_str})",
+            f"- หน้าภาค 2 (CAM2): ว่าง {len(c2_data['car_vac'])}/{c2_data['car_total']} ช่อง (ว่าง: {c2_car_str})",
             "",
-        ]
-        for r in bike_rows:
-            loc = r.get("location_name", r.get("camera_id", ""))
-            cam = r.get("camera_id", "").upper()
-            vac = r.get("vacant_count", 0)
-            cap = r.get("total_capacity", 0)
-            avail_slots = r.get("available_slot_ids", [])
-            if avail_slots:
-                avail_preview = ", ".join(avail_slots[:10])
-                if len(avail_slots) > 10:
-                    avail_preview += f" และอีก {len(avail_slots) - 10} ช่อง"
-                avail_str = f"ช่องว่าง: {avail_preview}"
-            else:
-                avail_str = "โซนนี้แน่นเอี๊ยดแล้วพี่"
-            lines.append(f"- {loc} ({cam}): ว่าง {vac}/{cap} ช่อง")
-            lines.append(f"  {avail_str}")
-
-        lines.append("")
-        lines.append("บิดมาจอดข้างภาคคอมได้เลยพี่ ลานกว้างเทียบสบาย!")
-        return "\n".join(lines), "cam3"
-
-    # 5. Car Only (หาที่จอดรถยนต์)
-    if any(k in msg for k in ["หาที่จอดรถยนต์", "รถยนต์", "สี่ล้อ", "รถเก๋ง", "รถกระบะ"]) or "car" in msg_lower:
-        car_rows = [r for r in rows if r.get("vehicle_type") in ("car", "mixed") or r.get("camera_id") in ("cam1", "cam2")]
-        total_vac = sum(r.get("vacant_count", 0) for r in car_rows)
-        lines = [
-            "[น้องจ๊อดส่องเลน: รถยนต์ 4 ล้อ]",
-            f"รถยนต์ว่างรวม: {total_vac} ช่อง",
+            f"มอไซค์ (2 ล้อ): ว่างรวม {total_bikes_vac}/{total_bikes_cap} ช่อง",
+            f"- ข้างภาคคอม (CAM3): ว่าง {len(c3_data['bike_vac'])}/{c3_data['bike_total']} ช่อง",
+            f"- หน้าภาค 2 (CAM2): ว่าง {len(c2_data['bike_vac'])}/{c2_data['bike_total']} ช่อง",
+            f"- หน้าภาค 1 (CAM1): ว่าง {len(c1_data['bike_vac'])}/{c1_data['bike_total']} ช่อง",
             "",
+            "กดปุ่มเมนูด้านล่างเพื่อเจาะดูแต่ละโซนได้เลยครับพี่!"
         ]
-        for r in car_rows:
-            loc = r.get("location_name", r.get("camera_id", ""))
-            cam = r.get("camera_id", "").upper()
-            vac = r.get("vacant_count", 0)
-            cap = r.get("total_capacity", 0)
-            avail_slots = r.get("available_slot_ids", [])
-            avail_str = f"ช่องว่าง: {', '.join(avail_slots)}" if avail_slots else "โซนนี้เต็มแล้วพี่ อย่าเพิ่งขับมาเสียบ"
-            lines.append(f"- {loc} ({cam}): ว่าง {vac}/{cap} ช่อง")
-            lines.append(f"  {avail_str}")
+        return "\n".join(lines), ["cam1", "cam2", "cam3"]
 
-        lines.append("")
-        lines.append("รีบขับมาเทียบเลนก่อนโดนตัดหน้านะพี่!")
-        return "\n".join(lines), "cam2"
-
-    # 6. User asks for pictures / snapshots
+    # 8. User asks for pictures / snapshots
     if any(k in msg_clean for k in ["ขอดูรูป", "ส่งรูป", "ดูรูป", "ภาพสด", "รูปภาพ", "กล้อง"]):
-        target = "cam2"
         if "3" in msg_clean or "มอไซ" in msg_clean or "ข้างภาค" in msg_clean:
-            target = "cam3"
+            return f"[น้องจ๊อดจัดให้: ภาพสด ลานข้างภาคคอม (CAM3)]\nสถานะ: มอไซค์ว่าง {len(c3_data['bike_vac'])}/{c3_data['bike_total']} ช่อง บิดมาได้เลยพี่!", ["cam3"]
         elif "1" in msg_clean:
-            target = "cam1"
-        match = cam_map.get(target, {})
-        loc = match.get("location_name", target.upper())
-        vac = match.get("vacant_count", 0)
-        cap = match.get("total_capacity", 0)
-        return f"[น้องจ๊อดจัดให้: ภาพสด {loc}]\nสถานะปัจจุบัน: ว่าง {vac}/{cap} ช่อง บิดมาเทียบเลนได้เลยพี่!", target
+            return f"[น้องจ๊อดจัดให้: ภาพสด ลานหน้าภาค 1 (CAM1)]\nสถานะ: รถยนต์ว่าง {len(c1_data['car_vac'])}/{c1_data['car_total']} ช่อง, มอไซค์ว่าง {len(c1_data['bike_vac'])}/{c1_data['bike_total']} ช่อง!", ["cam1"]
+        elif "2" in msg_clean:
+            return f"[น้องจ๊อดจัดให้: ภาพสด ลานหน้าภาค 2 (CAM2)]\nสถานะ: รถยนต์ว่าง {len(c2_data['car_vac'])}/{c2_data['car_total']} ช่อง, มอไซค์ว่าง {len(c2_data['bike_vac'])}/{c2_data['bike_total']} ช่อง!", ["cam2"]
+        else:
+            return f"[น้องจ๊อดจัดให้: ภาพสดลานจอดหน้าภาค (CAM1 & CAM2)]\nรถยนต์ว่าง {len(c1_data['car_vac'])+len(c2_data['car_vac'])} ช่อง บิดมาเทียบเลนได้เลยพี่!", ["cam1", "cam2"]
 
-    return None, None
+    return None, []
 
 
 def verify_line_signature(body_str: str, signature: str, secret: str) -> bool:
@@ -414,7 +504,7 @@ class LineBotService:
 บุคลิกภาพและน้ำเสียง:
 1. เป็นเด็กแว๊นสายซิ่ง กวนๆ เฟรนด์ลี่ เฮฮา ใช้สำนวนภาษาปากวัยรุ่นสายซิ่งแต่จริงใจ น่ารัก และสุภาพ (เช่น เรียกผู้ใช้ว่า "พี่", "ลูกพี่", ใช้คำว่า "บิดมาเลยพี่", "เทียบเลน", "เลนนี้โล่ง", "เต็มเอี๊ยด", "เสียบช่อง", "อย่าเพิ่งขับมาเสียบ", ลงท้ายด้วย "ครับพี่" หรือ "นะพี่")
 2. ห้ามใช้อิโมจิ (Emoji) ในคำตอบเด็ดขาด ให้ใช้ข้อความล้วนๆ สั้น กระชับ อ่านเข้าใจง่ายใน 2-3 บรรทัด
-3. ความถูกต้องของข้อมูลเป็นอันดับ 1: ต้องให้จำนวนช่องว่างและชื่อช่องที่ว่างตรงตามข้อมูลจริงด้านล่างเป๊ะๆ ห้ามแต่งข้อมูลช่องจอดเด็ดขาด!
+3. ความถูกต้องของข้อมูลเป็นอันดับ 1: แยกแยะประเภทรถยนต์ (Car: A01-A06, B01-B05) และมอเตอร์ไซค์ (Bike: M01-M08, B06-B18, C01, MC01-MC24) ให้ถูกต้องตามข้อมูลจริงด้านล่าง ห้ามแต่งข้อมูลช่องจอดเด็ดขาด!
 4. หากผู้ใช้ถามถึงโอกาสว่างเมื่อมาถึงในอนาคต (เช่น อีก 10-15 นาที): วิเคราะห์ความน่าจะเป็นอย่างมั่นใจ เช่น "ช่อง B03 โอกาสว่างสูง 80% เพราะเพิ่งว่าง บิดมาให้ไวเลยพี่!"
 5. ตอบกระชับ สั้น ไม่เวิ่นเว้อ เหมาะสำหรับการอ่านในแชต LINE
 
@@ -455,7 +545,7 @@ class LineBotService:
             return f"ชัดเจนในเลนเรา! ตอนนี้ลานจอดมีที่ว่างรวม {total_vac} ช่อง บิดมาเทียบเลนหน้าภาคหรือข้างภาคคอมได้เลยครับพี่!"
 
     def handle_webhook_event(self, body: str, signature: str):
-        """Process LINE webhook event payload, pull real data, and reply with images."""
+        """Process LINE webhook event payload, pull real data, and reply with multi-camera images."""
         if not self.channel_secret:
             raise ValueError("LINE Channel Secret is not configured.")
 
@@ -485,8 +575,8 @@ class LineBotService:
                     logger.info("Skipping verify/dummy replyToken: %s", reply_token)
                     continue
 
-                # 1. Pull Real Data directly / Format Response with real snapshot
-                fast_reply, target_cam = format_quick_response(user_msg)
+                # 1. Pull Real Data directly / Format Response with real snapshots
+                fast_reply, target_cams = format_quick_response(user_msg)
                 if fast_reply:
                     final_text = fast_reply
                 else:
@@ -494,11 +584,12 @@ class LineBotService:
                     final_text = self.query_dotblue_advisor(user_msg)
 
                 reply_messages = []
-                if target_cam:
-                    # Construct snapshot URL with valid HTTPS public tunnel URL
-                    public_base = get_public_https_url()
-                    ts = int(datetime.now().timestamp())
-                    snapshot_url = f"{public_base}/api/v1/line/snapshot/{target_cam}?mode=chatbot&t={ts}"
+                public_base = get_public_https_url()
+                ts = int(datetime.now().timestamp())
+
+                # Add images (LINE API allows max 5 messages total, so max 4 images + 1 text)
+                for cam in target_cams[:4]:
+                    snapshot_url = f"{public_base}/api/v1/line/snapshot/{cam}?mode=chatbot&t={ts}"
                     reply_messages.append({
                         "type": "image",
                         "originalContentUrl": snapshot_url,
@@ -511,7 +602,7 @@ class LineBotService:
                     "quickReply": build_quick_reply_payload()
                 })
 
-                # Reply back to LINE user directly with Quick Reply options attached
+                # Reply back to LINE user directly
                 reply_url = "https://api.line.me/v2/bot/message/reply"
                 reply_headers = {
                     "Content-Type": "application/json",
@@ -528,11 +619,11 @@ class LineBotService:
                         headers=reply_headers,
                     )
                     with urllib.request.urlopen(reply_req, context=_ssl_ctx, timeout=10) as r_resp:
-                        logger.info("LINE reply sent successfully (%d messages, target_cam=%s), HTTP %s", len(reply_messages), target_cam, r_resp.status)
+                        logger.info("LINE reply sent successfully (%d messages, target_cams=%s), HTTP %s", len(reply_messages), target_cams, r_resp.status)
                 except urllib.error.HTTPError as http_err:
                     err_body = http_err.read().decode("utf-8", errors="ignore")
                     logger.error("LINE reply HTTP Error %s: %s (Payload: %s)", http_err.code, err_body, reply_payload)
-                    # If sending image message failed, fallback to text-only reply immediately
+                    # Fallback to text-only reply immediately
                     if len(reply_messages) > 1:
                         try:
                             fallback_payload = {

@@ -170,7 +170,25 @@ def activate_model(
     target_model.is_active = True
     db.commit()
     db.refresh(target_model)
+
+    # Broadcast event to Redis for detect_worker.py zero-downtime hot-reload
+    try:
+        import redis
+        r = redis.Redis(host=settings.redis_host, port=settings.redis_port, socket_timeout=2)
+        payload = {
+            "event": "model_activated",
+            "model_id": target_model.id,
+            "model_name": target_model.model_name,
+            "version": target_model.version,
+            "minio_weight_path": target_model.minio_weight_path,
+        }
+        r.publish("model:reload", json.dumps(payload))
+        r.set("active_model:info", json.dumps(payload))
+    except Exception as e:
+        pass
+
     return target_model
+
 
 
 @router.get(

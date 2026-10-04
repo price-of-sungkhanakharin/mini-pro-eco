@@ -13,6 +13,7 @@ from backend.app.models import DatasetModel, ModelRegistryModel, ParkingOccupanc
 from backend.app.routers import (
     auth,
     datasets,
+    gpu_trainer_router,
     health,
     inference,
     label_studio_router,
@@ -35,6 +36,11 @@ tags_metadata = [
         "name": "Authentication",
         "description": "User authentication, JWT token generation, and user registration",
     },
+    {
+        "name": "Private GPU Compute Node",
+        "description": "Self-hosted NVIDIA GTX 1660 SUPER GPU training, telemetry, and live SSE log streaming",
+    },
+
     {
         "name": "Datasets",
         "description": "Raw dataset storage and MinIO path management",
@@ -228,6 +234,7 @@ app.include_router(line_bot_router.router)
 app.include_router(parking_router.router)
 app.include_router(roboflow_router.router)
 app.include_router(modal_trainer_router.router)
+app.include_router(gpu_trainer_router.router)
 
 
 @app.get("/")

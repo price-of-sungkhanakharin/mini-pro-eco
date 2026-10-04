@@ -3,6 +3,7 @@
 from . import (
     auth,
     datasets,
+    gpu_trainer_router,
     health,
     inference,
     label_studio_router,
@@ -18,6 +19,7 @@ from . import (
 __all__ = [
     "auth",
     "datasets",
+    "gpu_trainer_router",
     "health",
     "inference",
     "label_studio_router",
@@ -29,3 +31,4 @@ __all__ = [
     "roboflow_router",
     "train",
 ]
+

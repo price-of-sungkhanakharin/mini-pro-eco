@@ -1,0 +1,228 @@
+<mxfile host="65bd71144e">
+    <diagram id="gpu-training-and-lifecycle" name="Private GPU Node Training & Unified Data Lifecycle Architecture">
+        <mxGraphModel dx="1600" dy="950" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1200" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+
+                <!-- ========================================== -->
+                <!-- 1. MAIN HEADER & TITLE                     -->
+                <!-- ========================================== -->
+                <mxCell id="main_title" value="🚀 AI Platform: Private GPU Compute Node &amp; Unified Data Lifecycle Architecture" style="text;html=1;strokeColor=#1E293B;fillColor=#0F172A;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=20;fontStyle=1;fontColor=#38BDF8;strokeWidth=2;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="20" width="1720" height="50" as="geometry"/>
+                </mxCell>
+
+                <!-- ========================================== -->
+                <!-- 2. SWIMLANES / SYSTEM BOUNDARIES           -->
+                <!-- ========================================== -->
+
+                <!-- Lane 1: Frontend & Edge Users -->
+                <mxCell id="lane_frontend" value="🖥️ FRONTEND WEB &amp; CONTROL STUDIO (Vite / React)" style="swimlane;startSize=30;horizontal=1;fillColor=#1E293B;strokeColor=#334155;fontColor=#F8FAFC;fontStyle=1;fontSize=14;rounded=1;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="90" width="360" height="1060" as="geometry"/>
+                </mxCell>
+
+                <mxCell id="ui_telemetry" value="&lt;b&gt;📊 Live GPU Telemetry Widget&lt;/b&gt;&lt;br&gt;• GTX 1660 SUPER (6GB VRAM)&lt;br&gt;• Real-time VRAM Usage &amp; Temp (34°C)&lt;br&gt;• Job Queue Status Indicator" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0F172A;strokeColor=#38BDF8;fontColor=#E2E8F0;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="lane_frontend">
+                    <mxGeometry x="20" y="50" width="320" height="80" as="geometry"/>
+                </mxCell>
+
+                <mxCell id="ui_config" value="&lt;b&gt;⚙️ Training Configurator&lt;/b&gt;&lt;br&gt;• Base Model (YOLO11n, YOLO11s, YOLOv8)&lt;br&gt;• Dataset Selector (Unified MinIO Datasets)&lt;br&gt;• Epochs (50), Batch (16), ImgSz (640)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0F172A;strokeColor=#818CF8;fontColor=#E2E8F0;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="lane_frontend">
+                    <mxGeometry x="20" y="150" width="320" height="85" as="geometry"/>
+                </mxCell>
+
+                <mxCell id="ui_preflight_box" value="&lt;b&gt;🔍 Pre-flight Validation Feedback&lt;/b&gt;&lt;br&gt;• AST Syntax Check Status (&lt; 5ms)&lt;br&gt;• VRAM 6GB Fit Check Warning&lt;br&gt;• Real-time Error Alert Banner" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0F172A;strokeColor=#34D399;fontColor=#E2E8F0;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="lane_frontend">
+                    <mxGeometry x="20" y="255" width="320" height="75" as="geometry"/>
+                </mxCell>
+
+                <mxCell id="ui_terminal" value="&lt;b&gt;📟 Live SSE Streaming Terminal&lt;/b&gt;&lt;br&gt;• Real-time Training Logs from GPU Node&lt;br&gt;• Epoch / Box Loss / mAP50 Highlighter&lt;br&gt;• Auto-scroll &amp; Log Filter/Search" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#020617;strokeColor=#A855F7;fontColor=#C084FC;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="lane_frontend">
+                    <mxGeometry x="20" y="350" width="320" height="100" as="geometry"/>
+                </mxCell>
+
+                <mxCell id="ui_model_registry" value="&lt;b&gt;🏆 Model Registry &amp; 1-Click Switcher&lt;/b&gt;&lt;br&gt;• Active Model Badge (ONLINE)&lt;br&gt;• Version History (mAP50, Precision, Epochs)&lt;br&gt;• ⚡ [Activate Model] Zero-Downtime Button" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#064E3B;strokeColor=#10B981;fontColor=#ECFDF5;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="lane_frontend">
+                    <mxGeometry x="20" y="470" width="320" height="90" as="geometry"/>
+                </mxCell>
+
+                <mxCell id="ui_label_studio" value="&lt;b&gt;🏷️ Label Studio Annotation View&lt;/b&gt;&lt;br&gt;• Single Source of Truth Image Feed&lt;br&gt;• Bounding Box Labeling on Raw Frames&lt;br&gt;• 📦 [Promote to Dataset] Trigger" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#3B0764;strokeColor=#C084FC;fontColor=#FAF5FF;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="lane_frontend">
+                    <mxGeometry x="20" y="700" width="320" height="90" as="geometry"/>
+                </mxCell>
+
+                <!-- Lane 2: Platform Backend & Storage -->
+                <mxCell id="lane_backend" value="⚙️ PLATFORM BACKEND (FastAPI) &amp; DATABASE / MINIO" style="swimlane;startSize=30;horizontal=1;fillColor=#0F172A;strokeColor=#334155;fontColor=#F8FAFC;fontStyle=1;fontSize=14;rounded=1;" vertex="1" parent="1">
+                    <mxGeometry x="430" y="90" width="700" height="1060" as="geometry"/>
+                </mxCell>
+
+                <!-- Backend API Services -->
+                <mxCell id="backend_api_gateway" value="&lt;b&gt;🌐 FastAPI Central Gateway&lt;/b&gt;&lt;br&gt;Routes: /api/v1/training/gpu | /api/v1/models | /api/v1/datasets" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1E293B;strokeColor=#64748B;fontColor=#F1F5F9;fontSize=12;fontStyle=1;" vertex="1" parent="lane_backend">
+                    <mxGeometry x="30" y="50" width="640" height="50" as="geometry"/>
+                </mxCell>
+
+                <mxCell id="backend_preflight" value="&lt;b&gt;🔍 Pre-flight AST Validator&lt;/b&gt;&lt;br&gt;• Python AST Validation (`ast.parse`)&lt;br&gt;• Syntax Check &amp; Import Verify (&lt;5ms)&lt;br&gt;• Rejects faulty jobs before queue" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14532D;strokeColor=#22C55E;fontColor=#DCFCE7;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="lane_backend">
+                    <mxGeometry x="30" y="120" width="290" height="75" as="geometry"/>
+                </mxCell>
+
+                <mxCell id="backend_gpunode_client" value="&lt;b&gt;🚀 GPUNode Service Client&lt;/b&gt;&lt;br&gt;• Handshake &amp; Auth Header (`X-API-Key`)&lt;br&gt;• Submit Lightweight `code.zip` (&lt;100KB)&lt;br&gt;• Telemetry Poller &amp; Job Dispatcher" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1E3A8A;strokeColor=#3B82F6;fontColor=#DBEAFE;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="lane_backend">
+                    <mxGeometry x="350" y="120" width="320" height="75" as="geometry"/>
+                </mxCell>
+
+                <mxCell id="backend_sse_proxy" value="&lt;b&gt;📡 SSE Stream Proxy &amp; Event Hub&lt;/b&gt;&lt;br&gt;• Proxies live logs from GPU Node to Client&lt;br&gt;• Broadcasts Model Switch Events via Redis" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#581C87;strokeColor=#A855F7;fontColor=#F3E8FF;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="lane_backend">
+                    <mxGeometry x="30" y="215" width="290" height="65" as="geometry"/>
+                </mxCell>
+
+                <mxCell id="backend_artifact_ingest" value="&lt;b&gt;💾 Artifact Downloader &amp; Auto-Ingestion&lt;/b&gt;&lt;br&gt;• Downloads `best.pt` from GPU Node&lt;br&gt;• Uploads to MinIO `models/&lt;job_id&gt;/best.pt`&lt;br&gt;• Auto-registers into PostgreSQL `model_registry`" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#701A75;strokeColor=#D946EF;fontColor=#FDF4FF;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="lane_backend">
+                    <mxGeometry x="350" y="215" width="320" height="65" as="geometry"/>
+                </mxCell>
+
+                <!-- PostgreSQL Database Box -->
+                <mxCell id="db_postgres" value="&lt;b&gt;🗃️ PostgreSQL Database (Relational Metadata &amp; State)&lt;/b&gt;" style="swimlane;startSize=25;horizontal=1;fillColor=#0F2A4A;strokeColor=#0284C7;fontColor=#BAE6FD;fontStyle=1;fontSize=12;rounded=1;" vertex="1" parent="lane_backend">
+                    <mxGeometry x="30" y="300" width="640" height="230" as="geometry"/>
+                </mxCell>
+
+                <mxCell id="db_tbl_datasets" value="&lt;b&gt;📋 datasets / raw_images&lt;/b&gt;&lt;br&gt;• `id`, `dataset_id`, `name`, `minio_path`&lt;br&gt;• `status`: RAW_UNLABELED ➔ PROMOTED_DATASET&lt;br&gt;• `total_images`, `train_count`, `classes` JSON&lt;br&gt;• `is_cached_on_gpu_node` (BOOLEAN)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0369A1;strokeColor=#38BDF8;fontColor=#F0F9FF;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="db_postgres">
+                    <mxGeometry x="15" y="35" width="290" height="85" as="geometry"/>
+                </mxCell>
+
+                <mxCell id="db_tbl_jobs" value="&lt;b&gt;📋 gpu_training_jobs&lt;/b&gt;&lt;br&gt;• `job_id`, `dataset_id`, `base_model`&lt;br&gt;• `status`: PREFLIGHT ➔ QUEUED ➔ RUNNING ➔ COMPLETED&lt;br&gt;• `preflight_passed` (BOOLEAN), `metrics` JSON&lt;br&gt;• `best_map50`, `minio_code_path`, `minio_output_path`" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0369A1;strokeColor=#38BDF8;fontColor=#F0F9FF;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="db_postgres">
+                    <mxGeometry x="320" y="35" width="305" height="85" as="geometry"/>
+                </mxCell>
+
+                <mxCell id="db_tbl_models" value="&lt;b&gt;🏆 model_registry (Single Source for Inference Engine)&lt;/b&gt;&lt;br&gt;• `id`, `model_name`, `version` (e.g. YOLOv11-Parking v2.0)&lt;br&gt;• `minio_weight_path` (`models/job_xxx/best.pt`), `map50`&lt;br&gt;• &lt;b&gt;`is_active` (BOOLEAN)&lt;/b&gt; ⚡ Controls Active Camera Inference Model" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#047857;strokeColor=#10B981;fontColor=#ECFDF5;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="db_postgres">
+                    <mxGeometry x="15" y="130" width="610" height="85" as="geometry"/>
+                </mxCell>
+
+                <!-- MinIO Object Storage Box -->
+                <mxCell id="minio_box" value="&lt;b&gt;🗄️ MinIO Object Storage (Single Unified S3 Bucket: ai-ecosystem)&lt;/b&gt;" style="swimlane;startSize=25;horizontal=1;fillColor=#451A03;strokeColor=#F59E0B;fontColor=#FEF3C7;fontStyle=1;fontSize=12;rounded=1;" vertex="1" parent="lane_backend">
+                    <mxGeometry x="30" y="550" width="640" height="230" as="geometry"/>
+                </mxCell>
+
+                <mxCell id="minio_raw" value="&lt;b&gt;📂 1. raw-data/&lt;/b&gt;&lt;br&gt;• `cam1/YYYY-MM-DD/frame_001.jpg`&lt;br&gt;• Single Source of Truth for Labeling&lt;br&gt;• Status: `RAW_UNLABELED`" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#78350F;strokeColor=#FBBF24;fontColor=#FFFBEB;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="minio_box">
+                    <mxGeometry x="15" y="35" width="290" height="85" as="geometry"/>
+                </mxCell>
+
+                <mxCell id="minio_datasets" value="&lt;b&gt;📂 2. datasets/&lt;/b&gt;&lt;br&gt;• `ds_cctv_parking_v1/`&lt;br&gt;• `images/` (train/val), `labels/`, `data.yaml`&lt;br&gt;• Promoted from Raw after Labeling" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#78350F;strokeColor=#FBBF24;fontColor=#FFFBEB;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="minio_box">
+                    <mxGeometry x="320" y="35" width="305" height="85" as="geometry"/>
+                </mxCell>
+
+                <mxCell id="minio_runs" value="&lt;b&gt;📂 3. runs/ (Code packages)&lt;/b&gt;&lt;br&gt;• `job_xxx/code.zip` (&lt;100KB)&lt;br&gt;• `job_xxx/preflight_report.json`" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#78350F;strokeColor=#FBBF24;fontColor=#FFFBEB;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="minio_box">
+                    <mxGeometry x="15" y="130" width="290" height="85" as="geometry"/>
+                </mxCell>
+
+                <mxCell id="minio_models" value="&lt;b&gt;📂 4. models/ (Weights &amp; Artifacts)&lt;/b&gt;&lt;br&gt;• `job_xxx/best.pt`, `last.pt`&lt;br&gt;• `job_xxx/artifacts.zip`, `results.csv`" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#78350F;strokeColor=#FBBF24;fontColor=#FFFBEB;fontSize=10;align=left;spacingLeft=8;" vertex="1" parent="minio_box">
+                    <mxGeometry x="320" y="130" width="305" height="85" as="geometry"/>
+                </mxCell>
+
+                <!-- Live Inference Engine Integration -->
+                <mxCell id="inference_worker" value="&lt;b&gt;👁️ CCTV Live Detection Worker (`detect_worker.py`)&lt;/b&gt;&lt;br&gt;• Subscribes to Redis `model:reload` event&lt;br&gt;• Reads `is_active=True` weight from MinIO `models/.../best.pt`&lt;br&gt;• Performs Zero-Downtime Hot-Reloading in Memory for Cam1, Cam2, Cam3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#064E3B;strokeColor=#10B981;fontColor=#ECFDF5;fontSize=11;align=left;spacingLeft=12;fontStyle=1;" vertex="1" parent="lane_backend">
+                    <mxGeometry x="30" y="800" width="640" height="80" as="geometry"/>
+                </mxCell>
+
+                <!-- Dataset Promotion Engine -->
+                <mxCell id="dataset_promotion" value="&lt;b&gt;📦 Dataset Promotion &amp; Reorganization Engine&lt;/b&gt;&lt;br&gt;• Triggered when user commits annotations in Label Studio&lt;br&gt;• Organizes files in MinIO from `raw-data/` ➔ `datasets/&lt;dataset_id&gt;/`&lt;br&gt;• Updates PostgreSQL state: `RAW_UNLABELED` ➔ `PROMOTED_DATASET`" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4A044E;strokeColor=#E879F9;fontColor=#FAE8FF;fontSize=11;align=left;spacingLeft=12;" vertex="1" parent="lane_backend">
+                    <mxGeometry x="30" y="900" width="640" height="75" as="geometry"/>
+                </mxCell>
+
+
+                <!-- Lane 3: Private GPU Compute Node -->
+                <mxCell id="lane_gpunode" value="🔥 PRIVATE GPU COMPUTE NODE (172.30.81.175:9000)" style="swimlane;startSize=30;horizontal=1;fillColor=#18181B;strokeColor=#3F3F46;fontColor=#FAFAFA;fontStyle=1;fontSize=14;rounded=1;" vertex="1" parent="1">
+                    <mxGeometry x="1160" y="90" width="600" height="1060" as="geometry"/>
+                </mxCell>
+
+                <!-- Hardware Specs Banner -->
+                <mxCell id="gpu_hardware_box" value="&lt;b&gt;🎮 Hardware: NVIDIA GeForce GTX 1660 SUPER&lt;/b&gt;&lt;br&gt;• VRAM: 6,144 MB GDDR6 (5,123 MB Free) | CUDA 12.x/13.x&lt;br&gt;• Temp: 34°C | Zero Cloud Cost (Self-Hosted Private Hardware)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14532D;strokeColor=#4ADE80;fontColor=#F0FDF4;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="lane_gpunode">
+                    <mxGeometry x="25" y="50" width="550" height="65" as="geometry"/>
+                </mxCell>
+
+                <!-- Node FastAPI Service -->
+                <mxCell id="gpunode_api" value="&lt;b&gt;⚡ GPUNode Daemon API (FastAPI Port 9000)&lt;/b&gt;&lt;br&gt;Endpoints: POST /api/jobs | GET /api/jobs/{id}/logs/stream | GET /api/gpu" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#27272A;strokeColor=#71717A;fontColor=#F43F5E;fontSize=11;fontStyle=1;align=left;spacingLeft=10;" vertex="1" parent="lane_gpunode">
+                    <mxGeometry x="25" y="130" width="550" height="55" as="geometry"/>
+                </mxCell>
+
+                <!-- Redis Task Queue & SSE PubSub -->
+                <mxCell id="gpunode_redis" value="&lt;b&gt;⚡ Redis Task Queue &amp; Pub/Sub Log Broker&lt;/b&gt;&lt;br&gt;• Manages Job Queue (GTX 1660 SUPER Execution)&lt;br&gt;• Publishes Real-time Training Logs to SSE Subscribers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#7F1D1D;strokeColor=#EF4444;fontColor=#FEF2F2;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="lane_gpunode">
+                    <mxGeometry x="25" y="200" width="550" height="65" as="geometry"/>
+                </mxCell>
+
+                <!-- Zero Copy NVMe Storage Cache -->
+                <mxCell id="gpunode_nvme_cache" value="&lt;b&gt;🚀 Zero-Copy Local NVMe Dataset Cache (`./dataset`)&lt;/b&gt;&lt;br&gt;• Caches Dataset once on Local Fast NVMe SSD&lt;br&gt;• Symlinks `./dataset` directly into Working Directory for zero-latency I/O&lt;br&gt;• Eliminates repetitive gigabyte downloads across multiple training runs!" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1E3A8A;strokeColor=#60A5FA;fontColor=#EFF6FF;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="lane_gpunode">
+                    <mxGeometry x="25" y="280" width="550" height="75" as="geometry"/>
+                </mxCell>
+
+                <!-- PyTorch YOLO Training Worker -->
+                <mxCell id="gpunode_worker" value="&lt;b&gt;🔥 PyTorch YOLO Training Engine (Executor)&lt;/b&gt;&lt;br&gt;• Unpacks lightweight `code.zip` into isolated sandbox&lt;br&gt;• Runs `python train.py --data ./dataset/data.yaml --model yolo11n.pt`&lt;br&gt;• Outputs checkpoints &amp; metrics to `./outputs/` (auto-zipped for retrieval)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4C1D95;strokeColor=#C084FC;fontColor=#FAF5FF;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="lane_gpunode">
+                    <mxGeometry x="25" y="370" width="550" height="85" as="geometry"/>
+                </mxCell>
+
+                <!-- Output Artifacts Box -->
+                <mxCell id="gpunode_output_store" value="&lt;b&gt;📦 Local Output Artifacts Storage&lt;/b&gt;&lt;br&gt;• `GET /api/storage/download/{job_id}` (Serves zipped best.pt, last.pt, results.csv)&lt;br&gt;• Cleaned up automatically after ingestion into Platform MinIO" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#3F3F46;strokeColor=#A1A1AA;fontColor=#FAFAFA;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="lane_gpunode">
+                    <mxGeometry x="25" y="470" width="550" height="65" as="geometry"/>
+                </mxCell>
+
+
+                <!-- ========================================== -->
+                <!-- 3. CONNECTORS & DATA FLOW ARROWS           -->
+                <!-- ========================================== -->
+
+                <!-- Flow 1: Start Training Job -->
+                <mxCell id="flow_start_job" value="1. Submit Job&#xa;(Model + Dataset ID)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontColor=#38BDF8;strokeColor=#38BDF8;strokeWidth=2;" edge="1" parent="1" source="ui_config" target="backend_preflight">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+
+                <!-- Flow 2: Preflight to Dispatcher -->
+                <mxCell id="flow_preflight_dispatch" value="2. AST Passed (&lt;5ms)&#xa;Package code.zip" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontColor=#4ADE80;strokeColor=#22C55E;strokeWidth=2;" edge="1" parent="1" source="backend_preflight" target="backend_gpunode_client">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+
+                <!-- Flow 3: Dispatcher to GPUNode -->
+                <mxCell id="flow_dispatch_gpunode" value="3. POST /api/jobs&#xa;(code.zip + dataset_id)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontColor=#60A5FA;strokeColor=#3B82F6;strokeWidth=3;" edge="1" parent="1" source="backend_gpunode_client" target="gpunode_api">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+
+                <!-- Flow 4: GPUNode API to Redis -->
+                <mxCell id="flow_api_to_redis" value="Enqueue" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#EF4444;strokeWidth=2;fontColor=#FCA5A5;" edge="1" parent="1" source="gpunode_api" target="gpunode_redis">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+
+                <!-- Flow 5: Redis to Worker -->
+                <mxCell id="flow_redis_to_worker" value="Execute on GTX 1660 SUPER" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#A855F7;strokeWidth=2;fontColor=#D8B4FE;" edge="1" parent="1" source="gpunode_nvme_cache" target="gpunode_worker">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+
+                <!-- Flow 6: Live SSE Logs -->
+                <mxCell id="flow_live_logs" value="4. Real-time Logs SSE Stream&#xa;(Redis Pub/Sub ➔ FastAPI ➔ Frontend Terminal)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#C084FC;strokeWidth=2;dashed=1;fontColor=#E9D5FF;" edge="1" parent="1" source="gpunode_redis" target="backend_sse_proxy">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+
+                <mxCell id="flow_sse_to_ui" value="Live Stream" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#C084FC;strokeWidth=2;dashed=1;fontColor=#E9D5FF;" edge="1" parent="1" source="backend_sse_proxy" target="ui_terminal">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+
+                <!-- Flow 7: Worker Output to Storage -->
+                <mxCell id="flow_worker_to_artifacts" value="Save best.pt &amp; metrics" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#EC4899;strokeWidth=2;fontColor=#FBCFE8;" edge="1" parent="1" source="gpunode_worker" target="gpunode_output_store">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+
+                <!-- Flow 8: Artifact Download to MinIO & Registry -->
+                <mxCell id="flow_download_artifacts" value="5. Download best.pt &amp; Store" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#EC4899;strokeWidth=2;fontColor=#FBCFE8;" edge="1" parent="1" source="gpunode_output_store" target="backend_artifact_ingest">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+
+                <!-- Flow 9: Activate Model & Hot-Reload -->
+                <mxCell id="flow_activate_model" value="6. 1-Click Activate Model&#xa;(Zero-Downtime Hot-Reload)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#10B981;strokeWidth=3;fontColor=#6EE7B7;" edge="1" parent="1" source="ui_model_registry" target="db_tbl_models">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+
+                <mxCell id="flow_hot_reload_worker" value="7. Redis `model:reload` ➔ Load best.pt" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#10B981;strokeWidth=3;fontColor=#6EE7B7;" edge="1" parent="1" source="db_tbl_models" target="inference_worker">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+
+                <!-- Flow 10: Unified Dataset Lifecycle -->
+                <mxCell id="flow_raw_to_label" value="CCTV Frames&#xa;(raw-data/)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#F59E0B;strokeWidth=2;fontColor=#FDE68A;" edge="1" parent="1" source="minio_raw" target="ui_label_studio">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+
+                <mxCell id="flow_promote_dataset" value="8. Promote to Dataset&#xa;(Move to datasets/&lt;id&gt; &amp; data.yaml)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#E879F9;strokeWidth=2;fontColor=#F5D0FE;" edge="1" parent="1" source="ui_label_studio" target="dataset_promotion">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

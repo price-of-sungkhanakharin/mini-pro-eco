@@ -103,6 +103,32 @@ class GPUNodeClient:
             logger.warning(f"Failed to list datasets from GPU Node: {e}")
         return []
 
+    async def upload_dataset(
+        self,
+        dataset_zip_bytes: bytes,
+        name: str,
+        dataset_id: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Upload a dataset zip archive to GPU Node and warm up NVMe cache."""
+        url = f"{self.base_url}/api/datasets"
+        files = {
+            "file": (f"{dataset_id or 'dataset'}.zip", dataset_zip_bytes, "application/zip")
+        }
+        data = {
+            "name": name,
+        }
+        if dataset_id:
+            data["dataset_id"] = dataset_id
+        if description:
+            data["description"] = description
+
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(url, headers=self._get_headers(), data=data, files=files)
+            resp.raise_for_status()
+            return resp.json()
+
+
     async def submit_job(
         self,
         code_zip_bytes: bytes,

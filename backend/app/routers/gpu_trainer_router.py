@@ -42,28 +42,38 @@ async def get_gpu_telemetry() -> Dict[str, Any]:
 
 
 @router.get("/datasets", summary="List Available Datasets")
-async def list_training_datasets() -> List[Dict[str, Any]]:
+async def list_training_datasets(db: Session = Depends(get_db)) -> List[Dict[str, Any]]:
     """List available datasets on GPU Node and Platform."""
-    datasets = await gpu_node_client.list_datasets()
-    if not datasets:
-        # Fallback default datasets
-        return [
-            {
-                "dataset_id": "ds_cctv_parking_v1",
-                "name": "CCTV Parking Main Gate (3,179 Images)",
-                "size_mb": 245.5,
-                "file_count": 3179,
-                "is_cached": True,
-            },
-            {
-                "dataset_id": "ds_dogcat_v1",
-                "name": "Dog Cat Small (Demo Dataset)",
-                "size_mb": 0.1,
-                "file_count": 4,
-                "is_cached": True,
-            }
-        ]
-    return datasets
+    from backend.app.models.dataset import DatasetModel
+    remote_datasets = await gpu_node_client.list_datasets()
+    remote_ids = {d.get("dataset_id") for d in remote_datasets if "dataset_id" in d}
+    
+    db_datasets = db.query(DatasetModel).filter(DatasetModel.status.in_(["READY", "LABELED"])).all()
+    results = []
+    
+    for d in remote_datasets:
+        results.append({
+            "dataset_id": d.get("dataset_id"),
+            "name": d.get("name", d.get("dataset_id")),
+            "size_mb": d.get("size_mb", 0.0),
+            "file_count": d.get("file_count", 0),
+            "is_cached": True,
+            "status": "READY",
+        })
+        
+    for ds in db_datasets:
+        if ds.dataset_id not in remote_ids:
+            results.append({
+                "dataset_id": ds.dataset_id,
+                "name": ds.name or ds.dataset_id,
+                "size_mb": round((ds.file_size or 0) / (1024 * 1024), 2),
+                "file_count": ds.images_count or 0,
+                "is_cached": False,
+                "status": ds.status,
+            })
+            
+    return results
+
 
 
 @router.post("/start", summary="Start Private GPU Node Training")

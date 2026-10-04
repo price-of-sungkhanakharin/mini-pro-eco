@@ -1,15 +1,16 @@
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
-from backend.app.core.security import get_current_user
+from backend.app.core.security import get_current_user, get_optional_user
 from backend.db.database import get_db
 from backend.app.models.dataset import DatasetModel
 from backend.app.models.user import UserModel
-from backend.app.schemas.dataset import DatasetResponse
+from backend.app.schemas.dataset import DatasetConvertRequest, DatasetResponse
 from backend.app.services.minio_service import MinIOService
+
 
 router = APIRouter(prefix="/api/v1/datasets", tags=["Datasets"])
 
@@ -65,7 +66,7 @@ async def upload_dataset(
     "",
     response_model=List[DatasetResponse],
     summary="List Datasets",
-    description="Get list of uploaded datasets with pagination parameters (skip, limit).",
+    description="Get list of uploaded datasets with pagination parameters (skip, limit) and optional status filter.",
     responses={
         200: {"description": "List of dataset records retrieved successfully"},
         401: {"description": "Unauthorized access"},
@@ -73,40 +74,84 @@ async def upload_dataset(
 )
 @router.get("/", response_model=List[DatasetResponse], include_in_schema=False)
 def get_datasets(
+    status: Optional[str] = Query(None, description="Filter by dataset status: READY, LABELED, RAW"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
-    current_user: UserModel = Depends(get_current_user),
+    current_user: Optional[UserModel] = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ):
-    """Get all datasets with pagination (skip, limit)."""
-    datasets = db.query(DatasetModel).offset(skip).limit(limit).all()
-    return datasets
+    """Get all datasets with pagination (skip, limit) and optional status filter."""
+    from backend.app.services.dataset_service import dataset_service
+    return dataset_service.get_all_datasets(db, status=status, skip=skip, limit=limit)
+
+
+@router.post(
+    "/convert",
+    response_model=DatasetResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Convert Raw Folder to Labeled YOLO Dataset",
+    description="Promotes a raw MinIO folder into a labeled dataset in MinIO (datasets/<id>/) with data.yaml, and updates status in PostgreSQL to READY.",
+)
+async def convert_raw_to_dataset(
+    payload: DatasetConvertRequest,
+    current_user: Optional[UserModel] = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+):
+    """Convert raw folder in MinIO to structured YOLO dataset in MinIO and register in DB."""
+    from backend.app.services.dataset_service import dataset_service
+    user_id = current_user.id if current_user else 1
+    ds = dataset_service.convert_raw_to_dataset(
+        db=db,
+        raw_path=payload.raw_path,
+        dataset_id=payload.dataset_id,
+        name=payload.name,
+        description=payload.description,
+        classes=payload.classes,
+        format_type=payload.format,
+        user_id=user_id,
+    )
+    return ds
+
+
+@router.post(
+    "/{dataset_id}/sync-gpu",
+    summary="Sync and Warm Up Dataset on Private GPU Node",
+    description="Uploads dataset bundle to Private GPU Compute Node (GTX 1660 SUPER) to warm up local NVMe cache.",
+)
+async def sync_dataset_to_gpu(
+    dataset_id: str,
+    db: Session = Depends(get_db),
+):
+    """Sync dataset with Private GPU Node."""
+    from backend.app.services.dataset_service import dataset_service
+    res = await dataset_service.sync_with_gpu_node(dataset_id=dataset_id, db=db)
+    return res
 
 
 @router.get(
     "/{dataset_id}",
     response_model=DatasetResponse,
-    summary="Get Dataset by ID",
-    description="Retrieve details of a specific dataset record by ID.",
+    summary="Get Dataset by ID or Dataset Code",
+    description="Retrieve details of a specific dataset record by integer ID or string dataset_id.",
     responses={
         200: {"description": "Dataset details retrieved successfully"},
         404: {"description": "Dataset not found"},
-        401: {"description": "Unauthorized access"},
     },
 )
 def get_dataset_by_id(
-    dataset_id: int,
-    current_user: UserModel = Depends(get_current_user),
+    dataset_id: str,
     db: Session = Depends(get_db),
 ):
-    """Get single dataset details by ID."""
-    dataset = db.query(DatasetModel).filter(DatasetModel.id == dataset_id).first()
+    """Get single dataset details by ID or dataset_id string."""
+    from backend.app.services.dataset_service import dataset_service
+    dataset = dataset_service.get_dataset_by_id_or_code(db, dataset_id)
     if not dataset:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Dataset with ID {dataset_id} not found",
+            detail=f"Dataset '{dataset_id}' not found",
         )
     return dataset
+
 
 
 @router.post(

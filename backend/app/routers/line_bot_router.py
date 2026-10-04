@@ -69,15 +69,87 @@ def get_bot_status() -> Dict[str, Any]:
 
 @router.post(
     "/api/v1/line/test-query",
-    summary="Simulate user question to dotBlue AI",
-    description="Allows testing the bot's AI reasoning directly via REST API without sending a message in LINE.",
+    summary="Simulate user question to dotBlue AI / Quick Reply",
+    description="Allows testing the bot's responses and snapshot attachments directly via REST API without sending a message in LINE.",
 )
 async def test_bot_query(payload: Dict[str, str]):
-    """Test AI query response directly."""
+    """Test AI query response or quick response directly."""
     question = payload.get("question", "ตอนนี้มีที่จอดรถว่างไหม")
-    answer = line_bot_service.query_dotblue_advisor(question)
+    from backend.app.services.line_bot_service import format_quick_response
+    fast_reply, target_cam = format_quick_response(question)
+    if fast_reply:
+        answer = fast_reply
+        mode = "quick_reply"
+    else:
+        answer = line_bot_service.query_dotblue_advisor(question)
+        mode = "dotblue_ai"
+        target_cam = None
+
+    image_url = None
+    if target_cam:
+        image_url = f"/api/v1/line/snapshot/{target_cam}?mode=chatbot"
+
     return {
         "question": question,
         "answer": answer,
-        "model": "openai/gpt-5.6-luna",
+        "handler": mode,
+        "target_cam": target_cam,
+        "image_url": image_url,
     }
+
+
+from fastapi.responses import FileResponse
+import os
+import sys
+from pathlib import Path
+
+if "/home/r211admin/parking-detect" not in sys.path:
+    sys.path.append("/home/r211admin/parking-detect")
+try:
+    from overlay_generator import get_parking_snapshot
+except Exception as _e:
+    logger.warning("Could not import get_parking_snapshot: %s", _e)
+    get_parking_snapshot = None
+
+
+@router.get(
+    "/api/v1/line/snapshot/{cam_id}",
+    summary="Get real-time parking overlay image for camera",
+    description="Generates and serves the latest parking overlay image (chatbot, dashboard, or raw) for the camera."
+)
+def get_camera_snapshot(cam_id: str, mode: str = "chatbot"):
+    """Serve fresh real-time parking overlay image for LINE / web consumers."""
+    cam_clean = cam_id.lower().strip()
+    
+    # 1. Try dynamic generator if available
+    if get_parking_snapshot is not None:
+        try:
+            img_file = get_parking_snapshot(cam_id=cam_clean, mode=mode)
+            if img_file and os.path.exists(img_file):
+                return FileResponse(img_file, media_type="image/jpeg")
+        except Exception as e:
+            logger.warning("Dynamic snapshot generation error for %s: %s", cam_clean, e)
+
+    # 2. Fallback to cached static snapshot files
+    candidate_paths = [
+        Path(f"/app/data/snapshots/{cam_clean}_chatbot_latest.jpg"),
+        Path(f"/app/data/snapshots/{cam_clean}_detected.jpg"),
+        Path(f"/app/data/snapshots/{cam_clean}_{mode}_latest.jpg"),
+        Path(f"/home/r211admin/project-eco/ai-ecosystem-workspace/data/snapshots/{cam_clean}_chatbot_latest.jpg"),
+        Path(f"/home/r211admin/project-eco/ai-ecosystem-workspace/data/snapshots/{cam_clean}_detected.jpg"),
+        Path(f"/home/r211admin/project-eco/ai-ecosystem-workspace/frontend/public/{cam_clean}_detected.jpg"),
+        Path(f"/home/r211admin/parking-detect/status_overlay/{cam_clean}_{mode}_latest.jpg"),
+        Path(f"/home/r211admin/parking-detect/status_overlay/{cam_clean}_chatbot_latest.jpg"),
+    ]
+    cache_headers = {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+    }
+    for p in candidate_paths:
+        if p.exists():
+            return FileResponse(str(p), media_type="image/jpeg", headers=cache_headers)
+
+    raise HTTPException(status_code=404, detail=f"No snapshot available for camera {cam_clean}")
+
+

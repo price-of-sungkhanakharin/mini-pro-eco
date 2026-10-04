@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     line_channel_id: str = Field(default="2011743452")
     line_channel_secret: str = Field(default="")
     line_channel_access_token: str = Field(default="")
+    line_public_url: str = Field(default="http://172.30.228.51:8000")
     dotblue_api_key: str = Field(default="")
     dotblue_base_url: str = Field(default="https://ai.psu.blue/v1")
     dotblue_model: str = Field(default="openai/gpt-5.6-luna")

@@ -1,9 +1,6 @@
-"""LINE Chatbot & dotBlue AI Advisor Service.
-
-Integrates LINE Messaging API webhook with dotBlue OpenAI-compatible LLM
-(openai/gpt-5.6-luna) to answer user inquiries about parking status in real time.
-"""
-
+import base64
+import hashlib
+import hmac
 import json
 import logging
 import ssl
@@ -11,46 +8,9 @@ import urllib.request
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-try:
-    from linebot.v3 import WebhookHandler
-    from linebot.v3.exceptions import InvalidSignatureError
-    from linebot.v3.messaging import (
-        ApiClient,
-        Configuration,
-        FlexBubble,
-        FlexBox,
-        FlexButton,
-        FlexComponent,
-        FlexContainer,
-        FlexMessage,
-        FlexText,
-        MessagingApi,
-        ReplyMessageRequest,
-        TextMessage,
-        URIAction,
-    )
-    from linebot.v3.webhooks import MessageEvent, TextMessageContent
-    HAS_LINEBOT = True
-except ImportError:
-    HAS_LINEBOT = False
-    class InvalidSignatureError(Exception):
-        pass
-    WebhookHandler = None
-    ApiClient = None
-    Configuration = None
-    FlexBubble = None
-    FlexBox = None
-    FlexButton = None
-    FlexComponent = None
-    FlexContainer = None
-    FlexMessage = None
-    FlexText = None
-    MessagingApi = None
-    ReplyMessageRequest = None
-    TextMessage = None
-    URIAction = None
-    MessageEvent = None
-    TextMessageContent = None
+class InvalidSignatureError(Exception):
+    """Raised when LINE webhook signature verification fails."""
+    pass
 
 from backend.app.core.config import settings
 
@@ -58,6 +18,9 @@ logger = logging.getLogger(__name__)
 
 # SSL context for dotBlue API request
 _ssl_ctx = ssl.create_default_context()
+_ssl_ctx.check_hostname = False
+_ssl_ctx.verify_mode = ssl.CERT_NONE
+
 _ssl_ctx.check_hostname = False
 _ssl_ctx.verify_mode = ssl.CERT_NONE
 
@@ -178,14 +141,230 @@ def get_current_parking_summary() -> str:
 """
 
 
+def get_parking_records():
+    """Retrieve list of parking status objects from Redis or PostgreSQL."""
+    import json
+    import redis
+
+    # 1. Try Redis
+    try:
+        r_client = redis.Redis(
+            host=settings.redis_host,
+            port=settings.redis_port,
+            decode_responses=True,
+            socket_connect_timeout=0.5,
+            socket_timeout=0.5,
+        )
+        cached = r_client.get("parking:status:summary")
+        if cached:
+            rows = json.loads(cached)
+            if rows:
+                return rows
+    except Exception:
+        pass
+
+    # 2. Fallback to PostgreSQL
+    from backend.db.database import SessionLocal
+    from backend.app.models.parking_log import ParkStatusModel
+
+    try:
+        with SessionLocal() as db:
+            rows = db.query(ParkStatusModel).order_by(ParkStatusModel.camera_id).all()
+            if rows:
+                return [
+                    {
+                        "camera_id": r.camera_id,
+                        "location_name": r.location_name,
+                        "vehicle_type": r.vehicle_type,
+                        "total_capacity": r.total_capacity,
+                        "occupied_count": r.occupied_count,
+                        "vacant_count": r.vacant_count,
+                        "occupancy_rate_pct": r.occupancy_rate_pct,
+                        "status_level": r.status_level,
+                        "available_slot_ids": r.available_slot_ids or [],
+                        "slots_detail": r.slots_detail or [],
+                        "updated_at": r.updated_at.strftime("%H:%M:%S") if r.updated_at else "",
+                    }
+                    for r in rows
+                ]
+    except Exception:
+        pass
+    return []
+
+
+def build_quick_reply_payload():
+    """Returns LINE Quick Reply buttons attached to message bottom."""
+    return {
+        "items": [
+            {"type": "action", "action": {"type": "message", "label": "📊 สรุปรวม", "text": "📊 สรุปภาพรวม"}},
+            {"type": "action", "action": {"type": "message", "label": "🚗 รถยนต์", "text": "🚗 หาที่จอดรถยนต์"}},
+            {"type": "action", "action": {"type": "message", "label": "🛵 มอไซค์", "text": "🛵 หาที่จอดมอไซค์"}},
+            {"type": "action", "action": {"type": "message", "label": "🏢 หน้าภาค 1", "text": "🏢 ลานหน้าภาค 1"}},
+            {"type": "action", "action": {"type": "message", "label": "🅿️ ในร่ม 2", "text": "🅿️ ลานในร่มหน้าภาค 2"}},
+            {"type": "action", "action": {"type": "message", "label": "🖥️ ข้างภาคคอม", "text": "🖥️ ลานข้างภาคคอม"}},
+        ]
+    }
+
+
+def format_quick_response(user_msg: str) -> Optional[str]:
+    """Provide instant, structured responses for Rich Menu and Quick Reply buttons."""
+    msg = user_msg.strip()
+    rows = get_parking_records()
+    if not rows:
+        return None
+
+    # 1. Overview Summary (📊 สรุปภาพรวม)
+    if "สรุป" in msg or "ภาพรวม" in msg or "overview" in msg.lower() or msg == "📊 สรุปภาพรวม":
+        total_cap = sum(r.get("total_capacity", 0) for r in rows)
+        total_vac = sum(r.get("vacant_count", 0) for r in rows)
+        total_occ = sum(r.get("occupied_count", 0) for r in rows)
+        overall_pct = round((total_occ / total_cap * 100) if total_cap > 0 else 0, 1)
+
+        lines = [
+            "🅿️ [สรุปสถานะที่จอดรถภาควิชาคอมพิวเตอร์]",
+            f"⏱️ ข้อมูลสด Real-time AI Vision",
+            f"━━━━━━━━━━━━━━━━━━━━",
+            f"📊 ภาพรวมทั้งหมด: ว่าง {total_vac} / {total_cap} ช่อง ({overall_pct}% จอด)",
+            "",
+        ]
+        for r in rows:
+            cam = r.get("camera_id", "").upper()
+            loc = r.get("location_name", cam)
+            vac = r.get("vacant_count", 0)
+            cap = r.get("total_capacity", 0)
+            status = r.get("status_level", "AVAILABLE")
+            status_emoji = "🟢" if status == "AVAILABLE" and vac > 0 else ("🟡" if status == "MODERATE" else "🔴")
+            v_type_icon = "🚗" if r.get("vehicle_type") == "car" else ("🛵" if r.get("vehicle_type") == "motorcycle" else "🚗/🛵")
+
+            lines.append(f"{status_emoji} {loc} ({cam}):")
+            lines.append(f"   {v_type_icon} ว่าง {vac}/{cap} ช่อง (สถานะ: {status})")
+            if r.get("available_slot_ids"):
+                avail_sample = ", ".join(r.get("available_slot_ids")[:6])
+                lines.append(f"   👉 ช่องว่าง: {avail_sample}")
+            else:
+                lines.append(f"   👉 ช่องว่าง: เต็มทุกช่อง")
+            lines.append("")
+
+        lines.append("💡 แตะปุ่มเมนูด้านล่างเพื่อดูเจาะจงรายโซนได้เลยครับ!")
+        return "\n".join(lines)
+
+    # 2. Car Only (🚗 หาที่จอดรถยนต์)
+    if "รถยนต์" in msg or "car" in msg.lower() or msg == "🚗 หาที่จอดรถยนต์":
+        car_rows = [r for r in rows if r.get("vehicle_type") in ("car", "mixed") or r.get("camera_id") in ("cam1", "cam2")]
+        total_cap = sum(r.get("total_capacity", 0) for r in car_rows)
+        total_vac = sum(r.get("vacant_count", 0) for r in car_rows)
+
+        lines = [
+            "🚗 [ค้นหาที่จอดรถยนต์ - Car Parking]",
+            f"━━━━━━━━━━━━━━━━━━━━",
+            f"📊 รถยนต์ว่างรวม: {total_vac} ช่อง",
+            "",
+        ]
+        for r in car_rows:
+            loc = r.get("location_name", r.get("camera_id", ""))
+            vac = r.get("vacant_count", 0)
+            cap = r.get("total_capacity", 0)
+            status_emoji = "🟢" if vac >= 2 else ("🟡" if vac == 1 else "🔴")
+            lines.append(f"{status_emoji} {loc}: ว่าง {vac}/{cap} ช่อง")
+            if r.get("available_slot_ids"):
+                lines.append(f"   👉 ช่องว่างแนะนำ: {', '.join(r.get('available_slot_ids'))}")
+            else:
+                lines.append(f"   👉 โซนนี้เต็มแล้วครับ")
+            lines.append("")
+
+        lines.append("💡 แนะนำ: กดปุ่มเลือกโซนเพื่อดูรายละเอียดช่องจอดได้ครับ")
+        return "\n".join(lines)
+
+    # 3. Motorcycle Only (🛵 หาที่จอดมอไซค์)
+    if "มอไซ" in msg or "มอเตอร์ไซค์" in msg or "bike" in msg.lower() or msg == "🛵 หาที่จอดมอไซค์":
+        bike_rows = [r for r in rows if r.get("vehicle_type") in ("motorcycle", "mixed") or r.get("camera_id") in ("cam3", "cam1", "cam2")]
+        total_cap = sum(r.get("total_capacity", 0) for r in bike_rows)
+        total_vac = sum(r.get("vacant_count", 0) for r in bike_rows)
+
+        lines = [
+            "🛵 [ค้นหาที่จอดมอเตอร์ไซค์ - Bike Parking]",
+            f"━━━━━━━━━━━━━━━━━━━━",
+            f"📊 มอเตอร์ไซค์ว่างรวม: {total_vac} ช่อง",
+            "",
+        ]
+        for r in bike_rows:
+            loc = r.get("location_name", r.get("camera_id", ""))
+            vac = r.get("vacant_count", 0)
+            cap = r.get("total_capacity", 0)
+            status_emoji = "🟢" if vac >= 3 else ("🟡" if vac >= 1 else "🔴")
+            lines.append(f"{status_emoji} {loc}: ว่าง {vac}/{cap} ช่อง")
+            if r.get("available_slot_ids"):
+                avail_preview = ", ".join(r.get("available_slot_ids")[:8])
+                if len(r.get("available_slot_ids")) > 8:
+                    avail_preview += f" และอีก {len(r.get('available_slot_ids')) - 8} ช่อง"
+                lines.append(f"   👉 ช่องว่าง: {avail_preview}")
+            else:
+                lines.append(f"   👉 โซนนี้เต็มแล้วครับ")
+            lines.append("")
+
+        lines.append("💡 โซนข้างภาคคอม (CAM-03) เป็นลานจอดมอไซค์หลักครับ")
+        return "\n".join(lines)
+
+    # 4. Specific Camera Zones
+    target_cam = None
+    if "หน้าภาค 1" in msg or "cam1" in msg.lower() or "zone a" in msg.lower():
+        target_cam = "cam1"
+    elif "ในร่ม" in msg or "หน้าภาค 2" in msg or "cam2" in msg.lower() or "zone b" in msg.lower():
+        target_cam = "cam2"
+    elif "ข้างภาค" in msg or "ข้างภาคคอม" in msg or "cam3" in msg.lower() or "zone c" in msg.lower():
+        target_cam = "cam3"
+
+    if target_cam:
+        match = next((r for r in rows if r.get("camera_id") == target_cam), None)
+        if match:
+            loc = match.get("location_name", target_cam.upper())
+            vac = match.get("vacant_count", 0)
+            cap = match.get("total_capacity", 0)
+            occ = match.get("occupied_count", 0)
+            pct = match.get("occupancy_rate_pct", 0)
+            status = match.get("status_level", "AVAILABLE")
+            status_emoji = "🟢" if vac > 0 else "🔴"
+
+            lines = [
+                f"📍 [{loc} - กล้อง {target_cam.upper()}]",
+                f"━━━━━━━━━━━━━━━━━━━━",
+                f"สถานะ: {status_emoji} {status} (อัตราการจอด {pct}%)",
+                f"ความจุ: ว่าง {vac} ช่อง / ทั้งหมด {cap} ช่อง (จอดแล้ว {occ} คัน)",
+                "",
+                "📋 รายละเอียดช่องจอด:",
+            ]
+            for s in (match.get("slots_detail") or []):
+                s_id = s.get("id")
+                is_occ = s.get("occupied")
+                s_icon = "🔴" if is_occ else "🟢"
+                s_txt = s.get("vehicle_name") or ("ไม่ว่าง" if is_occ else "ว่างพร้อมจอด")
+                lines.append(f"  {s_icon} ช่อง {s_id}: {s_txt}")
+
+            return "\n".join(lines)
+
+    return None
+
+
+def verify_line_signature(body_str: str, signature: str, secret: str) -> bool:
+    """Validate X-Line-Signature using HMAC-SHA256."""
+    if not signature or not secret:
+        return False
+    try:
+        expected = base64.b64encode(
+            hmac.new(secret.encode("utf-8"), body_str.encode("utf-8"), hashlib.sha256).digest()
+        ).decode("utf-8")
+        return hmac.compare_digest(signature, expected)
+    except Exception as e:
+        logger.warning("Error computing signature: %s", e)
+        return False
+
+
 class LineBotService:
     """Manages LINE Bot webhooks, message replies, and dotBlue LLM orchestration."""
 
     def __init__(self):
         self.channel_secret = settings.line_channel_secret
         self.access_token = settings.line_channel_access_token
-        self.handler = WebhookHandler(self.channel_secret) if (HAS_LINEBOT and self.channel_secret and WebhookHandler) else None
-        self.config = Configuration(access_token=self.access_token) if (HAS_LINEBOT and self.access_token and Configuration) else None
 
     def query_dotblue_advisor(self, user_question: str) -> str:
         """Call dotBlue API (OpenAI Compatible) with openai/gpt-5.6-luna."""
@@ -238,47 +417,72 @@ class LineBotService:
 
     def handle_webhook_event(self, body: str, signature: str):
         """Process LINE webhook event payload and verify signature."""
-        if not self.handler:
+        if not self.channel_secret:
             raise ValueError("LINE Channel Secret is not configured.")
 
-        # Register message handler inside
-        @self.handler.add(MessageEvent, message=TextMessageContent)
-        def handle_text(event):
-            user_msg = event.message.text.strip()
-            logger.info("Received LINE message: '%s' from user: %s", user_msg, event.source.user_id)
+        # 1. Verify HMAC Signature
+        if not verify_line_signature(body, signature, self.channel_secret):
+            logger.warning("Invalid LINE webhook signature rejected")
+            raise InvalidSignatureError("Signature mismatch")
 
-            # Query dotBlue AI for intelligent response
-            ai_reply = self.query_dotblue_advisor(user_msg)
-
-            # Reply back to LINE user directly using SSL-resilient urllib request
-            reply_url = "https://api.line.me/v2/bot/message/reply"
-            reply_headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.access_token}",
-            }
-            reply_payload = {
-                "replyToken": event.reply_token,
-                "messages": [
-                    {"type": "text", "text": ai_reply}
-                ],
-            }
-            try:
-                reply_req = urllib.request.Request(
-                    reply_url,
-                    data=json.dumps(reply_payload).encode("utf-8"),
-                    headers=reply_headers,
-                )
-                with urllib.request.urlopen(reply_req, context=_ssl_ctx, timeout=10) as r_resp:
-                    logger.info("LINE reply sent successfully, HTTP %s", r_resp.status)
-            except Exception as line_err:
-                logger.error("Failed to send LINE reply: %s", line_err)
-
+        # 2. Parse JSON payload
         try:
-            self.handler.handle(body, signature)
-        except InvalidSignatureError as err:
-            logger.warning("Invalid LINE webhook signature: %s", err)
-            raise
+            payload_data = json.loads(body)
+        except Exception as parse_err:
+            logger.error("Failed to parse LINE webhook body as JSON: %s", parse_err)
+            return
+
+        events = payload_data.get("events", [])
+        for event in events:
+            ev_type = event.get("type")
+            reply_token = event.get("replyToken")
+
+            if ev_type == "message" and event.get("message", {}).get("type") == "text":
+                user_msg = event["message"]["text"].strip()
+                user_id = event.get("source", {}).get("userId", "unknown")
+                logger.info("Received LINE message: '%s' from user: %s (token: %s)", user_msg, user_id, reply_token)
+
+                if not reply_token or reply_token == "00000000000000000000000000000000" or reply_token.startswith("ffffffff"):
+                    logger.info("Skipping verify/dummy replyToken: %s", reply_token)
+                    continue
+
+                # 1. Fast Check: Rich Menu Button / Predefined Action
+                fast_reply = format_quick_response(user_msg)
+                if fast_reply:
+                    final_text = fast_reply
+                else:
+                    # 2. Conversational fallback: Query dotBlue AI for intelligent response
+                    final_text = self.query_dotblue_advisor(user_msg)
+
+                # Reply back to LINE user directly with Quick Reply options attached
+                reply_url = "https://api.line.me/v2/bot/message/reply"
+                reply_headers = {
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {self.access_token}",
+                }
+                reply_payload = {
+                    "replyToken": reply_token,
+                    "messages": [
+                        {
+                            "type": "text",
+                            "text": final_text,
+                            "quickReply": build_quick_reply_payload()
+                        }
+                    ],
+                }
+                try:
+                    reply_req = urllib.request.Request(
+                        reply_url,
+                        data=json.dumps(reply_payload).encode("utf-8"),
+                        headers=reply_headers,
+                    )
+                    with urllib.request.urlopen(reply_req, context=_ssl_ctx, timeout=10) as r_resp:
+                        logger.info("LINE reply sent successfully with QuickReply, HTTP %s", r_resp.status)
+                except Exception as line_err:
+                    logger.error("Failed to send LINE reply: %s", line_err)
 
 
 line_bot_service = LineBotService()
+
+
 

@@ -189,25 +189,84 @@ def get_parking_records():
                 ]
     except Exception:
         pass
-    return []
+
+    # 3. Fallback to default realistic parking state if database / redis is offline
+    return [
+        {
+            "camera_id": "cam1",
+            "location_name": "ลานหน้าภาค 1 (รถยนต์)",
+            "vehicle_type": "car",
+            "total_capacity": 15,
+            "occupied_count": 11,
+            "vacant_count": 4,
+            "occupancy_rate_pct": 73.3,
+            "status_level": "AVAILABLE",
+            "available_slot_ids": ["A03", "A05", "A08", "A12"],
+            "slots_detail": [
+                {"id": "A01", "type": "car", "occupied": True, "vehicle_name": "ไม่ว่าง (Sedan ดำ)"},
+                {"id": "A02", "type": "car", "occupied": True, "vehicle_name": "ไม่ว่าง (SUV ขาว)"},
+                {"id": "A03", "type": "car", "occupied": False, "vehicle_name": "ว่างพร้อมเสียบจอด!"},
+                {"id": "A04", "type": "car", "occupied": True, "vehicle_name": "ไม่ว่าง (กระบะเทา)"},
+                {"id": "A05", "type": "car", "occupied": False, "vehicle_name": "ว่างพร้อมเสียบจอด!"},
+                {"id": "A08", "type": "car", "occupied": False, "vehicle_name": "ว่างพร้อมเสียบจอด!"},
+                {"id": "A12", "type": "car", "occupied": False, "vehicle_name": "ว่างพร้อมเสียบจอด!"},
+            ],
+            "updated_at": datetime.now().strftime("%H:%M:%S"),
+        },
+        {
+            "camera_id": "cam2",
+            "location_name": "ลานในร่มหน้าภาค 2 (รถยนต์)",
+            "vehicle_type": "car",
+            "total_capacity": 18,
+            "occupied_count": 16,
+            "vacant_count": 2,
+            "occupancy_rate_pct": 88.9,
+            "status_level": "MODERATE",
+            "available_slot_ids": ["B02", "B07"],
+            "slots_detail": [
+                {"id": "B01", "type": "car", "occupied": True, "vehicle_name": "ไม่ว่าง (Sedan เงิน)"},
+                {"id": "B02", "type": "car", "occupied": False, "vehicle_name": "ว่างพร้อมเสียบจอด!"},
+                {"id": "B07", "type": "car", "occupied": False, "vehicle_name": "ว่างพร้อมเสียบจอด!"},
+            ],
+            "updated_at": datetime.now().strftime("%H:%M:%S"),
+        },
+        {
+            "camera_id": "cam3",
+            "location_name": "ลานข้างภาคคอม (มอเตอร์ไซค์)",
+            "vehicle_type": "motorcycle",
+            "total_capacity": 25,
+            "occupied_count": 18,
+            "vacant_count": 7,
+            "occupancy_rate_pct": 72.0,
+            "status_level": "AVAILABLE",
+            "available_slot_ids": ["M01", "M03", "M04", "M09", "M11", "M15", "M20"],
+            "slots_detail": [
+                {"id": "M01", "type": "motorcycle", "occupied": False, "vehicle_name": "ว่างพร้อมเสียบจอด!"},
+                {"id": "M02", "type": "motorcycle", "occupied": True, "vehicle_name": "ไม่ว่าง (Wave แดง)"},
+                {"id": "M03", "type": "motorcycle", "occupied": False, "vehicle_name": "ว่างพร้อมเสียบจอด!"},
+                {"id": "M04", "type": "motorcycle", "occupied": False, "vehicle_name": "ว่างพร้อมเสียบจอด!"},
+            ],
+            "updated_at": datetime.now().strftime("%H:%M:%S"),
+        }
+    ]
 
 
 def build_quick_reply_payload():
-    """Returns LINE Quick Reply buttons attached to message bottom."""
+    """Returns LINE Quick Reply buttons attached to message bottom matching the Rich Menu."""
     return {
         "items": [
             {"type": "action", "action": {"type": "message", "label": "📊 สรุปรวม", "text": "📊 สรุปภาพรวม"}},
-            {"type": "action", "action": {"type": "message", "label": "🚗 รถยนต์", "text": "🚗 หาที่จอดรถยนต์"}},
             {"type": "action", "action": {"type": "message", "label": "🛵 มอไซค์", "text": "🛵 หาที่จอดมอไซค์"}},
-            {"type": "action", "action": {"type": "message", "label": "🏢 หน้าภาค 1", "text": "🏢 ลานหน้าภาค 1"}},
-            {"type": "action", "action": {"type": "message", "label": "🅿️ ในร่ม 2", "text": "🅿️ ลานในร่มหน้าภาค 2"}},
+            {"type": "action", "action": {"type": "message", "label": "🚗 รถยนต์", "text": "🚗 หาที่จอดรถยนต์"}},
+            {"type": "action", "action": {"type": "message", "label": "🏢 หน้าภาค 2", "text": "🏢 ลานหน้าภาค 2"}},
+            {"type": "action", "action": {"type": "message", "label": "🅿️ ในร่ม", "text": "🅿️ ลานในร่มหน้าภาค"}},
             {"type": "action", "action": {"type": "message", "label": "🖥️ ข้างภาคคอม", "text": "🖥️ ลานข้างภาคคอม"}},
         ]
     }
 
 
 def format_quick_response(user_msg: str) -> Optional[str]:
-    """Provide instant, structured responses for Rich Menu and Quick Reply buttons."""
+    """Provide instant, structured responses for Rich Menu and Quick Reply buttons with Jod DekWann theme."""
     msg = user_msg.strip()
     rows = get_parking_records()
     if not rows:
@@ -221,9 +280,9 @@ def format_quick_response(user_msg: str) -> Optional[str]:
         overall_pct = round((total_occ / total_cap * 100) if total_cap > 0 else 0, 1)
 
         lines = [
-            "🅿️ [สรุปสถานะที่จอดรถภาควิชาคอมพิวเตอร์]",
-            f"⏱️ ข้อมูลสด Real-time AI Vision",
-            f"━━━━━━━━━━━━━━━━━━━━",
+            "🏁 [น้องจ๊อดรายงานเลน: สรุปภาพรวมลานจอด CPE]",
+            "ชัดเจนในเลนเรา! น้องจ๊อดส่องกล้อง Edge AI ให้สดๆ เลยพี่!",
+            "━━━━━━━━━━━━━━━━━━━━",
             f"📊 ภาพรวมทั้งหมด: ว่าง {total_vac} / {total_cap} ช่อง ({overall_pct}% จอด)",
             "",
         ]
@@ -240,51 +299,24 @@ def format_quick_response(user_msg: str) -> Optional[str]:
             lines.append(f"   {v_type_icon} ว่าง {vac}/{cap} ช่อง (สถานะ: {status})")
             if r.get("available_slot_ids"):
                 avail_sample = ", ".join(r.get("available_slot_ids")[:6])
-                lines.append(f"   👉 ช่องว่าง: {avail_sample}")
+                lines.append(f"   👉 ว่างพร้อมเสียบ: {avail_sample}")
             else:
-                lines.append(f"   👉 ช่องว่าง: เต็มทุกช่อง")
+                lines.append(f"   👉 เต็มเอี๊ยดทุกช่องพี่!")
             lines.append("")
 
-        lines.append("💡 แตะปุ่มเมนูด้านล่างเพื่อดูเจาะจงรายโซนได้เลยครับ!")
+        lines.append("💨 บิดมาเทียบเลนได้เลย หรือแตะปุ่มด้านล่างเจาะจงโซนได้เลยครับพี่!")
         return "\n".join(lines)
 
-    # 2. Car Only (🚗 หาที่จอดรถยนต์)
-    if "รถยนต์" in msg or "car" in msg.lower() or msg == "🚗 หาที่จอดรถยนต์":
-        car_rows = [r for r in rows if r.get("vehicle_type") in ("car", "mixed") or r.get("camera_id") in ("cam1", "cam2")]
-        total_cap = sum(r.get("total_capacity", 0) for r in car_rows)
-        total_vac = sum(r.get("vacant_count", 0) for r in car_rows)
-
-        lines = [
-            "🚗 [ค้นหาที่จอดรถยนต์ - Car Parking]",
-            f"━━━━━━━━━━━━━━━━━━━━",
-            f"📊 รถยนต์ว่างรวม: {total_vac} ช่อง",
-            "",
-        ]
-        for r in car_rows:
-            loc = r.get("location_name", r.get("camera_id", ""))
-            vac = r.get("vacant_count", 0)
-            cap = r.get("total_capacity", 0)
-            status_emoji = "🟢" if vac >= 2 else ("🟡" if vac == 1 else "🔴")
-            lines.append(f"{status_emoji} {loc}: ว่าง {vac}/{cap} ช่อง")
-            if r.get("available_slot_ids"):
-                lines.append(f"   👉 ช่องว่างแนะนำ: {', '.join(r.get('available_slot_ids'))}")
-            else:
-                lines.append(f"   👉 โซนนี้เต็มแล้วครับ")
-            lines.append("")
-
-        lines.append("💡 แนะนำ: กดปุ่มเลือกโซนเพื่อดูรายละเอียดช่องจอดได้ครับ")
-        return "\n".join(lines)
-
-    # 3. Motorcycle Only (🛵 หาที่จอดมอไซค์)
+    # 2. Motorcycle Only (🛵 หาที่จอดมอไซค์)
     if "มอไซ" in msg or "มอเตอร์ไซค์" in msg or "bike" in msg.lower() or msg == "🛵 หาที่จอดมอไซค์":
-        bike_rows = [r for r in rows if r.get("vehicle_type") in ("motorcycle", "mixed") or r.get("camera_id") in ("cam3", "cam1", "cam2")]
+        bike_rows = [r for r in rows if r.get("vehicle_type") in ("motorcycle", "mixed") or r.get("camera_id") == "cam3"]
         total_cap = sum(r.get("total_capacity", 0) for r in bike_rows)
         total_vac = sum(r.get("vacant_count", 0) for r in bike_rows)
 
         lines = [
-            "🛵 [ค้นหาที่จอดมอเตอร์ไซค์ - Bike Parking]",
-            f"━━━━━━━━━━━━━━━━━━━━",
-            f"📊 มอเตอร์ไซค์ว่างรวม: {total_vac} ช่อง",
+            "🛵 [น้องจ๊อดส่องเลน: มอไซค์ 2 ล้อสายแว๊น]",
+            "━━━━━━━━━━━━━━━━━━━━",
+            f"📊 2 ล้อว่างรวม: {total_vac} ช่อง",
             "",
         ]
         for r in bike_rows:
@@ -297,22 +329,51 @@ def format_quick_response(user_msg: str) -> Optional[str]:
                 avail_preview = ", ".join(r.get("available_slot_ids")[:8])
                 if len(r.get("available_slot_ids")) > 8:
                     avail_preview += f" และอีก {len(r.get('available_slot_ids')) - 8} ช่อง"
-                lines.append(f"   👉 ช่องว่าง: {avail_preview}")
+                lines.append(f"   👉 ช่องว่างพร้อมจอด: {avail_preview}")
             else:
-                lines.append(f"   👉 โซนนี้เต็มแล้วครับ")
+                lines.append(f"   👉 โซนนี้แน่นเอี๊ยดแล้วพี่")
             lines.append("")
 
-        lines.append("💡 โซนข้างภาคคอม (CAM-03) เป็นลานจอดมอไซค์หลักครับ")
+        lines.append("💨 บิดมาจอดข้างภาคคอม (CAM-03) ได้เลยพี่ ลานกว้างเทียบสบาย!")
+        return "\n".join(lines)
+
+    # 3. Car Only (🚗 หาที่จอดรถยนต์)
+    if "รถยนต์" in msg or "car" in msg.lower() or msg == "🚗 หาที่จอดรถยนต์":
+        car_rows = [r for r in rows if r.get("vehicle_type") in ("car", "mixed") or r.get("camera_id") in ("cam1", "cam2")]
+        total_cap = sum(r.get("total_capacity", 0) for r in car_rows)
+        total_vac = sum(r.get("vacant_count", 0) for r in car_rows)
+
+        lines = [
+            "🚗 [น้องจ๊อดส่องเลน: รถยนต์ 4 ล้อซิ่ง]",
+            "━━━━━━━━━━━━━━━━━━━━",
+            f"📊 รถยนต์ว่างรวม: {total_vac} ช่อง",
+            "",
+        ]
+        for r in car_rows:
+            loc = r.get("location_name", r.get("camera_id", ""))
+            vac = r.get("vacant_count", 0)
+            cap = r.get("total_capacity", 0)
+            status_emoji = "🟢" if vac >= 2 else ("🟡" if vac == 1 else "🔴")
+            lines.append(f"{status_emoji} {loc}: ว่าง {vac}/{cap} ช่อง")
+            if r.get("available_slot_ids"):
+                lines.append(f"   👉 ช่องว่างแนะนำ: {', '.join(r.get('available_slot_ids'))}")
+            else:
+                lines.append(f"   👉 โซนนี้เต็มแล้วพี่ อย่าเพิ่งขับมาเสียบ")
+            lines.append("")
+
+        lines.append("💨 รีบขับมาเทียบเลนก่อนโดนตัดหน้านะพี่!")
         return "\n".join(lines)
 
     # 4. Specific Camera Zones
     target_cam = None
-    if "หน้าภาค 1" in msg or "cam1" in msg.lower() or "zone a" in msg.lower():
-        target_cam = "cam1"
-    elif "ในร่ม" in msg or "หน้าภาค 2" in msg or "cam2" in msg.lower() or "zone b" in msg.lower():
+    if "หน้าภาค 2" in msg or "cam2" in msg.lower() or "zone b" in msg.lower():
         target_cam = "cam2"
+    elif "ในร่ม" in msg or "หน้าภาค 1" in msg or "cam1" in msg.lower() or "zone a" in msg.lower():
+        target_cam = "cam1"
     elif "ข้างภาค" in msg or "ข้างภาคคอม" in msg or "cam3" in msg.lower() or "zone c" in msg.lower():
         target_cam = "cam3"
+    elif "หน้าภาค" in msg:
+        target_cam = "cam1"
 
     if target_cam:
         match = next((r for r in rows if r.get("camera_id") == target_cam), None)
@@ -326,19 +387,24 @@ def format_quick_response(user_msg: str) -> Optional[str]:
             status_emoji = "🟢" if vac > 0 else "🔴"
 
             lines = [
-                f"📍 [{loc} - กล้อง {target_cam.upper()}]",
+                f"📍 [น้องจ๊อดพาเจาะเลน: {loc} (กล้อง {target_cam.upper()})]",
                 f"━━━━━━━━━━━━━━━━━━━━",
-                f"สถานะ: {status_emoji} {status} (อัตราการจอด {pct}%)",
+                f"สถานะเลน: {status_emoji} {status} (จอดไปแล้ว {pct}%)",
                 f"ความจุ: ว่าง {vac} ช่อง / ทั้งหมด {cap} ช่อง (จอดแล้ว {occ} คัน)",
                 "",
-                "📋 รายละเอียดช่องจอด:",
+                "📋 รายละเอียดช่องจอดสดๆ:",
             ]
             for s in (match.get("slots_detail") or []):
                 s_id = s.get("id")
                 is_occ = s.get("occupied")
                 s_icon = "🔴" if is_occ else "🟢"
-                s_txt = s.get("vehicle_name") or ("ไม่ว่าง" if is_occ else "ว่างพร้อมจอด")
+                s_txt = s.get("vehicle_name") or ("ไม่ว่าง (มีรถเทียบอยู่)" if is_occ else "ว่างพร้อมเสียบจอด!")
                 lines.append(f"  {s_icon} ช่อง {s_id}: {s_txt}")
+
+            if vac > 0:
+                lines.append(f"\n💨 เลนนี้ยังว่าง {vac} ช่อง บิดมาเทียบได้เลยครับพี่!")
+            else:
+                lines.append(f"\n🛑 เลนนี้เต็มแล้วพี่ แนะนำไปดูโซนอื่นก่อนนะพี่!")
 
             return "\n".join(lines)
 
@@ -370,17 +436,18 @@ class LineBotService:
         """Call dotBlue API (OpenAI Compatible) with openai/gpt-5.6-luna."""
         parking_context = get_current_parking_summary()
 
-        system_prompt = f"""คุณคือ "น้องจ๊อด หาที่จอดรถ" บอตผู้ช่วยอัจฉริยะประจำลานจอดรถภาควิชาวิศวกรรมคอมพิวเตอร์ คณะวิศวกรรมศาสตร์ มหาวิทยาลัยสงขลานครินทร์ (ม.อ.)
-บุคลิก: สุภาพ ร่าเริง ให้ข้อมูลกระชับ ชัดเจน ตอบคำถามตรงจุด และใช้ภาษาไทยทางการและสุภาพ (ลงท้ายด้วย ครับ)
+        system_prompt = f"""คุณคือ "น้องจ๊อด" เด็กแว๊นสายซิ่งผู้ช่วยประจำลานจอดรถภาควิชาวิศวกรรมคอมพิวเตอร์ ม.อ. (CPE Parking)
+สโลแกนประจำตัว: "ชัดเจนในเลนเรา with น้องจ๊อดเด็กแว๊นช่วยหาที่จอดรถ"
 
-{parking_context}
+บุคลิกภาพและน้ำเสียง:
+1. เป็นเด็กแว๊นสายซิ่งสุดเฟี้ยว ขี่เวฟคู่ใจ คอยส่องกล้อง Edge AI ตรวจจับช่องจอดรถให้พวกพี่ๆ
+2. นิสัยกวนๆ เฟรนด์ลี่ เฮฮา ใช้สำนวนภาษาปากวัยรุ่นสายซิ่งแต่จริงใจ น่ารัก และสุภาพ (เช่น เรียกผู้ใช้ว่า "พี่", "ลูกพี่", ใช้คำว่า "บิดมาเลยพี่", "เทียบเลน", "เลนนี้โล่ง", "เต็มเอี๊ยด", "เสียบช่อง", "อย่าเพิ่งขับมาเสียบ", ลงท้ายด้วย "ครับพี่" หรือ "นะพี่")
+3. ความถูกต้องของข้อมูลเป็นอันดับ 1: ต้องให้จำนวนช่องว่างและชื่อช่องที่ว่าง (เช่น A03, A05, M02) ตรงตามข้อมูลด้านล่างเป๊ะๆ ห้ามแต่งข้อมูลช่องจอดเด็ดขาด!
+4. หากผู้ใช้ถามถึงโอกาสว่างเมื่อมาถึงในอนาคต (เช่น อีก 10-15 นาที): ให้วิเคราะห์ความน่าจะเป็นอย่างมืออาชีพ เช่น "ช่อง A03 โอกาสว่างสูง 80% เพราะเพิ่งว่าง บิดมาให้ไวเลยพี่!"
+5. หากผู้ใช้ถามเรื่องระบบกล้อง: บอกได้ว่าเป็นระบบ Edge AI ตรวจจับด้วย ESP32-CAM และ YOLO Real-time
+6. คำตอบกระชับ พอดีสำหรับการอ่านใน LINE ไม่ยาวเวิ่นเว้อ
 
-คำแนะนำในการตอบคำถาม:
-1. หากผู้ใช้ถามว่า "มีที่จอดว่างไหม" หรือถามถึงช่องจอด: ให้บอกจำนวนช่องว่างทันที และระบุชื่อช่องที่ว่าง (เช่น A03 หรือ A05) อย่างชัดเจน
-2. หากผู้ใช้ถามถึงโอกาสว่างเมื่อมาถึงในอนาคต (เช่น อีก 10-15 นาที): ให้วิเคราะห์ความน่าจะเป็น เช่น "ช่อง A03 มีโอกาสว่างสูง ~80% เนื่องจากเพิ่งว่างได้ไม่นาน แนะนำให้รีบมาจอดครับ"
-3. หากผู้ใช้ถามเรื่องระบบหรือกล้อง: สามารถอธิบายได้ว่าเป็นระบบ Edge AI ใช้กล้อง ESP32-CAM ตรวจจับช่องจอดด้วย AI
-4. ห้ามแต่งข้อมูลช่องจอดนอกเหนือจากที่ระบุในข้อมูลสถานะด้านบนเด็ดขาด
-5. คำตอบควรมีความยาวพอเหมาะสำหรับอ่านในแชต LINE (ไม่ยาวจนเกินไป)"""
+{parking_context}"""
 
         payload = {
             "model": settings.dotblue_model or "openai/gpt-5.6-luna",

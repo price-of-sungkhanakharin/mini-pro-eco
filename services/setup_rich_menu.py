@@ -67,27 +67,27 @@ def create_rich_menu():
             # 1. Main Hero Panel (ชัดเจนในเลนเรา - สรุปภาพรวม)
             {
                 "bounds": {"x": 0, "y": 0, "width": split_x, "height": split_y_left},
-                "action": {"type": "message", "text": "📊 สรุปภาพรวม"}
+                "action": {"type": "message", "text": "สรุปภาพรวม"}
             },
-            # 2. Top Right (หาที่จอดรถยนต์ - กระบะซิ่ง)
+            # 2. Top Right (หาที่จอดรถยนต์)
             {
                 "bounds": {"x": split_x, "y": 0, "width": 2500 - split_x, "height": split_y_r1},
-                "action": {"type": "message", "text": "🚗 หาที่จอดรถยนต์"}
+                "action": {"type": "message", "text": "หาที่จอดรถยนต์"}
             },
-            # 3. Middle Right (หาที่จอดมอไซค์ - แว๊นซิ่ง)
+            # 3. Middle Right (หาที่จอดมอไซค์)
             {
                 "bounds": {"x": split_x, "y": split_y_r1, "width": 2500 - split_x, "height": split_y_r2 - split_y_r1},
-                "action": {"type": "message", "text": "🛵 หาที่จอดมอไซค์"}
+                "action": {"type": "message", "text": "หาที่จอดมอไซค์"}
             },
-            # 4. Bottom Left (ลานหน้าภาค - ไม้กั้นและป้าย P)
+            # 4. Bottom Left (ลานหน้าภาค)
             {
                 "bounds": {"x": 0, "y": split_y_left, "width": split_x, "height": 1686 - split_y_left},
-                "action": {"type": "message", "text": "🏢 ลานหน้าภาค"}
+                "action": {"type": "message", "text": "ลานหน้าภาค"}
             },
-            # 5. Bottom Right (ลานข้างภาคคอม - ลานเครื่องเสียง)
+            # 5. Bottom Right (ลานข้างภาคคอม)
             {
                 "bounds": {"x": split_x, "y": split_y_r2, "width": 2500 - split_x, "height": 1686 - split_y_r2},
-                "action": {"type": "message", "text": "🖥️ ลานข้างภาคคอม"}
+                "action": {"type": "message", "text": "ลานข้างภาคคอม"}
             }
         ]
     }

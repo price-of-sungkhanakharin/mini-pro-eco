@@ -265,7 +265,7 @@ def build_quick_reply_payload():
 
 
 def format_quick_response(user_msg: str) -> Optional[str]:
-    """Provide clean, professional, emoji-free structured responses for Rich Menu and Quick Reply."""
+    """Provide punchy, concise, emoji-free responses with Nong Jod persona."""
     msg = user_msg.strip()
     rows = get_parking_records()
     if not rows:
@@ -279,10 +279,9 @@ def format_quick_response(user_msg: str) -> Optional[str]:
         overall_pct = round((total_occ / total_cap * 100) if total_cap > 0 else 0, 1)
 
         lines = [
-            "[รายงานสถานะที่จอดรถภาควิชาวิศวกรรมคอมพิวเตอร์]",
-            "ระบบตรวจจับอัตโนมัติแบบเรียลไทม์ (Real-time Vision AI)",
-            "----------------------------------------",
-            f"ภาพรวมทั้งหมด: ว่าง {total_vac} จากทั้งหมด {total_cap} ช่อง (อัตราการจอด {overall_pct}%)",
+            "[น้องจ๊อดรายงาน: สรุปภาพรวมลานจอด CPE]",
+            "ชัดเจนในเลนเรา! ส่องกล้องให้สดๆ เลยพี่",
+            f"ว่างรวม: {total_vac}/{total_cap} ช่อง (จอด {overall_pct}%)",
             "",
         ]
         for r in rows:
@@ -290,19 +289,13 @@ def format_quick_response(user_msg: str) -> Optional[str]:
             loc = r.get("location_name", cam)
             vac = r.get("vacant_count", 0)
             cap = r.get("total_capacity", 0)
-            status = r.get("status_level", "AVAILABLE")
+            avail_slots = r.get("available_slot_ids", [])
+            avail_str = ", ".join(avail_slots[:5]) if avail_slots else "เต็มทุกช่อง"
 
-            lines.append(f"- {loc} [{cam}]:")
-            lines.append(f"  ความจุ: ว่าง {vac}/{cap} ช่อง (สถานะ: {status})")
-            if r.get("available_slot_ids"):
-                avail_sample = ", ".join(r.get("available_slot_ids")[:6])
-                lines.append(f"  ช่องที่ว่าง: {avail_sample}")
-            else:
-                lines.append(f"  ช่องที่ว่าง: เต็มทุกช่อง")
-            lines.append("")
+            lines.append(f"- {loc} ({cam}): ว่าง {vac}/{cap} ช่อง (ว่าง: {avail_str})")
 
-        lines.append("----------------------------------------")
-        lines.append("ท่านสามารถเลือกดูข้อมูลเฉพาะโซนได้จากปุ่มเมนูด้านล่างครับ")
+        lines.append("")
+        lines.append("บิดมาเทียบเลนได้เลย หรือแตะปุ่มเลือกโซนได้เลยครับพี่!")
         return "\n".join(lines)
 
     # 2. Motorcycle Only (หาที่จอดมอไซค์)
@@ -312,9 +305,8 @@ def format_quick_response(user_msg: str) -> Optional[str]:
         total_vac = sum(r.get("vacant_count", 0) for r in bike_rows)
 
         lines = [
-            "[รายงานสถานะที่จอดรถมอเตอร์ไซค์]",
-            "----------------------------------------",
-            f"จำนวนช่องว่างรวม: {total_vac} ช่อง",
+            "[น้องจ๊อดส่องเลน: มอไซค์ 2 ล้อ]",
+            f"มอไซค์ว่างรวม: {total_vac} ช่อง",
             "",
         ]
         for r in bike_rows:
@@ -322,18 +314,19 @@ def format_quick_response(user_msg: str) -> Optional[str]:
             cam = r.get("camera_id", "").upper()
             vac = r.get("vacant_count", 0)
             cap = r.get("total_capacity", 0)
-            lines.append(f"- {loc} [{cam}]: ว่าง {vac}/{cap} ช่อง")
-            if r.get("available_slot_ids"):
-                avail_preview = ", ".join(r.get("available_slot_ids")[:8])
-                if len(r.get("available_slot_ids")) > 8:
-                    avail_preview += f" และอีก {len(r.get('available_slot_ids')) - 8} ช่อง"
-                lines.append(f"  ช่องที่ว่าง: {avail_preview}")
+            avail_slots = r.get("available_slot_ids", [])
+            if avail_slots:
+                avail_preview = ", ".join(avail_slots[:8])
+                if len(avail_slots) > 8:
+                    avail_preview += f" และอีก {len(avail_slots) - 8} ช่อง"
+                avail_str = f"ช่องว่าง: {avail_preview}"
             else:
-                lines.append(f"  สถานะ: เต็มทุกช่อง")
-            lines.append("")
+                avail_str = "โซนนี้แน่นเอี๊ยดแล้วพี่"
+            lines.append(f"- {loc} ({cam}): ว่าง {vac}/{cap} ช่อง")
+            lines.append(f"  {avail_str}")
 
-        lines.append("----------------------------------------")
-        lines.append("แนะนำ: บริเวณข้างภาคคอมพิวเตอร์ (CAM-03) เป็นลานจอดรถมอเตอร์ไซค์หลักครับ")
+        lines.append("")
+        lines.append("บิดมาจอดข้างภาคคอมได้เลยพี่ ลานกว้างเทียบสบาย!")
         return "\n".join(lines)
 
     # 3. Car Only (หาที่จอดรถยนต์)
@@ -343,9 +336,8 @@ def format_quick_response(user_msg: str) -> Optional[str]:
         total_vac = sum(r.get("vacant_count", 0) for r in car_rows)
 
         lines = [
-            "[รายงานสถานะที่จอดรถยนต์]",
-            "----------------------------------------",
-            f"จำนวนช่องว่างรวม: {total_vac} ช่อง",
+            "[น้องจ๊อดส่องเลน: รถยนต์ 4 ล้อ]",
+            f"รถยนต์ว่างรวม: {total_vac} ช่อง",
             "",
         ]
         for r in car_rows:
@@ -353,15 +345,13 @@ def format_quick_response(user_msg: str) -> Optional[str]:
             cam = r.get("camera_id", "").upper()
             vac = r.get("vacant_count", 0)
             cap = r.get("total_capacity", 0)
-            lines.append(f"- {loc} [{cam}]: ว่าง {vac}/{cap} ช่อง")
-            if r.get("available_slot_ids"):
-                lines.append(f"  ช่องที่ว่าง: {', '.join(r.get('available_slot_ids'))}")
-            else:
-                lines.append(f"  สถานะ: เต็มทุกช่อง")
-            lines.append("")
+            avail_slots = r.get("available_slot_ids", [])
+            avail_str = f"ช่องว่าง: {', '.join(avail_slots)}" if avail_slots else "โซนนี้เต็มแล้วพี่ อย่าเพิ่งขับมาเสียบ"
+            lines.append(f"- {loc} ({cam}): ว่าง {vac}/{cap} ช่อง")
+            lines.append(f"  {avail_str}")
 
-        lines.append("----------------------------------------")
-        lines.append("ท่านสามารถเลือกดูรายละเอียดของแต่ละโซนได้ครับ")
+        lines.append("")
+        lines.append("รีบขับมาเทียบเลนก่อนโดนตัดหน้านะพี่!")
         return "\n".join(lines)
 
     # 4. Front Department Aggregated (ลานหน้าภาค - CAM 1 & 2)
@@ -371,9 +361,8 @@ def format_quick_response(user_msg: str) -> Optional[str]:
         total_cap = sum(r.get("total_capacity", 0) for r in front_rows)
 
         lines = [
-            "[รายงานสถานะโซนลานหน้าภาควิชาคอมพิวเตอร์ (CAM 1 & 2)]",
-            "----------------------------------------",
-            f"ภาพรวมโซนหน้าภาค: ว่าง {total_vac} จากทั้งหมด {total_cap} ช่อง",
+            "[น้องจ๊อดเจาะเลน: โซนลานหน้าภาค (CAM 1 & 2)]",
+            f"รถยนต์หน้าภาครวม: ว่าง {total_vac}/{total_cap} ช่อง",
             "",
         ]
         for r in front_rows:
@@ -381,18 +370,16 @@ def format_quick_response(user_msg: str) -> Optional[str]:
             cam = r.get("camera_id", "").upper()
             vac = r.get("vacant_count", 0)
             cap = r.get("total_capacity", 0)
-            lines.append(f"- {loc} [{cam}]: ว่าง {vac}/{cap} ช่อง")
-            if r.get("available_slot_ids"):
-                lines.append(f"  ช่องที่ว่าง: {', '.join(r.get('available_slot_ids'))}")
-            else:
-                lines.append(f"  สถานะ: เต็มทุกช่อง")
-            lines.append("")
+            avail_slots = r.get("available_slot_ids", [])
+            avail_str = f"ช่องว่าง: {', '.join(avail_slots)}" if avail_slots else "เต็มทุกช่องแล้วพี่"
+            lines.append(f"- {loc} ({cam}): ว่าง {vac}/{cap} ช่อง")
+            lines.append(f"  {avail_str}")
 
-        lines.append("----------------------------------------")
+        lines.append("")
         if total_vac > 0:
-            lines.append(f"โซนหน้าภาคมีช่องว่างพร้อมให้บริการ {total_vac} ช่องครับ")
+            lines.append("บิดเข้ามาเทียบเลนหน้าภาคได้เลยครับพี่!")
         else:
-            lines.append("ขณะนี้โซนหน้าภาคเต็มทุกช่อง แนะนำให้ตรวจสอบโซนข้างภาคคอมพิวเตอร์ครับ")
+            lines.append("โซนหน้าภาคเต็มหมดแล้วพี่ ลองดูโซนข้างภาคคอมนะพี่!")
 
         return "\n".join(lines)
 
@@ -418,24 +405,22 @@ def format_quick_response(user_msg: str) -> Optional[str]:
             status = match.get("status_level", "AVAILABLE")
 
             lines = [
-                f"[รายละเอียดช่องจอด: {loc} (กล้อง {target_cam.upper()})]",
-                "----------------------------------------",
-                f"สถานะ: {status} (อัตราการจอด {pct}%)",
-                f"ความจุ: ว่าง {vac} ช่อง / ทั้งหมด {cap} ช่อง (จอดแล้ว {occ} คัน)",
+                f"[น้องจ๊อดเจาะเลน: {loc} (กล้อง {target_cam.upper()})]",
+                f"สถานะ: ว่าง {vac}/{cap} ช่อง (จอดแล้ว {occ} คัน, {pct}%)",
                 "",
-                "รายละเอียดแต่ละช่อง:",
+                "รายละเอียดช่องจอด:",
             ]
             for s in (match.get("slots_detail") or []):
                 s_id = s.get("id")
                 is_occ = s.get("occupied")
-                s_txt = s.get("vehicle_name") or ("มีรถจอดอยู่" if is_occ else "ว่างพร้อมจอด")
+                s_txt = s.get("vehicle_name") or ("ไม่ว่าง (มีรถเทียบอยู่)" if is_occ else "ว่างพร้อมเสียบจอด!")
                 lines.append(f"- ช่อง {s_id}: {s_txt}")
 
-            lines.append("----------------------------------------")
+            lines.append("")
             if vac > 0:
-                lines.append(f"บริเวณนี้มีช่องว่างพร้อมให้บริการ {vac} ช่องครับ")
+                lines.append(f"เลนนี้ยังว่าง {vac} ช่อง บิดมาเทียบได้เลยครับพี่!")
             else:
-                lines.append("บริเวณนี้เต็มทุกช่องแล้วครับ")
+                lines.append("เลนนี้เต็มแล้วพี่ แนะนำไปดูโซนอื่นก่อนนะพี่!")
 
             return "\n".join(lines)
 
@@ -467,15 +452,16 @@ class LineBotService:
         """Call dotBlue API (OpenAI Compatible) with openai/gpt-5.6-luna."""
         parking_context = get_current_parking_summary()
 
-        system_prompt = f"""คุณคือ "น้องจ๊อด" ผู้ช่วยอัจฉริยะประจำระบบตรวจจับที่จอดรถภาควิชาวิศวกรรมคอมพิวเตอร์ คณะวิศวกรรมศาสตร์ มหาวิทยาลัยสงขลานครินทร์ (ม.อ.)
+        system_prompt = f"""คุณคือ "น้องจ๊อด" เด็กแว๊นสายซิ่งผู้ช่วยประจำลานจอดรถภาควิชาวิศวกรรมคอมพิวเตอร์ ม.อ. (CPE Parking)
+สโลแกนประจำตัว: "ชัดเจนในเลนเรา with น้องจ๊อดช่วยหาที่จอดรถ"
 
-บุคลิกและแนวทางการตอบ:
-1. สุภาพ เรียบร้อย ชัดเจน กระชับ เป็นทางการ และให้ข้อมูลตรงประเด็น (ลงท้ายด้วย "ครับ")
-2. ห้ามใช้อิโมจิ (Emoji) ในคำตอบ เพื่อรักษาความเป็นระเบียบและเป็นทางการ
-3. ความถูกต้องของข้อมูลเป็นอันดับ 1: ให้ระบุจำนวนช่องว่างและรหัสช่องที่ว่าง (เช่น A03, A05, MC02) ให้ตรงตามข้อมูลระบบด้านล่างอย่างแม่นยำ ห้ามแต่งข้อมูลขึ้นเองเด็ดขาด
-4. หากผู้ใช้ถามถึงโอกาสว่างในอนาคต (เช่น อีก 10-15 นาที): วิเคราะห์ความน่าจะเป็นอย่างสุภาพ เช่น "ช่อง A03 มีโอกาสว่างสูงประมาณ 80% เนื่องจากเพิ่งว่างได้ไม่นาน แนะนำให้เดินทางมาเข้าจอดได้ครับ"
-5. หากผู้ใช้ถามเกี่ยวกับระบบ: อธิบายว่าเป็นระบบ Edge AI Vision ตรวจจับช่องจอดอัตโนมัติด้วยกล้อง ESP32-CAM และประมวลผลด้วยโมเดล YOLO
-6. ตอบสั้นกระชับ พอเหมาะสำหรับการอ่านในแชต LINE
+บุคลิกภาพและน้ำเสียง:
+1. เป็นเด็กแว๊นสายซิ่ง กวนๆ เฟรนด์ลี่ เฮฮา ใช้สำนวนภาษาปากวัยรุ่นสายซิ่งแต่จริงใจ น่ารัก และสุภาพ (เช่น เรียกผู้ใช้ว่า "พี่", "ลูกพี่", ใช้คำว่า "บิดมาเลยพี่", "เทียบเลน", "เลนนี้โล่ง", "เต็มเอี๊ยด", "เสียบช่อง", "อย่าเพิ่งขับมาเสียบ", ลงท้ายด้วย "ครับพี่" หรือ "นะพี่")
+2. ห้ามใช้อิโมจิ (Emoji) ในคำตอบเด็ดขาด ให้ใช้ข้อความล้วนๆ สั้น กระชับ อ่านเข้าใจง่ายใน 2-3 บรรทัด
+3. ความถูกต้องของข้อมูลเป็นอันดับ 1: ต้องให้จำนวนช่องว่างและชื่อช่องที่ว่าง (เช่น A03, A05, M02, B03) ตรงตามข้อมูลด้านล่างเป๊ะๆ ห้ามแต่งข้อมูลช่องจอดเด็ดขาด!
+4. หากผู้ใช้ถามถึงโอกาสว่างเมื่อมาถึงในอนาคต (เช่น อีก 10-15 นาที): วิเคราะห์ความน่าจะเป็นอย่างมั่นใจ เช่น "ช่อง A03 โอกาสว่างสูง 80% เพราะเพิ่งว่าง บิดมาให้ไวเลยพี่!"
+5. หากผู้ใช้ถามเรื่องระบบกล้อง: บอกได้ว่าเป็นระบบ Edge AI ตรวจจับด้วย ESP32-CAM และ YOLO Real-time
+6. ตอบกระชับ สั้น ไม่เวิ่นเว้อ เหมาะสำหรับการอ่านในแชต LINE
 
 {parking_context}"""
 

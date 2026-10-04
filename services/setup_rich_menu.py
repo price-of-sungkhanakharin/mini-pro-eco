@@ -17,9 +17,9 @@ TOKEN = os.getenv(
 )
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DEFAULT_IMAGE_PATH = BASE_DIR / "frontend" / "public" / "richmenu_parking.jpg"
+DEFAULT_IMAGE_PATH = BASE_DIR / "frontend" / "public" / "richmenu_5buttons_neon.jpg"
 if not DEFAULT_IMAGE_PATH.exists():
-    DEFAULT_IMAGE_PATH = BASE_DIR / "frontend" / "public" / "richmenu_parking.png"
+    DEFAULT_IMAGE_PATH = BASE_DIR / "frontend" / "public" / "richmenu_parking.jpg"
 
 ctx = ssl.create_default_context()
 ctx.check_hostname = False
@@ -50,46 +50,43 @@ def list_and_cleanup_old_menus():
         print(f"⚠️ Could not list old menus: {e}")
 
 def create_rich_menu():
-    print("▶ 1. Creating Rich Menu definition on LINE Messaging API (Theme: น้องจ๊อดเด็กแว๊น)...")
+    print("▶ 1. Creating Rich Menu definition on LINE Messaging API (5-Button Cyber Dek-Wann)...")
     
-    # Grid 3x2 on 2500 x 1686
-    w_col = 2500 // 3  # 833
-    h_row = 1686 // 2  # 843
+    # 5-Panel Layout on 2500 x 1686
+    split_x = 1470
+    split_y_left = 1260
+    split_y_r1 = 560
+    split_y_r2 = 1120
     
     rich_menu_data = {
         "size": {"width": 2500, "height": 1686},
         "selected": True,
-        "name": "ชัดเจนในเลนเรา with น้องจ๊อด",
+        "name": "ชัดเจนในเลนเรา with น้องจ๊อด (5 ปุ่ม)",
         "chatBarText": "เมนูที่จอดรถ",
         "areas": [
-            # Row 1, Col 1: Summary All (ถัง NOS - สรุปภาพรวม)
+            # 1. Main Hero Panel (ชัดเจนในเลนเรา - สรุปภาพรวม)
             {
-                "bounds": {"x": 0, "y": 0, "width": w_col, "height": h_row},
+                "bounds": {"x": 0, "y": 0, "width": split_x, "height": split_y_left},
                 "action": {"type": "message", "text": "📊 สรุปภาพรวม"}
             },
-            # Row 1, Col 2: Motorcycle (มอไซค์เวฟแว๊น - หาที่จอดมอไซค์)
+            # 2. Top Right (หาที่จอดรถยนต์ - กระบะซิ่ง)
             {
-                "bounds": {"x": w_col, "y": 0, "width": w_col, "height": h_row},
-                "action": {"type": "message", "text": "🛵 หาที่จอดมอไซค์"}
-            },
-            # Row 1, Col 3: Car (กระบะซิ่งนีออน - หาที่จอดรถยนต์)
-            {
-                "bounds": {"x": w_col * 2, "y": 0, "width": 2500 - (w_col * 2), "height": h_row},
+                "bounds": {"x": split_x, "y": 0, "width": 2500 - split_x, "height": split_y_r1},
                 "action": {"type": "message", "text": "🚗 หาที่จอดรถยนต์"}
             },
-            # Row 2, Col 1: ลานหน้าภาค 2 (น้องจ๊อดถือแผนที่)
+            # 3. Middle Right (หาที่จอดมอไซค์ - แว๊นซิ่ง)
             {
-                "bounds": {"x": 0, "y": h_row, "width": w_col, "height": h_row},
-                "action": {"type": "message", "text": "🏢 ลานหน้าภาค 2"}
+                "bounds": {"x": split_x, "y": split_y_r1, "width": 2500 - split_x, "height": split_y_r2 - split_y_r1},
+                "action": {"type": "message", "text": "🛵 หาที่จอดมอไซค์"}
             },
-            # Row 2, Col 2: ลานในร่มหน้าภาค
+            # 4. Bottom Left (ลานหน้าภาค - ไม้กั้นและป้าย P)
             {
-                "bounds": {"x": w_col, "y": h_row, "width": w_col, "height": h_row},
-                "action": {"type": "message", "text": "🅿️ ลานในร่มหน้าภาค"}
+                "bounds": {"x": 0, "y": split_y_left, "width": split_x, "height": 1686 - split_y_left},
+                "action": {"type": "message", "text": "🏢 ลานหน้าภาค"}
             },
-            # Row 2, Col 3: ลานข้างภาคคอม (ลานเครื่องเสียง & รถซิ่ง)
+            # 5. Bottom Right (ลานข้างภาคคอม - ลานเครื่องเสียง)
             {
-                "bounds": {"x": w_col * 2, "y": h_row, "width": 2500 - (w_col * 2), "height": h_row},
+                "bounds": {"x": split_x, "y": split_y_r2, "width": 2500 - split_x, "height": 1686 - split_y_r2},
                 "action": {"type": "message", "text": "🖥️ ลานข้างภาคคอม"}
             }
         ]

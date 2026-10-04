@@ -252,14 +252,13 @@ def get_parking_records():
 
 
 def build_quick_reply_payload():
-    """Returns LINE Quick Reply buttons attached to message bottom matching the Rich Menu."""
+    """Returns LINE Quick Reply buttons attached to message bottom matching the 5-button Rich Menu."""
     return {
         "items": [
             {"type": "action", "action": {"type": "message", "label": "📊 สรุปรวม", "text": "📊 สรุปภาพรวม"}},
-            {"type": "action", "action": {"type": "message", "label": "🛵 มอไซค์", "text": "🛵 หาที่จอดมอไซค์"}},
             {"type": "action", "action": {"type": "message", "label": "🚗 รถยนต์", "text": "🚗 หาที่จอดรถยนต์"}},
-            {"type": "action", "action": {"type": "message", "label": "🏢 หน้าภาค 2", "text": "🏢 ลานหน้าภาค 2"}},
-            {"type": "action", "action": {"type": "message", "label": "🅿️ ในร่ม", "text": "🅿️ ลานในร่มหน้าภาค"}},
+            {"type": "action", "action": {"type": "message", "label": "🛵 มอไซค์", "text": "🛵 หาที่จอดมอไซค์"}},
+            {"type": "action", "action": {"type": "message", "label": "🏢 ลานหน้าภาค", "text": "🏢 ลานหน้าภาค"}},
             {"type": "action", "action": {"type": "message", "label": "🖥️ ข้างภาคคอม", "text": "🖥️ ลานข้างภาคคอม"}},
         ]
     }
@@ -364,7 +363,39 @@ def format_quick_response(user_msg: str) -> Optional[str]:
         lines.append("💨 รีบขับมาเทียบเลนก่อนโดนตัดหน้านะพี่!")
         return "\n".join(lines)
 
-    # 4. Specific Camera Zones
+    # 4. Front Department Aggregated (🏢 ลานหน้าภาค - CAM 1 & 2)
+    if msg == "🏢 ลานหน้าภาค" or (("ลานหน้าภาค" in msg or "หน้าภาค" in msg) and "2" not in msg and "1" not in msg and "ในร่ม" not in msg):
+        front_rows = [r for r in rows if r.get("camera_id") in ("cam1", "cam2")]
+        total_vac = sum(r.get("vacant_count", 0) for r in front_rows)
+        total_cap = sum(r.get("total_capacity", 0) for r in front_rows)
+
+        lines = [
+            "🏢 [น้องจ๊อดพาเจาะเลน: โซนลานหน้าภาค (CAM 1 & 2)]",
+            "━━━━━━━━━━━━━━━━━━━━",
+            f"📊 รถยนต์หน้าภาครวม: ว่าง {total_vac} / {total_cap} ช่อง",
+            "",
+        ]
+        for r in front_rows:
+            loc = r.get("location_name", r.get("camera_id", ""))
+            cam = r.get("camera_id", "").upper()
+            vac = r.get("vacant_count", 0)
+            cap = r.get("total_capacity", 0)
+            status_emoji = "🟢" if vac > 0 else "🔴"
+            lines.append(f"{status_emoji} {loc} ({cam}): ว่าง {vac}/{cap} ช่อง")
+            if r.get("available_slot_ids"):
+                lines.append(f"   👉 ว่างพร้อมเสียบ: {', '.join(r.get('available_slot_ids'))}")
+            else:
+                lines.append(f"   👉 โซนนี้เต็มทุกช่องแล้วพี่!")
+            lines.append("")
+
+        if total_vac > 0:
+            lines.append("💨 บิดเข้ามาเทียบเลนหน้าภาคได้เลยครับพี่!")
+        else:
+            lines.append("🛑 โซนหน้าภาคเต็มหมดแล้วพี่ ลองดูโซนข้างภาคคอมนะพี่!")
+
+        return "\n".join(lines)
+
+    # 5. Specific Camera Zones
     target_cam = None
     if "หน้าภาค 2" in msg or "cam2" in msg.lower() or "zone b" in msg.lower():
         target_cam = "cam2"

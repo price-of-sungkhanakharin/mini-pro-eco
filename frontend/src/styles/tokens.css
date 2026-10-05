@@ -58,8 +58,8 @@
   --color-status-off-text: #4B5563;
   --color-status-off-bg: #F3F4F6;
 
-  /* Overlay */
-  --color-overlay: rgba(17, 24, 39, 0.4);
+  /* Overlay (Deep dark backdrop with high contrast focus) */
+  --color-overlay: rgba(15, 17, 16, 0.78);
 
   /* Typography */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;

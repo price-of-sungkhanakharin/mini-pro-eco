@@ -42,6 +42,7 @@ import {
   ServiceDetailCard,
   AutoTrainingPanel
 } from '../../components/ui/FigmaCards'
+import Modal from '../../components/ui/Modal.jsx'
 
 export default function EcosystemPage({ onNavigate }) {
   const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost'
@@ -578,247 +579,195 @@ export default function EcosystemPage({ onNavigate }) {
       {/* ========================================================================= */}
       {/* 7. POPUP MODAL: System Health Diagnostics */}
       {/* ========================================================================= */}
-      {isHealthModalOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-[#30312F]/50 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn"
-          onClick={() => setIsHealthModalOpen(false)}
-        >
-          <div
-            className="bg-[#FFFDF7] border border-[#DEDED2] rounded-[24px] max-w-[620px] w-full p-6 md:p-8 flex flex-col gap-5 shadow-2xl relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-[16px] bg-[#E7F4D8] border border-[#BBF7D0] flex items-center justify-center flex-shrink-0">
-                  <Activity className="w-6 h-6 text-[#36612D]" />
-                </div>
-                <div>
-                  <h3 className="font-sans font-bold text-[19px] text-[#30312F] m-0">
-                    ตรวจสอบสถานะความพร้อมระบบ (Health Check)
-                  </h3>
-                  <p className="font-sans text-xs text-[#686962] m-0 mt-0.5">
-                    ตรวจสอบการเชื่อมต่อและความพร้อมใช้งานของ Service Core ทั้งหมด
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsHealthModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-[#F0EEE4] hover:bg-[#E2DFD2] flex items-center justify-center text-[#686962] transition-colors border-0 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Overall Status Banner */}
-            <div className="flex items-center justify-between p-4 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2]">
-              <div className="flex items-center gap-2.5">
-                <span className="w-3 h-3 rounded-full bg-[#16A34A] animate-pulse" />
-                <span className="font-sans font-semibold text-sm text-[#30312F]">
-                  สถานะโดยรวม (Overall Status):
-                </span>
-              </div>
-              <PillTag variant={healthData?.status === 'healthy' ? 'active' : 'neutral'}>
-                {isHealthLoading ? 'กำลังตรวจสอบ...' : (healthData?.status?.toUpperCase() || 'HEALTHY')}
-              </PillTag>
-            </div>
-
-            {/* Service Status Rows */}
-            <div className="flex flex-col gap-2.5 max-h-[320px] overflow-y-auto pr-1">
-              {[
-                { name: 'FastAPI Gateway', port: ':8000', key: 'fastapi', logo: FastAPILogo, defaultHealthy: true },
-                { name: 'PostgreSQL 17 Database', port: ':5432', key: 'postgres', logo: PostgreSQLLogo, defaultHealthy: true },
-                { name: 'MinIO S3 Storage', port: ':9000', key: 'minio', logo: MinIOLogo, defaultHealthy: true },
-                { name: 'Redis Cache & Event Queue', port: ':6379', key: 'redis', logo: RedisLogo, defaultHealthy: true },
-                { name: 'Label Studio Annotation', port: ':8080', key: 'label_studio', logo: LabelStudioLogo, defaultHealthy: true },
-                { name: 'Private GPU Node (YOLO26x)', port: ':9000', host: '172.30.81.175', logo: NvidiaLogo, defaultHealthy: true }
-              ].map((svc) => {
-                const serviceStatus = healthData?.services ? healthData.services[svc.key] : 'healthy'
-                const isOk = serviceStatus === 'healthy' || (serviceStatus === undefined && svc.defaultHealthy)
-                const Logo = svc.logo
-
-                return (
-                  <div
-                    key={svc.name}
-                    className="flex items-center justify-between p-3.5 rounded-[14px] bg-[#FFFDF7] border border-[#DEDED2] hover:border-[#B8B8A8] transition-all"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-[8px] bg-[#FAF8EF] flex items-center justify-center flex-shrink-0">
-                        <Logo size={20} />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="font-sans font-semibold text-sm text-[#30312F]">
-                          {svc.name}
-                        </span>
-                        <span className="font-mono text-xs text-[#85847E]">
-                          {svc.host ? `${svc.host}${svc.port}` : `localhost${svc.port}`}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`w-2.5 h-2.5 rounded-full ${isOk ? 'bg-[#16A34A]' : 'bg-[#EF4444]'}`} />
-                      <span className={`text-xs font-semibold ${isOk ? 'text-[#16A34A]' : 'text-[#EF4444]'}`}>
-                        {isOk ? 'Online' : 'Degraded'}
-                      </span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            {/* Modal Actions */}
-            <div className="flex items-center justify-between gap-3 pt-2 border-t border-[#DEDED2]">
-              <button
-                type="button"
-                onClick={handleCheckHealth}
-                disabled={isHealthLoading}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#FAF8EF] hover:bg-[#F0EEE4] text-[#30312F] text-xs font-medium border border-[#DEDED2] cursor-pointer transition-colors"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isHealthLoading ? 'animate-spin' : ''}`} />
-                <span>{isHealthLoading ? 'กำลังตรวจสอบ...' : 'ตรวจสอบใหม่อีกครั้ง'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsHealthModalOpen(false)}
-                className="px-5 py-2.5 rounded-full bg-[#30312F] text-white text-xs font-medium border-0 cursor-pointer hover:bg-[#1E1F1D] transition-colors"
-              >
-                ปิดหน้าต่าง
-              </button>
-            </div>
+      <Modal
+        isOpen={isHealthModalOpen}
+        onClose={() => setIsHealthModalOpen(false)}
+        title="ตรวจสอบสถานะความพร้อมระบบ (Health Check)"
+        subtitle="ตรวจสอบการเชื่อมต่อและความพร้อมใช้งานของ Service Core ทั้งหมดแบบ Real-time"
+        icon={() => <Activity className="w-6 h-6 text-[#36612D]" />}
+        iconBg="bg-[#E7F4D8]"
+        iconBorder="border-[#BBF7D0]"
+        size="lg"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={handleCheckHealth}
+              disabled={isHealthLoading}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#FAF8EF] hover:bg-[#F0EEE4] text-[#30312F] text-xs font-medium border border-[#DEDED2] cursor-pointer transition-colors"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isHealthLoading ? 'animate-spin' : ''}`} />
+              <span>{isHealthLoading ? 'กำลังตรวจสอบ...' : 'ตรวจสอบใหม่อีกครั้ง'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsHealthModalOpen(false)}
+              className="px-5 py-2.5 rounded-full bg-[#30312F] text-white text-xs font-medium border-0 cursor-pointer hover:bg-[#1E1F1D] transition-colors"
+            >
+              ปิดหน้าต่าง
+            </button>
+          </>
+        }
+      >
+        {/* Overall Status Banner */}
+        <div className="flex items-center justify-between p-4 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2]">
+          <div className="flex items-center gap-2.5">
+            <span className="w-3 h-3 rounded-full bg-[#16A34A] animate-pulse" />
+            <span className="font-sans font-semibold text-sm text-[#30312F]">
+              สถานะโดยรวม (Overall Status):
+            </span>
           </div>
+          <PillTag variant={healthData?.status === 'healthy' ? 'active' : 'neutral'}>
+            {isHealthLoading ? 'กำลังตรวจสอบ...' : (healthData?.status?.toUpperCase() || 'HEALTHY')}
+          </PillTag>
         </div>
-      )}
+
+        {/* Service Status Rows */}
+        <div className="flex flex-col gap-2.5 max-h-[340px] overflow-y-auto pr-1">
+          {[
+            { name: 'FastAPI Gateway', port: ':8000', key: 'fastapi', logo: FastAPILogo, defaultHealthy: true },
+            { name: 'PostgreSQL 17 Database', port: ':5432', key: 'postgres', logo: PostgreSQLLogo, defaultHealthy: true },
+            { name: 'MinIO S3 Storage', port: ':9000', key: 'minio', logo: MinIOLogo, defaultHealthy: true },
+            { name: 'Redis Cache & Event Queue', port: ':6379', key: 'redis', logo: RedisLogo, defaultHealthy: true },
+            { name: 'Label Studio Annotation', port: ':8080', key: 'label_studio', logo: LabelStudioLogo, defaultHealthy: true },
+            { name: 'Private GPU Node (YOLO26x)', port: ':9000', host: '172.30.81.175', logo: NvidiaLogo, defaultHealthy: true }
+          ].map((svc) => {
+            const serviceStatus = healthData?.services ? healthData.services[svc.key] : 'healthy'
+            const isOk = serviceStatus === 'healthy' || (serviceStatus === undefined && svc.defaultHealthy)
+            const Logo = svc.logo
+
+            return (
+              <div
+                key={svc.name}
+                className="flex items-center justify-between p-3.5 rounded-[14px] bg-[#FAF8EF] border border-[#DEDED2] hover:border-[#B8B8A8] transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-[8px] bg-[#FFFDF7] flex items-center justify-center flex-shrink-0 shadow-xs">
+                    <Logo size={20} />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-sans font-semibold text-sm text-[#30312F]">
+                      {svc.name}
+                    </span>
+                    <span className="font-mono text-xs text-[#85847E]">
+                      {svc.host ? `${svc.host}${svc.port}` : `localhost${svc.port}`}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`w-2.5 h-2.5 rounded-full ${isOk ? 'bg-[#16A34A]' : 'bg-[#EF4444]'}`} />
+                  <span className={`text-xs font-semibold ${isOk ? 'text-[#16A34A]' : 'text-[#EF4444]'}`}>
+                    {isOk ? 'Online' : 'Degraded'}
+                  </span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </Modal>
 
       {/* ========================================================================= */}
       {/* 8. POPUP MODAL: Redis Real-Time Status & Diagnostics */}
       {/* ========================================================================= */}
-      {isRedisModalOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-[#30312F]/50 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn"
-          onClick={() => setIsRedisModalOpen(false)}
-        >
-          <div
-            className="bg-[#FFFDF7] border border-[#DEDED2] rounded-[24px] max-w-[620px] w-full p-6 md:p-8 flex flex-col gap-5 shadow-2xl relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-[16px] bg-[#FBEAE9] border border-[#F5C2C0] flex items-center justify-center flex-shrink-0">
-                  <RedisLogo size={28} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-sans font-bold text-[19px] text-[#30312F] m-0">
-                      Redis In-Memory Cache & Queue
-                    </h3>
-                    <PillTag variant="active">Active</PillTag>
-                  </div>
-                  <p className="font-sans text-xs text-[#686962] m-0 mt-0.5">
-                    Port :6379 • In-Memory Datastore & Event Broker
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsRedisModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-[#F0EEE4] hover:bg-[#E2DFD2] flex items-center justify-center text-[#686962] transition-colors border-0 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      <Modal
+        isOpen={isRedisModalOpen}
+        onClose={() => setIsRedisModalOpen(false)}
+        title="Redis In-Memory Cache & Queue"
+        subtitle="Port :6379 • In-Memory Datastore & Event Broker"
+        icon={() => <RedisLogo size={28} />}
+        iconBg="bg-[#FBEAE9]"
+        iconBorder="border-[#F5C2C0]"
+        badge={<PillTag variant="active">Active</PillTag>}
+        size="lg"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={handleCheckRedis}
+              disabled={isRedisLoading}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#FAF8EF] hover:bg-[#F0EEE4] text-[#30312F] text-xs font-medium border border-[#DEDED2] cursor-pointer transition-colors"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRedisLoading ? 'animate-spin' : ''}`} />
+              <span>{isRedisLoading ? 'กำลังดึงข้อมูล...' : 'รีเฟรชข้อมูล'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsRedisModalOpen(false)}
+              className="px-5 py-2.5 rounded-full bg-[#30312F] text-white text-xs font-medium border-0 cursor-pointer hover:bg-[#1E1F1D] transition-colors"
+            >
+              ปิดหน้าต่าง
+            </button>
+          </>
+        }
+      >
+        {/* Key Metrics Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="p-3.5 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col gap-1">
+            <span className="text-[11px] text-[#85847E]">หน่วยความจำที่ใช้</span>
+            <span className="font-mono text-base font-bold text-[#30312F]">
+              {redisData?.used_memory_human || '2.19M'}
+            </span>
+            <span className="text-[10px] text-[#686962]">Peak: {redisData?.peak_memory_human || '2.22M'}</span>
+          </div>
 
-            {/* Key Metrics Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <div className="p-3.5 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col gap-1">
-                <span className="text-[11px] text-[#85847E]">หน่วยความจำที่ใช้</span>
-                <span className="font-mono text-base font-bold text-[#30312F]">
-                  {redisData?.used_memory_human || '2.19M'}
-                </span>
-                <span className="text-[10px] text-[#686962]">Peak: {redisData?.peak_memory_human || '2.22M'}</span>
-              </div>
+          <div className="p-3.5 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col gap-1">
+            <span className="text-[11px] text-[#85847E]">จำนวนคีย์ใน DB0</span>
+            <span className="font-mono text-base font-bold text-[#30312F]">
+              {redisData?.keys_count !== undefined ? `${redisData.keys_count} Keys` : '15 Keys'}
+            </span>
+            <span className="text-[10px] text-[#686962]">TTL Auto-Expire</span>
+          </div>
 
-              <div className="p-3.5 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col gap-1">
-                <span className="text-[11px] text-[#85847E]">จำนวนคีย์ใน DB0</span>
-                <span className="font-mono text-base font-bold text-[#30312F]">
-                  {redisData?.keys_count !== undefined ? `${redisData.keys_count} Keys` : '15 Keys'}
-                </span>
-                <span className="text-[10px] text-[#686962]">TTL Auto-Expire</span>
-              </div>
+          <div className="p-3.5 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col gap-1">
+            <span className="text-[11px] text-[#85847E]">Clients เชื่อมต่อ</span>
+            <span className="font-mono text-base font-bold text-[#30312F]">
+              {redisData?.connected_clients !== undefined ? `${redisData.connected_clients} Conns` : '6 Conns'}
+            </span>
+            <span className="text-[10px] text-[#686962]">FastAPI + Worker</span>
+          </div>
 
-              <div className="p-3.5 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col gap-1">
-                <span className="text-[11px] text-[#85847E]">Clients เชื่อมต่อ</span>
-                <span className="font-mono text-base font-bold text-[#30312F]">
-                  {redisData?.connected_clients !== undefined ? `${redisData.connected_clients} Conns` : '6 Conns'}
-                </span>
-                <span className="text-[10px] text-[#686962]">FastAPI + Worker</span>
-              </div>
+          <div className="p-3.5 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col gap-1">
+            <span className="text-[11px] text-[#85847E]">Latency / ความเร็ว</span>
+            <span className="font-mono text-base font-bold text-[#16A34A]">
+              {redisData?.latency_ms ? `${redisData.latency_ms} ms` : '< 1 ms'}
+            </span>
+            <span className="text-[10px] text-[#686962]">In-Memory RAM</span>
+          </div>
 
-              <div className="p-3.5 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col gap-1">
-                <span className="text-[11px] text-[#85847E]">Latency / ความเร็ว</span>
-                <span className="font-mono text-base font-bold text-[#16A34A]">
-                  {redisData?.latency_ms ? `${redisData.latency_ms} ms` : '< 1 ms'}
-                </span>
-                <span className="text-[10px] text-[#686962]">In-Memory RAM</span>
-              </div>
+          <div className="p-3.5 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col gap-1">
+            <span className="text-[11px] text-[#85847E]">ระยะเวลาเปิดระบบ</span>
+            <span className="font-mono text-sm font-bold text-[#30312F] truncate">
+              {redisData?.uptime_human || '1 วัน 8 ชม.'}
+            </span>
+            <span className="text-[10px] text-[#686962]">Uptime Server</span>
+          </div>
 
-              <div className="p-3.5 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col gap-1">
-                <span className="text-[11px] text-[#85847E]">ระยะเวลาเปิดระบบ</span>
-                <span className="font-mono text-sm font-bold text-[#30312F] truncate">
-                  {redisData?.uptime_human || '1 วัน 8 ชม.'}
-                </span>
-                <span className="text-[10px] text-[#686962]">Uptime Server</span>
-              </div>
-
-              <div className="p-3.5 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col gap-1">
-                <span className="text-[11px] text-[#85847E]">Redis Version</span>
-                <span className="font-mono text-base font-bold text-[#30312F]">
-                  v{redisData?.version || '8.8.0'}
-                </span>
-                <span className="text-[10px] text-[#686962]">AOF: {redisData?.persistence_aof || 'Enabled'}</span>
-              </div>
-            </div>
-
-            {/* Modules and Role */}
-            <div className="p-4 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col gap-2">
-              <span className="text-xs font-semibold text-[#30312F]">
-                Active Redis Modules & Features:
-              </span>
-              <div className="flex items-center gap-2 flex-wrap">
-                {['RedisTimeSeries', 'RediSearch', 'RedisJSON', 'Bloom Filter (bf)', 'Append-Only (AOF)'].map((mod) => (
-                  <span
-                    key={mod}
-                    className="px-2.5 py-1 rounded-[8px] bg-[#FFFDF7] border border-[#DEDED2] text-[11px] font-mono text-[#30312F]"
-                  >
-                    {mod}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div className="flex items-center justify-between gap-3 pt-2 border-t border-[#DEDED2]">
-              <button
-                type="button"
-                onClick={handleCheckRedis}
-                disabled={isRedisLoading}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#FAF8EF] hover:bg-[#F0EEE4] text-[#30312F] text-xs font-medium border border-[#DEDED2] cursor-pointer transition-colors"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isRedisLoading ? 'animate-spin' : ''}`} />
-                <span>{isRedisLoading ? 'กำลังดึงข้อมูล...' : 'รีเฟรชข้อมูล'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsRedisModalOpen(false)}
-                className="px-5 py-2.5 rounded-full bg-[#30312F] text-white text-xs font-medium border-0 cursor-pointer hover:bg-[#1E1F1D] transition-colors"
-              >
-                ปิดหน้าต่าง
-              </button>
-            </div>
+          <div className="p-3.5 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col gap-1">
+            <span className="text-[11px] text-[#85847E]">Redis Version</span>
+            <span className="font-mono text-base font-bold text-[#30312F]">
+              v{redisData?.version || '8.8.0'}
+            </span>
+            <span className="text-[10px] text-[#686962]">AOF: {redisData?.persistence_aof || 'Enabled'}</span>
           </div>
         </div>
-      )}
+
+        {/* Modules and Role */}
+        <div className="p-4 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col gap-2">
+          <span className="text-xs font-semibold text-[#30312F]">
+            Active Redis Modules & Features:
+          </span>
+          <div className="flex items-center gap-2 flex-wrap">
+            {['RedisTimeSeries', 'RediSearch', 'RedisJSON', 'Bloom Filter (bf)', 'Append-Only (AOF)'].map((mod) => (
+              <span
+                key={mod}
+                className="px-2.5 py-1 rounded-[8px] bg-[#FFFDF7] border border-[#DEDED2] text-[11px] font-mono text-[#30312F]"
+              >
+                {mod}
+              </span>
+            ))}
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

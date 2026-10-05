@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import {
   X,
   Clock,
@@ -78,7 +79,20 @@ export default function CameraModal({ camera, onClose, onNavigate }) {
   const bikeTotal = camera.bike?.total ?? slots.filter(s => s.type === 'motorcycle' || s.type === 'bike').length
   const bikeFree = camera.bike?.free ?? slots.filter(s => (s.type === 'motorcycle' || s.type === 'bike') && !s.occupied).length
 
-  return (
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose?.()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = originalOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [onClose])
+
+  return createPortal(
     <div className="camera-modal-backdrop" onClick={onClose}>
       <div
         className="camera-modal-dialog"
@@ -466,6 +480,7 @@ export default function CameraModal({ camera, onClose, onNavigate }) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

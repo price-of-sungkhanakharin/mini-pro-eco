@@ -1616,8 +1616,10 @@
 
 @media (max-width: 768px) {
   .platform-workspace {
-    padding: 20px 16px 40px;
-    gap: 24px;
+    padding: 16px 8px 36px;
+    gap: 18px;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 }
 
@@ -1633,6 +1635,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
 }
 
 /* Introduction Section (width 1240px, height 227px in desktop) */
@@ -1643,6 +1646,7 @@
   align-items: center;
   padding: 0px;
   width: 100%;
+  max-width: 100%;
   gap: 24px;
 }
 
@@ -1650,6 +1654,7 @@
   .platform-intro {
     flex-direction: column;
     align-items: stretch;
+    gap: 16px;
   }
 }
 
@@ -1704,12 +1709,13 @@
   color: #30312F;
   margin: 0;
   letter-spacing: -0.02em;
+  word-break: break-word;
 }
 
 @media (max-width: 768px) {
   .platform-title {
-    font-size: 32px;
-    line-height: 40px;
+    font-size: 24px;
+    line-height: 30px;
   }
 }
 
@@ -1721,6 +1727,13 @@
   line-height: 160%;
   color: #686962;
   margin: 0;
+}
+
+@media (max-width: 768px) {
+  .platform-description {
+    font-size: 13px;
+    line-height: 19px;
+  }
 }
 
 .platform-intro-action {

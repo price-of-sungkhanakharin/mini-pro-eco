@@ -90,14 +90,17 @@ export default function RightSidebar({
       >
         {/* Drawer Header with Close Button */}
         <div className="sidebar-mobile-header">
-          <span className="sidebar-mobile-title">
-            NAVIGATION MENU
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-sm text-[#30312F] tracking-tight">
+              เมนูนำทางระบบ (Navigation)
+            </span>
+          </div>
           <button
             type="button"
             onClick={onCloseMobileDrawer}
             className="sidebar-close-btn"
             aria-label="Close navigation menu"
+            title="ปิดเมนู"
           >
             <X className="sidebar-close-icon" />
           </button>

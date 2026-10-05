@@ -40,7 +40,7 @@ export default function DashboardPage({ onOpenModal, onNavigate }) {
   if (cam3Counts?.bike?.free <= 3) activeAlerts++
 
   return (
-    <div className="flex flex-col items-start px-4 sm:px-6 lg:px-10 py-6 gap-6 w-full max-w-[1440px] mx-auto box-border">
+    <div className="flex flex-col items-start px-1 sm:px-6 lg:px-10 py-3 sm:py-6 gap-5 sm:gap-6 w-full max-w-[1440px] mx-auto box-border overflow-hidden">
       {/* 1. Header with Demo Badge & Actions */}
       <DashboardHeader
         onlineCount={onlineCount}

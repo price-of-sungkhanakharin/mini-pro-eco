@@ -400,7 +400,7 @@ export default function IngestionLogsPage({ onNavigate }) {
       <div className="w-full bg-[#FFFDF7] border border-[#DEDED2] rounded-[24px] p-5 flex flex-col gap-4 shadow-xs">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           {/* Search Input */}
-          <div className="relative flex-1 min-w-[280px]">
+          <div className="relative flex-1 min-w-0 w-full sm:min-w-[260px]">
             <Search className="w-4 h-4 text-[#85847E] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"

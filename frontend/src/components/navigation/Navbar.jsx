@@ -81,13 +81,27 @@ export default function Navbar({
       {/* Row 1: Brand (Left), Right Controls & Action Button */}
       <div className="navbar-row-top">
         <div className="navbar-row-inner">
-          {/* Brand Group (Figma Spec: 40x26 chain mark, 17px Inter #30312F wordmark, 7px gap) */}
-          <div className="navbar-brand-wrapper">
-            <div className="brand-chain-mark">
-              <span className="brand-chain-inner" />
+          {/* Left Group: Mobile Hamburger (<1024px) + Brand Group */}
+          <div className="navbar-left-group">
+            <button
+              type="button"
+              onClick={onToggleMobileDrawer}
+              className="navbar-hamburger-btn"
+              aria-label="เปิดเมนูนำทาง (Sidebar)"
+              aria-expanded={isMobileDrawerOpen}
+              title="เปิดเมนูนำทาง"
+            >
+              <Menu className="navbar-hamburger-icon" />
+            </button>
+
+            {/* Brand Group (Figma Spec: 40x26 chain mark, 17px Inter #30312F wordmark, 7px gap) */}
+            <div className="navbar-brand-wrapper">
+              <div className="brand-chain-mark">
+                <span className="brand-chain-inner" />
+              </div>
+              <span className="brand-wordmark">CPE Smart Parking AI</span>
+              <span className="navbar-status-dot" aria-label="System status online" />
             </div>
-            <span className="brand-wordmark">CPE Smart Parking AI</span>
-            <span className="navbar-status-dot" aria-label="System status online" />
           </div>
 
           {/* Right Actions Group */}
@@ -164,17 +178,6 @@ export default function Navbar({
             >
               <LogOut className="navbar-action-icon" />
               <span className="navbar-action-label">Logout</span>
-            </button>
-
-            {/* Mobile Hamburger Toggle (<1024px) */}
-            <button
-              type="button"
-              onClick={onToggleMobileDrawer}
-              className="navbar-hamburger-btn"
-              aria-label="Toggle navigation drawer"
-              aria-expanded={isMobileDrawerOpen}
-            >
-              <Menu className="navbar-hamburger-icon" />
             </button>
           </div>
         </div>

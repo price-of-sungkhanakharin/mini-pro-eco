@@ -457,18 +457,32 @@
   }
 }
 
-/* Mobile Hamburger Button */
+/* Left Group (Hamburger + Brand) */
+.navbar-left-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+/* Mobile Hamburger Button (On the LEFT) */
 .navbar-hamburger-btn {
   display: none;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: 8px;
   border: 1px solid var(--color-border);
   background-color: var(--color-surface);
   cursor: pointer;
   flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.navbar-hamburger-btn:hover {
+  background-color: var(--color-surface-muted);
 }
 
 .navbar-hamburger-btn:focus-visible {
@@ -490,26 +504,22 @@
 
 /* --------------------------------------------------------------------------
    Row 2: Desktop Navigation Links (48px, >=1024px)
-   Right-Aligned Menu with Active State (Figma Spec: 36px gap, 22x2px indicator)
+   Hidden on Mobile (<1024px); navigation must only be done from the sidebar
    -------------------------------------------------------------------------- */
 .navbar-row-bottom {
-  display: flex;
-  height: 48px;
-  background-color: var(--color-bg, #F7F7F5);
-  border-bottom: 1px solid var(--color-border);
-  width: 100%;
-  box-sizing: border-box;
-  overflow-x: auto;
-  scrollbar-width: none;
+  display: none;
 }
 
-@media (max-width: 1023px) {
-  .navbar-row-bottom-inner {
-    padding: 0 16px;
-    gap: 12px;
-  }
-  .navbar-active-view-context {
-    display: none;
+@media (min-width: 1024px) {
+  .navbar-row-bottom {
+    display: flex;
+    height: 48px;
+    background-color: var(--color-bg, #F7F7F5);
+    border-bottom: 1px solid var(--color-border);
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
 }
 
@@ -685,9 +695,9 @@
   box-sizing: border-box;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .dashboard-center-stage {
-    padding: 20px var(--page-pad-x);
+    padding: 14px 8px;
   }
 }
 
@@ -698,11 +708,13 @@
   flex-direction: column;
   gap: 24px;
   width: 100%;
+  max-width: 100%;
   min-width: 0;
+  overflow-x: hidden;
 }
 
 /* --------------------------------------------------------------------------
-   Navigation Sidebar: Hidden on Desktop (>=1024px), Slide-In Drawer (<1024px)
+   Navigation Sidebar: Hidden on Desktop (>=1024px), Slide-In Drawer from Left (<1024px)
    -------------------------------------------------------------------------- */
 .cpe-right-sidebar {
   display: none;
@@ -712,20 +724,22 @@
   .cpe-right-sidebar {
     display: flex;
     position: fixed;
-    top: var(--navbar-h);
+    top: 0;
     left: 0;
     bottom: 0;
-    width: 280px;
-    height: calc(100vh - var(--navbar-h));
-    background-color: var(--color-surface);
+    width: 300px;
+    max-width: 86vw;
+    height: 100vh;
+    background-color: var(--color-surface, #FFFFFF);
     border-right: 1px solid var(--color-border);
     transform: translateX(-100%);
-    z-index: 50;
-    padding: 24px 16px;
-    gap: 20px;
+    z-index: 1000;
+    padding: 20px 16px;
+    gap: 16px;
     flex-direction: column;
     overflow-y: auto;
-    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 4px 0 28px rgba(0, 0, 0, 0.25);
   }
 
   .cpe-right-sidebar.drawer-open {
@@ -734,9 +748,10 @@
 
   .sidebar-backdrop {
     position: fixed;
-    inset: var(--navbar-h) 0 0 0;
-    background: var(--color-overlay);
-    z-index: 45;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(2px);
+    z-index: 990;
   }
 }
 

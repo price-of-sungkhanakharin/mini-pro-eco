@@ -11,6 +11,7 @@ import EcosystemPage from './pages/ecosystem/EcosystemPage.jsx'
 import AnalyticsPage from './pages/analytics/AnalyticsPage.jsx'
 import ProjectDetailsPage from './pages/details/ProjectDetailsPage.jsx'
 import LiveCamerasPage from './pages/dashboard/LiveCamerasPage.jsx'
+import CameraModal from './components/ui/CameraModal.jsx'
 
 import {
   getSavedOrInitialSlots,
@@ -341,6 +342,20 @@ function App() {
             handleQuickAdminDemo={handleQuickAdminDemo}
           />
         </BlankLayout>
+      ) : currentView === 'live_cameras' ? (
+        <>
+          <LiveCamerasPage
+            onOpenModal={(cam) => setSelectedCamera(cam)}
+            onNavigate={handleNavigate}
+          />
+          {selectedCamera && (
+            <CameraModal
+              camera={selectedCamera}
+              onClose={() => setSelectedCamera(null)}
+              onNavigate={handleNavigate}
+            />
+          )}
+        </>
       ) : (
         <BaseLayout
           user={user}
@@ -371,12 +386,6 @@ function App() {
               onNavigate={handleNavigate}
               initialCameraId={setupCameraId}
               apiBase={API_BASE_URL}
-            />
-          )}
-          {currentView === 'live_cameras' && (
-            <LiveCamerasPage
-              onOpenModal={(cam) => setSelectedCamera(cam)}
-              onNavigate={handleNavigate}
             />
           )}
           {currentView === 'slot_map' && (

@@ -32,7 +32,7 @@ class StartModalTrainRequest(BaseModel):
 @router.post(
     "/start",
     summary="Start Modal Serverless GPU Training",
-    description="Enqueue and launch YOLO training on Modal Cloud GPU using Roboflow dataset.",
+    description="Enqueue and launch YOLO training on Modal Cloud GPU using Label Studio dataset.",
 )
 async def start_modal_training(
     payload: StartModalTrainRequest,

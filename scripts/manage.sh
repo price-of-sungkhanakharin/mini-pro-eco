@@ -57,7 +57,7 @@ show_help() {
     echo ""
     echo -e "${BOLD}Developer & Platform Tools:${RESET}"
     echo -e "  ${GREEN}test [args]${RESET}           Execute automated Pytest suite"
-    echo -e "  ${GREEN}roboflow [info|sync]${RESET}  Check Roboflow connection or sync frames"
+    echo -e "  ${GREEN}label-studio [status|scan]${RESET} Check Label Studio & Auto-Label pipeline"
     echo -e "  ${GREEN}export-openapi${RESET}        Export OpenAPI schemas to CSV, Excel, and JSON"
     echo -e "  ${GREEN}report${RESET}                Generate comprehensive Assignment Report DOCX"
     echo -e "  ${GREEN}help${RESET}                  Display this help reference"
@@ -275,19 +275,16 @@ cmd_status() {
     fi
 
     echo ""
-    echo -e "${BOLD}${CYAN}5. Roboflow Cloud Annotation Status:${RESET}"
-    if [ -f "$WORKSPACE_DIR/.env" ]; then
-        RF_KEY=$(grep "^ROBOFLOW_API_KEY=" "$WORKSPACE_DIR/.env" | cut -d'=' -f2 || true)
-        RF_WS=$(grep "^ROBOFLOW_WORKSPACE=" "$WORKSPACE_DIR/.env" | cut -d'=' -f2 || true)
-        RF_PROJ=$(grep "^ROBOFLOW_PROJECT=" "$WORKSPACE_DIR/.env" | cut -d'=' -f2 || true)
-
-        if [ -n "$RF_KEY" ] && [ "$RF_KEY" != "your_roboflow_api_key_here" ]; then
-            echo -e "  Roboflow Cloud:   ${GREEN}● Connected & Configured${RESET}"
-            echo -e "  Workspace/Proj:   ${BOLD}$RF_WS / $RF_PROJ${RESET}"
-            echo -e "  Annotation Studio:${CYAN}https://app.roboflow.com/$RF_WS/$RF_PROJ/annotate${RESET}"
-        else
-            echo -e "  Roboflow Cloud:   ${YELLOW}○ Pending credentials in .env${RESET}"
-        fi
+    echo -e "${BOLD}${CYAN}5. Label Studio Annotation & Auto-Label Pipeline:${RESET}"
+    if curl -s -f http://localhost:8080/health >/dev/null 2>&1 || curl -s -f http://localhost:8080/api/projects/ >/dev/null 2>&1; then
+        echo -e "  Label Studio:     ${GREEN}● Online (:8080)${RESET}"
+        echo -e "  Studio Web UI:    ${CYAN}http://localhost:8080${RESET}"
+    else
+        echo -e "  Label Studio:     ${YELLOW}○ Port 8080 not responding (check docker ps)${RESET}"
+    fi
+    AL_STATS=$(curl -s http://localhost:8000/api/v1/auto-label/stats 2>/dev/null || true)
+    if [ -n "$AL_STATS" ] && echo "$AL_STATS" | grep -q "total_images"; then
+        echo -e "  Auto-Label Stats: ${GREEN}Active & Connected${RESET}"
     fi
     echo ""
 }
@@ -376,26 +373,20 @@ cmd_logs() {
     esac
 }
 
-# Command: Roboflow Actions
-cmd_roboflow() {
-    ACTION="${1:-info}"
+# Command: Label Studio Actions
+cmd_label_studio() {
+    ACTION="${1:-status}"
     case "$ACTION" in
-        info|status)
+        status|info)
             cmd_status
             ;;
-        sync)
-            echo -e "${BLUE}Syncing camera frames to Roboflow...${RESET}"
-            if command -v uv >/dev/null 2>&1; then
-                uv run python -c "
-import asyncio
-from backend.app.services.roboflow_service import roboflow_service
-res = asyncio.run(roboflow_service.sync_recent_camera_frames(sample_limit=5))
-print('Roboflow Sync Result:', res)
-"
-            fi
+        scan)
+            echo -e "${BLUE}Scanning MinIO buckets for unannotated frames...${RESET}"
+            curl -s -X POST http://localhost:8000/api/v1/auto-label/scan || true
+            echo ""
             ;;
         *)
-            echo "Unknown roboflow action: $ACTION. Supported: info, sync"
+            echo "Unknown label-studio action: $ACTION. Supported: status, scan"
             ;;
     esac
 }
@@ -439,9 +430,9 @@ case "$1" in
         shift
         cmd_docker "$@"
         ;;
-    roboflow)
+    label-studio|labelstudio)
         shift
-        cmd_roboflow "$@"
+        cmd_label_studio "$@"
         ;;
     help|--help|-h|"")
         show_help

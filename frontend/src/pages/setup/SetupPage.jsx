@@ -9,10 +9,11 @@ import {
   CheckCircle2,
   Layers,
   Cpu,
-  Sliders
+  Sliders,
+  Tag
 } from 'lucide-react'
 import ParkingSetup from './components_setup/ParkingSetup.jsx'
-import RoboflowStudio from '../trainer/components_trainer/RoboflowStudio.jsx'
+import LabelStudioManager from '../trainer/components_trainer/LabelStudioManager.jsx'
 import AutoTrainerStudio from '../trainer/AutoTrainerPage.jsx'
 import { PillTag, PillButton } from '../../components/ui/FigmaCards'
 
@@ -211,7 +212,7 @@ export default function SetupPage({
           { id: 'line', label: 'LINE Chatbot Webhook', icon: MessageSquare },
           { id: 'storage', label: 'MinIO & DB Connection', icon: HardDrive },
           { id: 'trainer', label: 'Auto-Trainer & Model Hub', icon: Cpu },
-          { id: 'roboflow', label: 'Roboflow Project', icon: Layers }
+          { id: 'label_studio', label: 'Label Studio Annotation', icon: Tag }
         ].map((tab) => {
           const Icon = tab.icon
           const active = activeTab === tab.id
@@ -435,9 +436,9 @@ export default function SetupPage({
           </div>
         )}
 
-        {activeTab === 'roboflow' && (
+        {activeTab === 'label_studio' && (
           <div className="w-full">
-            <RoboflowStudio apiBase={apiBase} />
+            <LabelStudioManager apiBase={apiBase} />
           </div>
         )}
       </div>

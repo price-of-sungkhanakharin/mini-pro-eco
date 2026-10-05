@@ -122,19 +122,6 @@ export function AdminerLogo({ size = 28, className = '' }) {
   )
 }
 
-export function RoboflowLogo({ size = 28, className = '' }) {
-  return (
-    <img
-      src="/logos/roboflow.svg"
-      alt="Roboflow"
-      width={size}
-      height={size}
-      style={{ width: `${size}px`, height: `${size}px` }}
-      className={`object-contain select-none pointer-events-none ${className}`}
-    />
-  )
-}
-
 export function DotBlueLogo({ size = 28, className = '' }) {
   return (
     <svg

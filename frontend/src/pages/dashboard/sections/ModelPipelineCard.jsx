@@ -26,10 +26,10 @@ export default function ModelPipelineCard({ onNavigate }) {
     },
     {
       id: 'labeling',
-      name: 'Auto-Labeling Pipeline',
+      name: 'Auto-Labeling (Label Studio)',
       metric: '96.8% Precision',
       metricColor: 'text-[#284E1A]',
-      desc: 'คัดกรองเฟรมภาพและซิงค์เข้า Roboflow / Label Studio'
+      desc: 'คัดกรองเฟรมภาพและซิงค์เข้าสู่ Label Studio เพื่อทำ Auto-Labeling'
     },
     {
       id: 'retrain',

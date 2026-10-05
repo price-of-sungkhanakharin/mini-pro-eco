@@ -396,11 +396,11 @@ function App() {
               apiBase={API_BASE_URL}
             />
           )}
-          {currentView === 'roboflow' && (
+          {currentView === 'label_studio' && (
             <SetupPage
               onNavigate={handleNavigate}
               initialCameraId={setupCameraId}
-              initialTab="roboflow"
+              initialTab="label_studio"
               apiBase={API_BASE_URL}
             />
           )}

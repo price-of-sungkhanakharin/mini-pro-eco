@@ -76,10 +76,6 @@ tags_metadata = [
         "description": "LINE Messaging API integration with Quick Reply buttons for smart parking advisory",
     },
     {
-        "name": "Roboflow Annotation Platform",
-        "description": "Roboflow cloud dataset annotation, auto-upload, and deep linking",
-    },
-    {
         "name": "Parking Analytics & Time-Series",
         "description": "Time-series occupancy logging and aggregation for parking cameras",
     },
@@ -208,23 +204,6 @@ def startup_event():
             exc,
             extra={"operation": "startup", "status": "WARNING"},
         )
-    # Start the automated 2-minute periodic Roboflow synchronization worker
-    try:
-        from backend.app.services.roboflow_sync_service import sync_manager
-        sync_manager.start_background_worker()
-        logger.info("Roboflow 2-minute sync worker started", extra={"operation": "startup", "status": "SUCCESS"})
-    except Exception as exc:
-        logger.warning("Could not start Roboflow sync worker: %s", exc)
-
-
-@app.on_event("shutdown")
-def shutdown_event():
-    """Gracefully stop background workers on shutdown."""
-    try:
-        from backend.app.services.roboflow_sync_service import sync_manager
-        sync_manager.stop_background_worker()
-    except Exception:
-        pass
 
 
 # Include API Routers

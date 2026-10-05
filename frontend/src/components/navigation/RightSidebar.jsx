@@ -52,6 +52,12 @@ export default function RightSidebar({
       label: 'Analytics / Plots',
       sub: 'Model benchmarks, telemetry & occupancy',
       icon: BarChart2
+    },
+    {
+      id: 'details',
+      label: 'Architecture & Flowchart',
+      sub: 'ESP32 lifecycle, YOLO selection & whitepaper',
+      icon: FileText
     }
   ]
 

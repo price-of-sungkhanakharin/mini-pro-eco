@@ -300,16 +300,27 @@ export default function EcosystemPage({ onNavigate }) {
           </p>
         </div>
 
-        {/* Intro Action Button: Opens Interactive Health Popup */}
-        <button
-          type="button"
-          onClick={openHealthModal}
-          className="platform-intro-action cursor-pointer bg-transparent border-0 p-0 text-left"
-          title="คลิกเพื่อตรวจสอบสถานะความพร้อมของทุกบริการ"
-        >
-          <span>ตรวจสอบความสมบูรณ์สแตก (Health)</span>
-          <Activity className="w-4 h-4 flex-shrink-0" strokeWidth={2} />
-        </button>
+        {/* Intro Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onNavigate?.('details')}
+            className="platform-intro-action cursor-pointer bg-transparent border-0 p-0 text-left"
+            title="คลิกเพื่อดูผังสถาปัตยกรรมและ Flowchart เชิงลึก"
+          >
+            <span>ผังสถาปัตยกรรม & Flowchart</span>
+            <Workflow className="w-4 h-4 flex-shrink-0" strokeWidth={2} />
+          </button>
+          <button
+            type="button"
+            onClick={openHealthModal}
+            className="platform-intro-action cursor-pointer bg-transparent border-0 p-0 text-left"
+            title="คลิกเพื่อตรวจสอบสถานะความพร้อมของทุกบริการ"
+          >
+            <span>ตรวจสอบความสมบูรณ์สแตก (Health)</span>
+            <Activity className="w-4 h-4 flex-shrink-0" strokeWidth={2} />
+          </button>
+        </div>
       </div>
 
       {/* 3. Service Overview (Row of 4 Cards: MinIO, Label Studio, PostgreSQL, GPU Node) */}
@@ -571,6 +582,34 @@ export default function EcosystemPage({ onNavigate }) {
                   FastAPI Inference (:8000)
                 </span>
               </div>
+            </div>
+
+            {/* Action Callout: Full Technical Whitepaper & Flowchart */}
+            <div className="p-4 md:p-5 rounded-[18px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-[#B8B8A8]">
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-[12px] bg-[#E7F4D8] border border-[#BBF7D0] text-[#284E1A] flex items-center justify-center flex-shrink-0">
+                  <RefreshCw className="w-5 h-5 text-[#284E1A]" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm text-[#30312F] m-0 flex items-center gap-2">
+                    <span>ESP32-CAM Deep Sleep & RTC Lifecycle Flowchart</span>
+                    <span className="text-[11px] font-semibold text-[#284E1A] bg-[#E7F4D8] px-2 py-0.5 rounded-full border border-[#BBF7D0]">
+                      Whitepaper
+                    </span>
+                  </h4>
+                  <p className="text-xs text-[#85847E] m-0 mt-1 leading-relaxed">
+                    อ่านเอกสารเชิงลึก: ผังการทำงาน Edge Node, วงจรตื่น-หลับลดความร้อน, การเปรียบเทียบโมเดล YOLO26m vs YOLO26n และ HSV Cone Masking
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => onNavigate?.('details')}
+                className="px-4 py-2 rounded-full bg-[#30312F] hover:bg-[#1F201E] text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 self-start sm:self-auto shadow-xs"
+              >
+                <span>เปิดดู Flowchart ฉบับเต็ม</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
         )}

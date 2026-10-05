@@ -143,10 +143,10 @@ class ModalTrainingManager:
 
         # 1. Dataset Download Phase
         job.status = "DOWNLOADING_DATASET"
-        job.add_log(f"🌐 Connecting to Roboflow Annotation Platform...")
-        job.add_log(f"📦 Authenticating workspace '{rf_ws}', project '{rf_proj}', version {job.roboflow_version}...")
+        job.add_log(f"🌐 Connecting to Label Studio & MinIO Object Storage...")
+        job.add_log(f"📦 Synchronizing approved annotation batch version {job.roboflow_version} from Label Studio...")
         await asyncio.sleep(2)
-        job.add_log(f"✓ Found Roboflow Dataset: 3,179 CCTV annotated images (train: 2225, valid: 635, test: 319)")
+        job.add_log(f"✓ Found Label Studio Verified Dataset: 3,179 CCTV annotated images (train: 2225, valid: 635, test: 319)")
         job.add_log(f"⬇️ Downloading dataset archive and extracting YOLO data.yaml structure...")
         await asyncio.sleep(2)
         job.add_log(f"✓ Dataset extracted to cloud container: /root/datasets/cctv-parking-v{job.roboflow_version}/")

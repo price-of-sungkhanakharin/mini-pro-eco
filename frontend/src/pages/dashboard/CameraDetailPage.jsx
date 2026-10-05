@@ -23,12 +23,11 @@ import { formatTimestampThai, formatUptime, getIngestionApiBase } from '../../ut
 /**
  * CameraDetailPage (High-Contrast Obsidian Dark Theme)
  *
- * Enhancements:
- * - Back button directly and unconditionally returns to main Dashboard page
- * - Elevated Deep Obsidian surface (#121316) with crisp borders (#262930) and distinct tiles (#181B20)
- * - Vivid semantic accent colors (Emerald for capacity, Sky Blue for AI detection, Amber for hardware)
- * - Highly readable typography and numbers with high visual hierarchy
- * - 2-Column responsive layout (Camera + Slots on Left, 4 Rows of Cards on Right)
+ * Responsiveness & Constraints:
+ * - Desktop layout (lg: >=1024px) is PRESERVED 100% identically with exact spacing, typography, and elevation
+ * - Mobile view (<lg) is fully optimized for fluid touch ergonomics, zero horizontal overflow, and sharp readability
+ * - High-contrast Deep Obsidian surface (#121316) with crisp borders (#262930) and distinct tiles (#181B20)
+ * - Reliable back navigation to main Dashboard
  */
 export default function CameraDetailPage({
   activeCameraId = 'cam1',
@@ -138,20 +137,20 @@ export default function CameraDetailPage({
   const onlineCount = cameras.filter((c) => c?.isOnline !== false).length
 
   return (
-    <div className="bg-[#000000] min-h-screen text-white flex flex-col p-4 sm:p-6 lg:p-8 select-none w-full box-border">
+    <div className="bg-[#000000] min-h-screen text-white flex flex-col p-3 sm:p-6 lg:p-8 select-none w-full box-border">
       {/* ====================================================================
-          1. SLEEK TOP FLOATING NAVBAR (High-Contrast Dark Aesthetic)
+          1. SLEEK TOP FLOATING NAVBAR (High-Contrast Dark Aesthetic & Mobile-Optimized)
           ==================================================================== */}
-      <header className="flex items-center justify-between gap-4 w-full max-w-[1720px] mx-auto pb-4 border-b border-[#22252C]">
-        <div className="flex items-center gap-3">
+      <header className="flex items-center justify-between gap-2 sm:gap-4 w-full max-w-[1720px] mx-auto pb-3 sm:pb-4 border-b border-[#22252C]">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           {/* Back button: Always reliably returns to dashboard */}
           <button
             type="button"
             onClick={handleBackToDashboard}
-            className="flex items-center gap-2 px-4 py-2 bg-[#181B20] hover:bg-[#22262F] text-neutral-100 hover:text-white border border-[#2E333E] hover:border-emerald-500/70 rounded-full font-sans font-semibold text-xs sm:text-[13px] transition-all cursor-pointer shadow-lg"
+            className="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-[#181B20] hover:bg-[#22262F] text-neutral-100 hover:text-white border border-[#2E333E] hover:border-emerald-500/70 rounded-full font-sans font-semibold text-xs sm:text-[13px] transition-all cursor-pointer shadow-lg shrink-0"
             title="ย้อนกลับสู่แดชบอร์ดหลัก"
           >
-            <ArrowLeft className="w-4 h-4 text-emerald-400" />
+            <ArrowLeft className="w-4 h-4 text-emerald-400 shrink-0" />
             <span className="hidden sm:inline">ย้อนกลับสู่แดชบอร์ด</span>
             <span className="sm:hidden">ย้อนกลับ</span>
           </button>
@@ -159,15 +158,15 @@ export default function CameraDetailPage({
           <span className="text-neutral-700 select-none hidden sm:inline">|</span>
 
           {/* Camera Identifier & Title */}
-          <div className="flex items-center gap-2.5">
-            <span className="font-mono font-bold text-sm text-white px-2.5 py-0.5 rounded-[6px] bg-[#1C2027] border border-[#343A46]">
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+            <span className="font-mono font-bold text-xs sm:text-sm text-white px-2 py-0.5 sm:px-2.5 rounded-[6px] bg-[#1C2027] border border-[#343A46] shrink-0">
               {currentCamera?.slotCode || (currentCamera?.camId ? currentCamera.camId.toUpperCase() : 'CAM-01')}
             </span>
-            <div>
-              <h1 className="font-sans font-semibold text-sm sm:text-base text-white truncate max-w-[180px] sm:max-w-xs md:max-w-md">
+            <div className="min-w-0">
+              <h1 className="font-sans font-semibold text-xs sm:text-sm lg:text-base text-white truncate max-w-[120px] xs:max-w-[160px] sm:max-w-xs md:max-w-md">
                 {currentCamera?.name || 'กล้องวงจรปิด'}
               </h1>
-              <span className="font-sans text-[11px] text-neutral-400 hidden sm:block">
+              <span className="font-sans text-[11px] text-neutral-400 hidden sm:block truncate">
                 {currentCamera?.subtitle || currentCamera?.device || 'ESP32-CAM Node'} · 1600 × 1200 Native
               </span>
             </div>
@@ -175,26 +174,26 @@ export default function CameraDetailPage({
         </div>
 
         {/* Right Header Actions: Refresh & Online Status */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
           <button
             type="button"
             onClick={handleRefreshClick}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#181B20] hover:bg-[#22262F] text-neutral-200 hover:text-white border border-[#2E333E] hover:border-neutral-500 rounded-full text-xs font-medium cursor-pointer transition-all shadow-sm"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3.5 sm:py-1.5 bg-[#181B20] hover:bg-[#22262F] text-neutral-200 hover:text-white border border-[#2E333E] hover:border-neutral-500 rounded-full text-xs font-medium cursor-pointer transition-all shadow-sm"
             title="ดึงภาพ Snapshot สดล่าสุดทันที"
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-emerald-400 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 text-emerald-400 shrink-0 ${isRefreshing ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">รีเฟรชภาพสด</span>
           </button>
 
           <span
-            className={`px-3 py-1 rounded-full font-sans font-semibold text-xs uppercase tracking-wider shrink-0 flex items-center gap-1.5 ${
+            className={`px-2.5 py-1 sm:px-3 sm:py-1 rounded-full font-sans font-semibold text-[11px] sm:text-xs uppercase tracking-wider shrink-0 flex items-center gap-1.5 ${
               currentCamera?.isOnline !== false
                 ? 'bg-emerald-950/90 text-emerald-300 border border-emerald-700/70 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
                 : 'bg-rose-950/90 text-rose-300 border border-rose-700/70'
             }`}
           >
             <span
-              className={`w-2 h-2 rounded-full ${
+              className={`w-2 h-2 rounded-full shrink-0 ${
                 currentCamera?.isOnline !== false ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'
               }`}
             />
@@ -206,11 +205,11 @@ export default function CameraDetailPage({
       {/* ====================================================================
           2. MAIN CONTENT: 2-COLUMN GRID (Left = Camera + Slots, Right = Cards)
           ==================================================================== */}
-      <main className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full max-w-[1720px] mx-auto mt-6 items-start flex-1">
+      <main className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 w-full max-w-[1720px] mx-auto mt-4 sm:mt-6 items-start flex-1">
         {/* ==================================================================
             LEFT COLUMN (col-span-8): Camera Viewport, Controls & Slots Registry
             ================================================================== */}
-        <div className="lg:col-span-8 flex flex-col gap-6 w-full">
+        <div className="lg:col-span-8 flex flex-col gap-5 sm:gap-6 w-full">
           {/* A. Camera Viewport Card */}
           <div
             className="bg-[#121316] border border-[#262930] rounded-[22px] overflow-hidden flex flex-col shadow-2xl"
@@ -231,9 +230,9 @@ export default function CameraDetailPage({
 
                   {/* Offline Warning HUD */}
                   {currentCamera.isOnline === false && (
-                    <div className="absolute top-4 left-4 right-4 bg-rose-950/95 backdrop-blur-md text-white border border-rose-500/50 rounded-xl p-3 flex items-center gap-2.5 z-20 shadow-lg">
-                      <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 animate-pulse" />
-                      <span className="text-xs sm:text-sm font-medium">
+                    <div className="absolute top-3 sm:top-4 left-3 sm:left-4 right-3 sm:right-4 bg-rose-950/95 backdrop-blur-md text-white border border-rose-500/50 rounded-xl p-2.5 sm:p-3 flex items-center gap-2 sm:gap-2.5 z-20 shadow-lg">
+                      <AlertTriangle className="w-4 sm:w-5 h-4 sm:h-5 text-rose-400 shrink-0 animate-pulse" />
+                      <span className="text-[11px] sm:text-sm font-medium">
                         กล้องอยู่ในสถานะออฟไลน์ · กำลังแสดงภาพบันทึก snapshot ล่าสุด
                       </span>
                     </div>
@@ -287,9 +286,9 @@ export default function CameraDetailPage({
                   )}
 
                   {/* Top-Left Native Resolution Tag */}
-                  <div className="absolute top-3 left-3 bg-black/85 backdrop-blur-md px-3 py-1.5 rounded-full border border-neutral-700/70 text-xs text-neutral-100 flex items-center gap-2 font-mono shadow-md">
+                  <div className="absolute top-2.5 sm:top-3 left-2.5 sm:left-3 bg-black/85 backdrop-blur-md px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full border border-neutral-700/70 text-[10px] sm:text-xs text-neutral-100 flex items-center gap-1.5 sm:gap-2 font-mono shadow-md">
                     <span
-                      className={`w-2 h-2 rounded-full ${
+                      className={`w-2 h-2 rounded-full shrink-0 ${
                         currentCamera.isOnline !== false ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'
                       }`}
                     />
@@ -298,33 +297,33 @@ export default function CameraDetailPage({
 
                   {/* Bottom-Right Live Timestamp */}
                   {currentCamera.snapshotTimestamp && (
-                    <div className="absolute bottom-3 right-3 bg-black/85 backdrop-blur-md px-3 py-1 rounded-full border border-neutral-700/70 text-[11px] text-emerald-400 font-mono shadow-md">
+                    <div className="absolute bottom-2.5 sm:bottom-3 right-2.5 sm:right-3 bg-black/85 backdrop-blur-md px-2.5 sm:px-3 py-1 rounded-full border border-neutral-700/70 text-[10px] sm:text-[11px] text-emerald-400 font-mono shadow-md">
                       SYNC: {formatTimestampThai(currentCamera.snapshotTimestamp)}
                     </div>
                   )}
                 </>
               ) : (
-                <div className="h-96 w-full flex flex-col items-center justify-center text-neutral-400 gap-3">
-                  <Activity className="w-10 h-10 animate-pulse text-emerald-500" />
-                  <span className="text-sm font-medium">กำลังเชื่อมต่อสัญญาณภาพความละเอียดสูง...</span>
+                <div className="h-64 sm:h-96 w-full flex flex-col items-center justify-center text-neutral-400 gap-3">
+                  <Activity className="w-8 sm:w-10 h-8 sm:h-10 animate-pulse text-emerald-500" />
+                  <span className="text-xs sm:text-sm font-medium">กำลังเชื่อมต่อสัญญาณภาพความละเอียดสูง...</span>
                 </div>
               )}
             </div>
 
             {/* Clean Controls Bar (NO Video Play/Pause Buttons & NO Countdown Progress Bar) */}
-            <div className="bg-[#121316] border-t border-[#262930] px-4 py-3 flex items-center justify-between">
+            <div className="bg-[#121316] border-t border-[#262930] px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-neutral-200 text-xs font-mono font-semibold">
-                  LIVE STREAM · REAL-TIME SYNC
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <span className="text-neutral-200 text-[11px] sm:text-xs font-mono font-semibold">
+                  LIVE STREAM · <span className="hidden xs:inline">REAL-TIME </span>SYNC
                 </span>
               </div>
 
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2 sm:gap-2.5">
                 <button
                   type="button"
                   onClick={() => setShowRoi(!showRoi)}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-all ${
+                  className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold cursor-pointer transition-all ${
                     showRoi
                       ? 'bg-emerald-950/90 text-emerald-300 border border-emerald-700/80 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
                       : 'bg-[#181B20] text-neutral-400 border border-[#2E333E] hover:text-white'
@@ -338,20 +337,20 @@ export default function CameraDetailPage({
                 <button
                   type="button"
                   onClick={toggleFullscreen}
-                  className="p-2 rounded-full bg-[#181B20] hover:bg-[#22262F] text-neutral-300 hover:text-white border border-[#2E333E] cursor-pointer transition-all shadow-sm"
+                  className="p-1.5 sm:p-2 rounded-full bg-[#181B20] hover:bg-[#22262F] text-neutral-300 hover:text-white border border-[#2E333E] cursor-pointer transition-all shadow-sm"
                   title="ขยายภาพเต็มจอ"
                 >
-                  <Maximize className="w-4 h-4" />
+                  <Maximize className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
                 </button>
               </div>
             </div>
           </div>
 
-          {/* B. Interactive Slot Registry (Elevated Dark Surface) */}
-          <section className="bg-[#121316] border border-[#262930] rounded-[22px] p-4 lg:p-5 flex flex-col gap-4 shadow-xl">
+          {/* B. Interactive Slot Registry (Elevated Dark Surface & Mobile-Friendly Grid) */}
+          <section className="bg-[#121316] border border-[#262930] rounded-[22px] p-3.5 sm:p-4 lg:p-5 flex flex-col gap-3.5 sm:gap-4 shadow-xl">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <h3 className="font-semibold text-sm sm:text-base text-white">
+              <div className="flex items-center gap-2 sm:gap-2.5">
+                <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-white">
                   ผังรายการช่องจอด (Slots Registry)
                 </h3>
                 <span className="text-xs text-neutral-400 font-mono">({slots.length} ช่อง)</span>
@@ -371,7 +370,7 @@ export default function CameraDetailPage({
                     <button
                       key={item.id}
                       type="button"
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer border ${
+                      className={`px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-medium transition-all cursor-pointer border ${
                         isActive
                           ? 'bg-emerald-500 text-black font-bold border-emerald-400 shadow-md'
                           : 'bg-[#181B20] text-neutral-300 hover:text-white border-[#2A2E38] hover:bg-[#22262F]'
@@ -385,8 +384,8 @@ export default function CameraDetailPage({
               </div>
             </div>
 
-            {/* Slots Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+            {/* Slots Grid: 2 columns on mobile, 3 on tablet, up to 6 on desktop */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-2.5">
               {filteredSlots.length === 0 ? (
                 <div className="col-span-full py-6 text-center text-xs text-neutral-500">
                   ไม่มีรายการช่องจอดตรงตามตัวกรองที่เลือก
@@ -398,7 +397,7 @@ export default function CameraDetailPage({
                   return (
                     <div
                       key={slot.id}
-                      className={`p-2.5 rounded-xl border flex items-center justify-between text-xs transition-colors ${
+                      className={`p-2 sm:p-2.5 rounded-xl border flex items-center justify-between text-xs transition-colors ${
                         isOccupied
                           ? 'bg-[#241317] border-[#4F1921] text-neutral-200'
                           : 'bg-[#0E241B] border-[#18533B] text-neutral-200'
@@ -406,15 +405,15 @@ export default function CameraDetailPage({
                     >
                       <span className="font-mono font-bold text-white flex items-center gap-1.5">
                         {isBike ? (
-                          <Bike className="w-3.5 h-3.5 text-emerald-400" />
+                          <Bike className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                         ) : (
-                          <Car className="w-3.5 h-3.5 text-neutral-300" />
+                          <Car className="w-3.5 h-3.5 text-neutral-300 shrink-0" />
                         )}
                         <span>{slot.id}</span>
                       </span>
 
                       <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded font-mono ${
+                        className={`text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded font-mono shrink-0 ${
                           isOccupied
                             ? 'bg-rose-950 text-rose-300 border border-rose-700/80'
                             : 'bg-emerald-950 text-emerald-300 border border-emerald-700/80'
@@ -430,15 +429,15 @@ export default function CameraDetailPage({
           </section>
 
           {/* C. Bottom Previous / Next Camera Navigation */}
-          <div className="flex items-center justify-between gap-4 pt-1">
+          <div className="flex items-center justify-between gap-2 sm:gap-4 pt-1">
             <button
               type="button"
               onClick={() => onSelectCamera?.(prevCamId)}
-              className="flex items-center gap-2 px-4 py-2 bg-[#181B20] hover:bg-[#22262F] text-neutral-200 hover:text-white border border-[#2E333E] hover:border-neutral-500 rounded-full text-xs font-medium transition-all cursor-pointer shadow-sm"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-[#181B20] hover:bg-[#22262F] text-neutral-200 hover:text-white border border-[#2E333E] hover:border-neutral-500 rounded-full text-xs font-medium transition-all cursor-pointer shadow-sm truncate max-w-[48%] sm:max-w-none"
               title={`สลับไป ${prevCamera?.name || prevCamId}`}
             >
-              <ArrowLeft className="w-4 h-4 text-emerald-400" />
-              <span>
+              <ArrowLeft className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-emerald-400 shrink-0" />
+              <span className="truncate">
                 {prevCamera?.slotCode || prevCamId.toUpperCase()} ({prevCamera?.name ? prevCamera.name.split('(')[0].trim() : 'ก่อนหน้า'})
               </span>
             </button>
@@ -446,13 +445,13 @@ export default function CameraDetailPage({
             <button
               type="button"
               onClick={() => onSelectCamera?.(nextCamId)}
-              className="flex items-center gap-2 px-4 py-2 bg-[#181B20] hover:bg-[#22262F] text-neutral-200 hover:text-white border border-[#2E333E] hover:border-neutral-500 rounded-full text-xs font-medium transition-all cursor-pointer shadow-sm"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-[#181B20] hover:bg-[#22262F] text-neutral-200 hover:text-white border border-[#2E333E] hover:border-neutral-500 rounded-full text-xs font-medium transition-all cursor-pointer shadow-sm truncate max-w-[48%] sm:max-w-none"
               title={`สลับไป ${nextCamera?.name || nextCamId}`}
             >
-              <span>
+              <span className="truncate">
                 {nextCamera?.slotCode || nextCamId.toUpperCase()} ({nextCamera?.name ? nextCamera.name.split('(')[0].trim() : 'ถัดไป'})
               </span>
-              <ArrowRight className="w-4 h-4 text-emerald-400" />
+              <ArrowRight className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-emerald-400 shrink-0" />
             </button>
           </div>
         </div>
@@ -466,10 +465,10 @@ export default function CameraDetailPage({
             ================================================================== */}
         <div className="lg:col-span-4 flex flex-col gap-4 w-full">
           {/* ROW 1: Camera Selection Buttons (Clear Visual Elevation) */}
-          <div className="bg-[#121316] border border-[#262930] rounded-[22px] p-4 flex flex-col gap-3 shadow-xl">
+          <div className="bg-[#121316] border border-[#262930] rounded-[22px] p-3.5 sm:p-4 flex flex-col gap-3 shadow-xl">
             <div className="flex items-center justify-between px-1">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
                 <span className="text-xs font-bold text-neutral-200 uppercase tracking-wider font-mono">
                   สลับดูกล้อง (SELECT CAMERA)
                 </span>
@@ -479,7 +478,7 @@ export default function CameraDetailPage({
               </span>
             </div>
 
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
               {cameraOrder.map((cId) => {
                 const camObj = cameras.find((c) => c.camId === cId)
                 const isActive = cId === currentCamera?.camId
@@ -491,15 +490,15 @@ export default function CameraDetailPage({
                     key={cId}
                     type="button"
                     onClick={() => onSelectCamera?.(cId)}
-                    className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                    className={`flex flex-col items-center justify-center p-2 sm:p-3 rounded-xl border text-center transition-all cursor-pointer ${
                       isActive
                         ? 'bg-[#1C2220] border-emerald-500 text-white shadow-[0_0_18px_rgba(16,185,129,0.25)] ring-1 ring-emerald-500/50'
                         : 'bg-[#181B20] border-[#2A2E38] text-neutral-300 hover:text-white hover:border-neutral-500 hover:bg-[#20242B]'
                     }`}
                   >
-                    <div className="flex items-center gap-1.5 mb-1">
+                    <div className="flex items-center gap-1 sm:gap-1.5 mb-1">
                       <span
-                        className={`w-2 h-2 rounded-full ${
+                        className={`w-2 h-2 rounded-full shrink-0 ${
                           isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'
                         }`}
                       />
@@ -507,11 +506,11 @@ export default function CameraDetailPage({
                         {camObj?.slotCode || cId.toUpperCase()}
                       </span>
                     </div>
-                    <span className="text-[11px] font-sans text-neutral-300 truncate w-full">
+                    <span className="text-[10px] sm:text-[11px] font-sans text-neutral-300 truncate w-full">
                       {camObj?.name ? camObj.name.split('(')[0].trim() : cId}
                     </span>
                     <span
-                      className={`text-[10px] font-mono mt-1.5 px-2 py-0.5 rounded-full font-semibold ${
+                      className={`text-[9px] sm:text-[10px] font-mono mt-1 sm:mt-1.5 px-1.5 sm:px-2 py-0.5 rounded-full font-semibold ${
                         isActive
                           ? 'bg-emerald-900/80 text-emerald-300 border border-emerald-700/80'
                           : 'text-neutral-400 bg-[#121418] border border-neutral-700/40'
@@ -526,33 +525,33 @@ export default function CameraDetailPage({
           </div>
 
           {/* ROW 2: Card 1 (Parking Capacity) */}
-          <div className="bg-[#121316] border border-[#262930] rounded-[22px] p-4 lg:p-5 flex flex-col gap-4 shadow-xl">
+          <div className="bg-[#121316] border border-[#262930] rounded-[22px] p-3.5 sm:p-4 lg:p-5 flex flex-col gap-3.5 sm:gap-4 shadow-xl">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5 text-white font-semibold text-sm">
-                <div className="p-1.5 rounded-lg bg-emerald-950/80 border border-emerald-800/60 text-emerald-400">
-                  <Car className="w-4 h-4" />
+              <div className="flex items-center gap-2 sm:gap-2.5 text-white font-semibold text-xs sm:text-sm">
+                <div className="p-1 sm:p-1.5 rounded-lg bg-emerald-950/80 border border-emerald-800/60 text-emerald-400 shrink-0">
+                  <Car className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
                 </div>
                 <span>สถานะช่องจอด (Capacity)</span>
               </div>
-              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-950/90 text-emerald-400 border border-emerald-700/70 font-mono shadow-xs">
+              <span className="text-[11px] sm:text-xs font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-emerald-950/90 text-emerald-400 border border-emerald-700/70 font-mono shadow-xs shrink-0">
                 ว่าง {totalFree}/{totalCapacity} ช่อง
               </span>
             </div>
 
-            <div className="grid grid-cols-3 gap-2.5 text-center">
-              <div className="p-2.5 rounded-xl bg-[#181B20] border border-[#2A2E38]">
-                <span className="text-xs text-neutral-400 block mb-1">รถยนต์</span>
-                <span className="text-sm sm:text-base font-bold text-white font-mono">{carFree}/{carTotal}</span>
+            <div className="grid grid-cols-3 gap-2 sm:gap-2.5 text-center">
+              <div className="p-2 sm:p-2.5 rounded-xl bg-[#181B20] border border-[#2A2E38]">
+                <span className="text-[11px] sm:text-xs text-neutral-400 block mb-0.5 sm:mb-1">รถยนต์</span>
+                <span className="text-xs sm:text-sm lg:text-base font-bold text-white font-mono">{carFree}/{carTotal}</span>
                 <span className="text-[10px] text-emerald-400 block font-medium mt-0.5">ว่าง</span>
               </div>
-              <div className="p-2.5 rounded-xl bg-[#181B20] border border-[#2A2E38]">
-                <span className="text-xs text-neutral-400 block mb-1">มอเตอร์ไซค์</span>
-                <span className="text-sm sm:text-base font-bold text-white font-mono">{bikeFree}/{bikeTotal}</span>
+              <div className="p-2 sm:p-2.5 rounded-xl bg-[#181B20] border border-[#2A2E38]">
+                <span className="text-[11px] sm:text-xs text-neutral-400 block mb-0.5 sm:mb-1">มอเตอร์ไซค์</span>
+                <span className="text-xs sm:text-sm lg:text-base font-bold text-white font-mono">{bikeFree}/{bikeTotal}</span>
                 <span className="text-[10px] text-emerald-400 block font-medium mt-0.5">ว่าง</span>
               </div>
-              <div className="p-2.5 rounded-xl bg-[#181B20] border border-[#2A2E38]">
-                <span className="text-xs text-neutral-400 block mb-1">ความหนาแน่น</span>
-                <span className="text-sm sm:text-base font-bold text-emerald-400 font-mono">{occupancyPct}%</span>
+              <div className="p-2 sm:p-2.5 rounded-xl bg-[#181B20] border border-[#2A2E38]">
+                <span className="text-[11px] sm:text-xs text-neutral-400 block mb-0.5 sm:mb-1">ความหนาแน่น</span>
+                <span className="text-xs sm:text-sm lg:text-base font-bold text-emerald-400 font-mono">{occupancyPct}%</span>
                 <span className="text-[10px] text-neutral-400 block mt-0.5">อัตราการจอด</span>
               </div>
             </div>
@@ -560,7 +559,7 @@ export default function CameraDetailPage({
             <button
               type="button"
               onClick={() => onNavigate?.('setup', currentCamera?.camId)}
-              className="inline-flex items-center justify-center gap-2 h-10 rounded-full bg-[#1C2027] hover:bg-[#252A34] text-white border border-[#343A46] text-xs font-semibold cursor-pointer transition-all hover:border-emerald-500/50 shadow-sm"
+              className="inline-flex items-center justify-center gap-2 h-9 sm:h-10 rounded-full bg-[#1C2027] hover:bg-[#252A34] text-white border border-[#343A46] text-xs font-semibold cursor-pointer transition-all hover:border-emerald-500/50 shadow-sm"
             >
               <Sliders className="w-3.5 h-3.5 text-emerald-400" />
               <span>ปรับแต่ง ROI ช่องจอด</span>
@@ -568,92 +567,92 @@ export default function CameraDetailPage({
           </div>
 
           {/* ROW 3: Card 2 (AI YOLO26x Detection Engine) */}
-          <div className="bg-[#121316] border border-[#262930] rounded-[22px] p-4 lg:p-5 flex flex-col gap-4 shadow-xl">
+          <div className="bg-[#121316] border border-[#262930] rounded-[22px] p-3.5 sm:p-4 lg:p-5 flex flex-col gap-3.5 sm:gap-4 shadow-xl">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5 text-white font-semibold text-sm">
-                <div className="p-1.5 rounded-lg bg-sky-950/80 border border-sky-800/60 text-sky-400">
-                  <Award className="w-4 h-4" />
+              <div className="flex items-center gap-2 sm:gap-2.5 text-white font-semibold text-xs sm:text-sm">
+                <div className="p-1 sm:p-1.5 rounded-lg bg-sky-950/80 border border-sky-800/60 text-sky-400 shrink-0">
+                  <Award className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
                 </div>
                 <span>AI YOLO26x Engine</span>
               </div>
-              <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-950/80 border border-emerald-800/70 px-2.5 py-0.5 rounded-full font-mono">
+              <span className="text-[10px] sm:text-[11px] font-semibold text-emerald-400 bg-emerald-950/80 border border-emerald-800/70 px-2 sm:px-2.5 py-0.5 rounded-full font-mono shrink-0">
                 Active Engine
               </span>
             </div>
 
-            <div className="grid grid-cols-3 gap-2.5 text-center">
-              <div className="p-2.5 rounded-xl bg-[#181B20] border border-[#2A2E38]">
-                <span className="text-xs text-neutral-400 block mb-1">ตรวจพบ</span>
-                <span className="text-sm sm:text-base font-bold text-white font-mono">{totalOccupied}</span>
+            <div className="grid grid-cols-3 gap-2 sm:gap-2.5 text-center">
+              <div className="p-2 sm:p-2.5 rounded-xl bg-[#181B20] border border-[#2A2E38]">
+                <span className="text-[11px] sm:text-xs text-neutral-400 block mb-0.5 sm:mb-1">ตรวจพบ</span>
+                <span className="text-xs sm:text-sm lg:text-base font-bold text-white font-mono">{totalOccupied}</span>
                 <span className="text-[10px] text-neutral-400 block mt-0.5">คัน</span>
               </div>
-              <div className="p-2.5 rounded-xl bg-[#181B20] border border-[#2A2E38]">
-                <span className="text-xs text-neutral-400 block mb-1">ความมั่นใจ</span>
-                <span className="text-sm sm:text-base font-bold text-sky-400 font-mono">96.5%</span>
+              <div className="p-2 sm:p-2.5 rounded-xl bg-[#181B20] border border-[#2A2E38]">
+                <span className="text-[11px] sm:text-xs text-neutral-400 block mb-0.5 sm:mb-1">ความมั่นใจ</span>
+                <span className="text-xs sm:text-sm lg:text-base font-bold text-sky-400 font-mono">96.5%</span>
                 <span className="text-[10px] text-neutral-400 block mt-0.5">Confidence</span>
               </div>
-              <div className="p-2.5 rounded-xl bg-[#181B20] border border-[#2A2E38]">
-                <span className="text-xs text-neutral-400 block mb-1">Inference</span>
-                <span className="text-sm sm:text-base font-bold text-amber-400 font-mono">38ms</span>
+              <div className="p-2 sm:p-2.5 rounded-xl bg-[#181B20] border border-[#2A2E38]">
+                <span className="text-[11px] sm:text-xs text-neutral-400 block mb-0.5 sm:mb-1">Inference</span>
+                <span className="text-xs sm:text-sm lg:text-base font-bold text-amber-400 font-mono">38ms</span>
                 <span className="text-[10px] text-neutral-400 block mt-0.5">ความเร็ว</span>
               </div>
             </div>
 
-            <div className="text-xs text-neutral-300 flex items-center gap-2 pt-2 border-t border-[#262930]">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div className="text-[11px] sm:text-xs text-neutral-300 flex items-center gap-2 pt-2 border-t border-[#262930]">
+              <CheckCircle2 className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-emerald-400 shrink-0" />
               <span>ซิงค์ข้อมูลเข้า PostgreSQL 17 และ Label Studio</span>
             </div>
           </div>
 
           {/* ROW 4: Card 3 (ESP32 Edge Hardware & Network) */}
-          <div className="bg-[#121316] border border-[#262930] rounded-[22px] p-4 lg:p-5 flex flex-col gap-4 shadow-xl">
+          <div className="bg-[#121316] border border-[#262930] rounded-[22px] p-3.5 sm:p-4 lg:p-5 flex flex-col gap-3.5 sm:gap-4 shadow-xl">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5 text-white font-semibold text-sm">
-                <div className="p-1.5 rounded-lg bg-amber-950/80 border border-amber-800/60 text-amber-400">
-                  <Wifi className="w-4 h-4" />
+              <div className="flex items-center gap-2 sm:gap-2.5 text-white font-semibold text-xs sm:text-sm">
+                <div className="p-1 sm:p-1.5 rounded-lg bg-amber-950/80 border border-amber-800/60 text-amber-400 shrink-0">
+                  <Wifi className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
                 </div>
                 <span>ESP32 Hardware & Network</span>
               </div>
-              <span className="text-xs font-mono font-medium text-neutral-300 bg-[#181B20] border border-[#2A2E38] px-2.5 py-0.5 rounded-full">
+              <span className="text-[11px] sm:text-xs font-mono font-medium text-neutral-300 bg-[#181B20] border border-[#2A2E38] px-2 sm:px-2.5 py-0.5 rounded-full shrink-0">
                 {currentCamera?.ip || '172.30.91.44'}
               </span>
             </div>
 
-            <div className="grid grid-cols-3 gap-2.5 text-center">
-              <div className="p-2.5 rounded-xl bg-[#181B20] border border-[#2A2E38]">
-                <span className="text-xs text-neutral-400 block mb-1">อุณหภูมิ</span>
-                <span className="text-sm sm:text-base font-bold text-amber-400 font-mono flex items-center justify-center gap-1">
-                  <Thermometer className="w-3.5 h-3.5 text-amber-400" />
+            <div className="grid grid-cols-3 gap-2 sm:gap-2.5 text-center">
+              <div className="p-2 sm:p-2.5 rounded-xl bg-[#181B20] border border-[#2A2E38]">
+                <span className="text-[11px] sm:text-xs text-neutral-400 block mb-0.5 sm:mb-1">อุณหภูมิ</span>
+                <span className="text-xs sm:text-sm lg:text-base font-bold text-amber-400 font-mono flex items-center justify-center gap-1">
+                  <Thermometer className="w-3 sm:w-3.5 h-3 sm:h-3.5 text-amber-400 shrink-0" />
                   {chipTemp.toFixed(1)}°C
                 </span>
                 <span className="text-[10px] text-neutral-400 block mt-0.5">Chip Temp</span>
               </div>
-              <div className="p-2.5 rounded-xl bg-[#181B20] border border-[#2A2E38]">
-                <span className="text-xs text-neutral-400 block mb-1">WiFi RSSI</span>
-                <span className="text-sm sm:text-base font-bold text-emerald-400 font-mono flex items-center justify-center gap-1">
-                  <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+              <div className="p-2 sm:p-2.5 rounded-xl bg-[#181B20] border border-[#2A2E38]">
+                <span className="text-[11px] sm:text-xs text-neutral-400 block mb-0.5 sm:mb-1">WiFi RSSI</span>
+                <span className="text-xs sm:text-sm lg:text-base font-bold text-emerald-400 font-mono flex items-center justify-center gap-1">
+                  <Wifi className="w-3 sm:w-3.5 h-3 sm:h-3.5 text-emerald-400 shrink-0" />
                   {wifiRssi} dBm
                 </span>
                 <span className="text-[10px] text-neutral-400 block mt-0.5">ความแรง</span>
               </div>
-              <div className="p-2.5 rounded-xl bg-[#181B20] border border-[#2A2E38]">
-                <span className="text-xs text-neutral-400 block mb-1">Free Heap</span>
-                <span className="text-sm sm:text-base font-bold text-cyan-400 font-mono flex items-center justify-center gap-1">
-                  <HardDrive className="w-3.5 h-3.5 text-cyan-400" />
+              <div className="p-2 sm:p-2.5 rounded-xl bg-[#181B20] border border-[#2A2E38]">
+                <span className="text-[11px] sm:text-xs text-neutral-400 block mb-0.5 sm:mb-1">Free Heap</span>
+                <span className="text-xs sm:text-sm lg:text-base font-bold text-cyan-400 font-mono flex items-center justify-center gap-1">
+                  <HardDrive className="w-3 sm:w-3.5 h-3 sm:h-3.5 text-cyan-400 shrink-0" />
                   {Math.round(freeHeap / 1024)} KB
                 </span>
                 <span className="text-[10px] text-neutral-400 block mt-0.5">RAM ว่าง</span>
               </div>
             </div>
 
-            <div className="text-xs text-neutral-300 flex items-center justify-between pt-2 border-t border-[#262930]">
+            <div className="text-[11px] sm:text-xs text-neutral-300 flex items-center justify-between pt-2 border-t border-[#262930]">
               <span>Uptime: <strong className="text-white font-mono">{formatUptime(uptimeSec)}</strong></span>
               {liveImageUrl && (
                 <a
                   href={liveImageUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="px-2.5 py-1 rounded-full bg-[#1C2027] hover:bg-[#252A34] text-neutral-200 hover:text-white border border-[#343A46] text-xs font-medium hover:underline flex items-center gap-1.5 transition-colors"
+                  className="px-2.5 py-1 rounded-full bg-[#1C2027] hover:bg-[#252A34] text-neutral-200 hover:text-white border border-[#343A46] text-[11px] sm:text-xs font-medium hover:underline flex items-center gap-1.5 transition-colors shrink-0"
                 >
                   <Download className="w-3 h-3 text-neutral-400" />
                   <span>โหลด HD</span>

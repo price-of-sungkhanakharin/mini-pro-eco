@@ -52,12 +52,6 @@ export default function RightSidebar({
       label: 'Analytics / Plots',
       sub: 'Model benchmarks, telemetry & occupancy',
       icon: BarChart2
-    },
-    {
-      id: 'details',
-      label: 'รายละเอียดโครงการ',
-      sub: 'Technical whitepaper & AI architecture',
-      icon: FileText
     }
   ]
 

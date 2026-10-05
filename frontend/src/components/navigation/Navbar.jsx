@@ -61,8 +61,7 @@ export default function Navbar({
     { id: 'trainer', label: 'Auto-Trainer & Hub' },
     { id: 'setup', label: 'Setup & ROI' },
     { id: 'ecosystem', label: 'บริการระบบ (Ecosystem)' },
-    { id: 'analytics', label: 'Analytics / Plots' },
-    { id: 'details', label: 'รายละเอียดโครงการ' }
+    { id: 'analytics', label: 'Analytics / Plots' }
   ]
 
   // Exact 5 original services from A3 audit with authentic logos

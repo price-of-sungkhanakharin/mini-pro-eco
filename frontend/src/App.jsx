@@ -48,6 +48,46 @@ const API_BASE_URL =
     ? `http://${window.location.hostname}:8000`
     : 'http://localhost:8000')
 
+const pathToViewMap = {
+  '/': 'dashboard',
+  '/dashboard': 'dashboard',
+  '/logs': 'logs',
+  '/ingestion-logs': 'logs',
+  '/trainer': 'trainer',
+  '/auto-trainer': 'trainer',
+  '/setup': 'setup',
+  '/ecosystem': 'ecosystem',
+  '/services': 'ecosystem',
+  '/analytics': 'analytics',
+  '/plots': 'analytics',
+  '/details': 'details',
+  '/project-details': 'details'
+}
+
+const viewToPathMap = {
+  dashboard: '/dashboard',
+  logs: '/logs',
+  trainer: '/trainer',
+  setup: '/setup',
+  ecosystem: '/ecosystem',
+  analytics: '/analytics',
+  details: '/details'
+}
+
+function getViewFromLocation() {
+  if (typeof window === 'undefined') return 'dashboard'
+  const path = window.location.pathname.toLowerCase().replace(/\/$/, '') || '/'
+  if (pathToViewMap[path]) {
+    return pathToViewMap[path]
+  }
+  const params = new URLSearchParams(window.location.search)
+  const qView = params.get('view')
+  if (qView && pathToViewMap[`/${qView}`]) {
+    return pathToViewMap[`/${qView}`]
+  }
+  return 'dashboard'
+}
+
 function App() {
   const [activeTab, setActiveTab] = useState('login')
   const [email, setEmail] = useState('')
@@ -70,23 +110,23 @@ function App() {
     return saved ? JSON.parse(saved) : null
   })
 
-  const [currentView, setCurrentView] = useState(() => {
-    if (typeof window !== 'undefined') {
-      if (window.location.search.includes('view=setup')) {
-        return 'setup'
-      }
-    }
-    return 'dashboard'
-  })
+  const [currentView, setCurrentView] = useState(() => getViewFromLocation())
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [selectedCamera, setSelectedCamera] = useState(null)
   const [setupCameraId, setSetupCameraId] = useState('cam1')
 
-  const handleNavigate = (view, targetCamId) => {
+  const handleNavigate = (view, targetCamId, push = true) => {
     if (targetCamId) {
       setSetupCameraId(targetCamId)
     }
     setCurrentView(view)
+
+    if (push && typeof window !== 'undefined') {
+      const targetPath = viewToPathMap[view] || `/${view}`
+      if (window.location.pathname !== targetPath) {
+        window.history.pushState({ view, targetCamId }, '', targetPath)
+      }
+    }
   }
 
   // Parking live stats state - dynamically synchronized with ROI setup across all cameras
@@ -107,6 +147,31 @@ function App() {
     return () => {
       window.removeEventListener('cpe-slots-updated', handleUpdate)
       window.removeEventListener('storage', handleStorage)
+    }
+  }, [])
+
+  // Synchronize browser URL history (Back / Forward button support)
+  useEffect(() => {
+    const handlePopState = (e) => {
+      const nextView = e.state?.view || getViewFromLocation()
+      const targetCamId = e.state?.targetCamId
+      if (targetCamId) {
+        setSetupCameraId(targetCamId)
+      }
+      setCurrentView(nextView)
+    }
+
+    if (typeof window !== 'undefined') {
+      const initialView = getViewFromLocation()
+      const targetPath = viewToPathMap[initialView] || `/${initialView}`
+      if (window.location.pathname === '/' || window.location.pathname !== targetPath) {
+        window.history.replaceState({ view: initialView }, '', targetPath)
+      }
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
     }
   }, [])
 

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Camera Workspace Page Styles (Figma Layout Specification)
+   Camera Workspace Page Styles (Wide, Clean, High-Fidelity)
    Palette:
      Canvas: #FAF8EF
      Surfaces: #FFFDF7, #F0EEE4, #E7F4D8
@@ -19,7 +19,7 @@
 
 /* --------------------------------------------------------------------------
    Dedicated Minimalist Camera Navbar
-   Navbar has ONLY the back button and camera title
+   Navbar has ONLY the back button, camera title, and quick camera switcher
    -------------------------------------------------------------------------- */
 .camera-top-navbar {
   position: sticky;
@@ -33,19 +33,20 @@
 }
 
 .camera-top-navbar-inner {
-  max-width: 1440px;
+  max-width: 1680px;
   margin: 0 auto;
   height: 100%;
-  padding: 0 32px;
+  padding: 0 20px;
   display: flex;
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 768px) {
   .camera-top-navbar-inner {
-    padding: 0 100px;
+    padding: 0 36px;
   }
 }
 
@@ -54,20 +55,21 @@
   display: inline-flex;
   flex-direction: row;
   align-items: center;
-  gap: 10px;
-  padding: 8px 20px;
-  height: 42px;
+  gap: 8px;
+  padding: 8px 18px;
+  height: 40px;
   background: #FFFDF7;
   border: 1px solid #DEDED2;
   border-radius: 100px;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: 14px;
-  line-height: 17px;
+  font-size: 13px;
+  line-height: 16px;
   color: #30312F;
   cursor: pointer;
   transition: all 0.18s ease;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .camera-nav-back-btn:hover {
@@ -79,7 +81,7 @@
 .camera-nav-title-group {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .camera-nav-code-pill {
@@ -91,17 +93,50 @@
   border: 1px solid #B2CA9D;
   border-radius: 100px;
   font-family: 'Inter', sans-serif;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 12px;
-  line-height: 15px;
   color: #36612D;
 }
 
 .camera-nav-title {
   font-family: 'Inter', sans-serif;
   font-weight: 600;
-  font-size: 16px;
+  font-size: 15px;
   color: #30312F;
+}
+
+/* Quick Camera Switcher in Navbar */
+.camera-nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #F0EEE4;
+  padding: 3px;
+  border-radius: 100px;
+  border: 1px solid #DEDED2;
+}
+
+.camera-nav-tab-btn {
+  padding: 6px 14px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  color: #686962;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.camera-nav-tab-btn:hover {
+  color: #30312F;
+}
+
+.camera-nav-tab-btn.active {
+  background: #30312F;
+  color: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(48, 49, 47, 0.15);
 }
 
 .camera-nav-status-badge {
@@ -116,6 +151,7 @@
   font-size: 12px;
   line-height: 15px;
   color: #36612D;
+  white-space: nowrap;
 }
 
 .camera-nav-status-badge.offline {
@@ -132,91 +168,41 @@
 }
 
 /* --------------------------------------------------------------------------
-   Camera Workspace Page Main Container
+   Wide Camera Workspace Main Container
    -------------------------------------------------------------------------- */
 .camera-workspace-content {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  padding: 28px 24px 64px;
-  gap: 30px;
-  max-width: 1440px;
+  padding: 20px 20px 48px;
+  gap: 22px;
+  max-width: 1680px;
   width: 100%;
   margin: 0 auto;
 }
 
 @media (min-width: 768px) {
   .camera-workspace-content {
-    padding: 28px 48px 64px;
+    padding: 24px 36px 48px;
   }
 }
 
-@media (min-width: 1200px) {
-  .camera-workspace-content {
-    padding: 28px 100px 64px;
-  }
-}
-
-/* Breadcrumb */
-.camera-breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: 'Inter', sans-serif;
-  font-weight: 400;
-  font-size: 13px;
-  line-height: 16px;
-  color: #85847E;
-}
-
-.camera-breadcrumb-link {
-  color: #85847E;
-  text-decoration: none;
-  cursor: pointer;
-  transition: color 0.15s ease;
-}
-
-.camera-breadcrumb-link:hover {
-  color: #30312F;
-}
-
-/* Camera Introduction */
-.camera-intro-row {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  width: 100%;
-}
-
-@media (min-width: 1024px) {
-  .camera-intro-row {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: flex-start;
-  }
-}
-
-.camera-overview-block {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 16px;
-  max-width: 850px;
-}
-
-.camera-metadata-row {
+/* Header & Compact Metadata Row */
+.camera-header-compact {
   display: flex;
   flex-direction: row;
+  justify-content: space-between;
   align-items: center;
-  gap: 10px;
+  width: 100%;
+  gap: 16px;
   flex-wrap: wrap;
 }
 
 .camera-meta-tag {
   display: inline-flex;
   align-items: center;
-  padding: 6px 11px;
+  padding: 5px 12px;
   background: #F0EEE4;
   border-radius: 100px;
   font-family: 'Inter', sans-serif;
@@ -229,52 +215,26 @@
 .camera-meta-tag.status-active {
   background: #E7F4D8;
   color: #36612D;
-}
-
-.camera-title-headline {
-  font-family: 'Inter', sans-serif;
-  font-style: normal;
   font-weight: 600;
-  font-size: 32px;
-  line-height: 40px;
-  color: #30312F;
-  margin: 0;
 }
 
-@media (min-width: 768px) {
-  .camera-title-headline {
-    font-size: 44px;
-    line-height: 54px;
-  }
-}
-
-.camera-desc-text {
-  font-family: 'Inter', sans-serif;
-  font-style: normal;
-  font-weight: 400;
-  font-size: 16px;
-  line-height: 160%;
-  color: #686962;
-  margin: 0;
-}
-
-/* Header Refresh / Snapshot Action Button */
+/* Header Refresh Action Button */
 .camera-header-action-btn {
   box-sizing: border-box;
   display: inline-flex;
   flex-direction: row;
   justify-content: center;
   align-items: center;
-  padding: 0px 24px;
-  gap: 10px;
-  height: 48px;
-  background: #FAF8EF;
+  padding: 0px 20px;
+  gap: 8px;
+  height: 42px;
+  background: #FFFDF7;
   border: 1px solid #DEDED2;
   border-radius: 100px;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: 14px;
-  line-height: 17px;
+  font-size: 13px;
+  line-height: 16px;
   color: #30312F;
   cursor: pointer;
   transition: all 0.18s ease;
@@ -287,35 +247,9 @@
 }
 
 /* --------------------------------------------------------------------------
-   Learning Surface: Main 2-Column Content Stage
+   Wide Camera Player (Full Width, Maximum Screen Real Estate)
    -------------------------------------------------------------------------- */
-.camera-learning-surface {
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
-  width: 100%;
-}
-
-@media (min-width: 1100px) {
-  .camera-learning-surface {
-    flex-direction: row;
-    align-items: flex-start;
-  }
-}
-
-/* Left Column: Lesson Content */
-.camera-lesson-content {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 24px;
-  flex: 1;
-  min-width: 0;
-  width: 100%;
-}
-
-/* Lesson Player Container */
-.camera-lesson-player {
+.camera-player-wide {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -323,63 +257,32 @@
   background: #F0EEE4;
   border-radius: 24px;
   overflow: hidden;
-  box-shadow: 0 4px 20px -2px rgba(48, 49, 47, 0.05);
+  box-shadow: 0 4px 20px -2px rgba(48, 49, 47, 0.06);
 }
 
-.camera-lesson-visual {
+.camera-visual-container {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 24px 20px;
-  gap: 20px;
+  padding: 16px;
   width: 100%;
 }
 
 @media (min-width: 768px) {
-  .camera-lesson-visual {
-    padding: 32px 32px 28px;
-    gap: 24px;
+  .camera-visual-container {
+    padding: 20px 24px;
   }
 }
 
-.camera-lesson-overline {
-  font-family: 'Inter', sans-serif;
-  font-weight: 500;
-  font-size: 12px;
-  line-height: 15px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #85847E;
-  width: 100%;
-  text-align: center;
-}
-
-.camera-visual-headline {
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
-  font-size: 24px;
-  line-height: 32px;
-  text-align: center;
-  color: #30312F;
-  margin: 0;
-}
-
-@media (min-width: 768px) {
-  .camera-visual-headline {
-    font-size: 32px;
-    line-height: 39px;
-  }
-}
-
-/* Visual Stage / Image Frame */
+/* Viewport Frame with SVG ROI */
 .camera-viewport-frame {
   position: relative;
   width: 100%;
   border-radius: 18px;
   overflow: hidden;
-  background: #1A1B1A;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+  background: #111211;
+  box-shadow: 0 12px 36px rgba(0,0,0,0.14);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -388,104 +291,95 @@
 .camera-viewport-img {
   width: 100%;
   height: auto;
-  max-height: 520px;
-  object-contain: contain;
+  max-height: 640px;
+  object-fit: contain;
   display: block;
+  transition: opacity 0.2s ease;
 }
 
-/* 3 Pipeline Segments (Blockchain diagram style from Figma) */
-.camera-pipeline-diagram {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-  width: 100%;
-  margin-top: 6px;
-}
-
-@media (min-width: 640px) {
-  .camera-pipeline-diagram {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-.camera-pipeline-block {
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  padding: 16px 18px;
-  gap: 8px;
-  background: #FFFDF7;
-  border: 1px solid #DEDED2;
-  border-radius: 18px;
-  transition: all 0.2s ease;
-}
-
-.camera-pipeline-block.active {
-  background: #E7F4D8;
-  border: 1px solid #B2CA9D;
-}
-
-.camera-pipeline-label {
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
-  font-size: 13px;
-  line-height: 17px;
-  color: #30312F;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.camera-pipeline-bar {
-  width: 100%;
-  height: 5px;
-  background: #DEDED2;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.camera-pipeline-bar-fill {
-  height: 100%;
-  background: #30312F;
-  border-radius: 3px;
-}
-
-.camera-pipeline-block.active .camera-pipeline-bar-fill {
-  background: #36612D;
-}
-
-.camera-pipeline-hash {
-  font-family: 'Inter', monospace;
-  font-weight: 400;
-  font-size: 11px;
-  line-height: 14px;
-  color: #85847E;
-}
-
-.camera-visual-caption {
-  font-family: 'Inter', sans-serif;
-  font-weight: 400;
-  font-size: 13px;
-  line-height: 17px;
-  color: #686962;
-  text-align: center;
-}
-
-/* Player Controls Bar */
+/* Controls Bar (Clean Edge-Hardware Style - No Video Play/Pause Buttons) */
 .camera-player-controls {
   box-sizing: border-box;
   display: flex;
   flex-direction: row;
   align-items: center;
+  justify-content: space-between;
   padding: 0px 24px;
   gap: 16px;
   width: 100%;
-  height: 64px;
+  height: 56px;
   background: #30312F;
 }
 
-.camera-ctrl-icon-btn {
+.camera-ctrl-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.camera-ctrl-center {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-grow: 1;
+  max-width: 480px;
+}
+
+.camera-ctrl-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.camera-ctrl-track {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 100px;
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+.camera-ctrl-track-elapsed {
+  height: 4px;
+  background: #83F04C;
+  border-radius: 100px;
+  transition: width 0.3s ease;
+}
+
+.camera-ctrl-btn {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 15px;
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 100px;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.camera-ctrl-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.camera-ctrl-btn.active {
+  background: #83F04C;
+  color: #111211;
+  border-color: #83F04C;
+  font-weight: 600;
+}
+
+.camera-ctrl-icon-only {
   background: none;
   border: none;
   color: #FFFFFF;
@@ -498,143 +392,83 @@
   transition: opacity 0.15s;
 }
 
-.camera-ctrl-icon-btn:hover {
+.camera-ctrl-icon-only:hover {
   opacity: 0.8;
 }
 
-.camera-ctrl-timestamp {
-  font-family: 'Inter', monospace;
-  font-weight: 500;
-  font-size: 12px;
-  line-height: 15px;
-  color: #FFFFFF;
-  white-space: nowrap;
-}
-
-.camera-ctrl-track {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.25);
-  border-radius: 100px;
-  flex-grow: 1;
-  overflow: hidden;
-}
-
-.camera-ctrl-track-elapsed {
-  height: 3px;
-  background: #83F04C;
-  border-radius: 100px;
-  transition: width 0.3s ease;
-}
-
-.camera-ctrl-text-btn {
-  font-family: 'Inter', sans-serif;
-  font-weight: 500;
-  font-size: 12px;
-  line-height: 15px;
-  color: #FFFFFF;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 100px;
-  padding: 4px 10px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-}
-
-.camera-ctrl-text-btn.active {
-  background: #83F04C;
-  color: #1A1B1A;
-  border-color: #83F04C;
-  font-weight: 600;
-}
-
-/* Lesson Heading & Action */
-.camera-lesson-heading {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+/* --------------------------------------------------------------------------
+   3 Key Metric Cards (Beneath Player)
+   -------------------------------------------------------------------------- */
+.camera-metrics-3col {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
   width: 100%;
-}
-
-@media (min-width: 640px) {
-  .camera-lesson-heading {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-  }
-}
-
-.camera-lesson-title-block {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-}
-
-.camera-lesson-number {
-  font-family: 'Inter', sans-serif;
-  font-weight: 500;
-  font-size: 12px;
-  line-height: 15px;
-  letter-spacing: 0.05em;
-  color: #85847E;
-  text-transform: uppercase;
-}
-
-.camera-lesson-title {
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
-  font-size: 24px;
-  line-height: 30px;
-  color: #30312F;
-  margin: 0;
 }
 
 @media (min-width: 768px) {
-  .camera-lesson-title {
-    font-size: 27px;
-    line-height: 33px;
+  .camera-metrics-3col {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
-.camera-primary-action-btn {
+.camera-metric-card {
   box-sizing: border-box;
-  display: inline-flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: center;
-  padding: 0px 24px;
-  gap: 10px;
-  height: 48px;
-  background: #30312F;
-  border: 1px solid #30312F;
-  border-radius: 100px;
-  font-family: 'Inter', sans-serif;
-  font-weight: 500;
-  font-size: 14px;
-  line-height: 17px;
-  color: #FFFFFF;
-  cursor: pointer;
-  transition: all 0.18s ease;
-  white-space: nowrap;
-}
-
-.camera-primary-action-btn:hover {
-  background: #454744;
-  border-color: #454744;
-}
-
-/* Filters Row */
-.camera-filters-row {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px;
+  gap: 14px;
+  background: #FFFDF7;
+  border: 1px solid #DEDED2;
+  border-radius: 20px;
+  transition: all 0.2s ease;
+}
+
+.camera-metric-card.accent {
+  background: #E7F4D8;
+  border-color: #B2CA9D;
+}
+
+.camera-metric-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.camera-metric-title {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: #30312F;
+  display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+}
+
+/* --------------------------------------------------------------------------
+   Interactive Slot Registry
+   -------------------------------------------------------------------------- */
+.camera-slots-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   width: 100%;
+  background: #FFFDF7;
+  border: 1px solid #DEDED2;
+  border-radius: 24px;
+  padding: 22px;
+  box-sizing: border-box;
+}
+
+.camera-slots-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .camera-filter-pill {
@@ -642,14 +476,14 @@
   display: inline-flex;
   flex-direction: row;
   align-items: center;
-  padding: 9px 18px;
+  padding: 7px 15px;
   background: #FAF8EF;
   border: 1px solid #DEDED2;
   border-radius: 100px;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: 13px;
-  line-height: 17px;
+  font-size: 12px;
+  line-height: 16px;
   color: #686962;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -667,63 +501,15 @@
   font-weight: 600;
 }
 
-/* Key Takeaways Card */
-.camera-takeaways-card {
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  padding: 24px;
-  gap: 14px;
-  width: 100%;
-  background: #FFFDF7;
-  border: 1px solid #DEDED2;
-  border-radius: 24px;
-}
-
-.camera-takeaways-title {
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
-  font-size: 19px;
-  line-height: 23px;
-  color: #30312F;
-  margin: 0;
-}
-
-.camera-takeaway-item {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  gap: 12px;
-  width: 100%;
-}
-
-.camera-takeaway-icon {
-  width: 18px;
-  height: 18px;
-  color: #36612D;
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.camera-takeaway-desc {
-  font-family: 'Inter', sans-serif;
-  font-weight: 400;
-  font-size: 14px;
-  line-height: 150%;
-  color: #686962;
-}
-
-/* Navigation Row */
+/* Bottom Navigation Row */
 .camera-navigation-row {
   display: flex;
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  padding-top: 10px;
+  padding-top: 8px;
   gap: 16px;
-  flex-wrap: wrap;
 }
 
 .camera-nav-step-btn {
@@ -732,15 +518,14 @@
   flex-direction: row;
   align-items: center;
   gap: 10px;
-  padding: 0px 24px;
-  height: 48px;
+  padding: 0px 22px;
+  height: 44px;
   background: #FAF8EF;
   border: 1px solid #DEDED2;
   border-radius: 100px;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: 14px;
-  line-height: 17px;
+  font-size: 13px;
   color: #30312F;
   cursor: pointer;
   transition: all 0.18s ease;
@@ -749,247 +534,4 @@
 .camera-nav-step-btn:hover {
   background: #F0EEE4;
   border-color: #85847E;
-}
-
-/* --------------------------------------------------------------------------
-   Right Sidebar: Course Sidebar & Curriculum
-   -------------------------------------------------------------------------- */
-.camera-course-sidebar {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 24px;
-  width: 100%;
-}
-
-@media (min-width: 1100px) {
-  .camera-course-sidebar {
-    width: 360px;
-    flex-shrink: 0;
-  }
-}
-
-/* Sidebar Card 1: Curriculum / Cameras Directory */
-.camera-curriculum-card {
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  padding: 24px;
-  gap: 18px;
-  width: 100%;
-  background: #FFFDF7;
-  border: 1px solid #DEDED2;
-  border-radius: 24px;
-}
-
-.camera-curriculum-title {
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
-  font-size: 21px;
-  line-height: 25px;
-  color: #30312F;
-  margin: 0;
-}
-
-.camera-curriculum-progress-label {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  line-height: 16px;
-}
-
-.camera-progress-completion {
-  color: #686962;
-}
-
-.camera-progress-percent {
-  font-weight: 600;
-  color: #30312F;
-}
-
-.camera-progress-track {
-  width: 100%;
-  height: 6px;
-  background: #DEDED2;
-  border-radius: 100px;
-  overflow: hidden;
-}
-
-.camera-progress-value {
-  height: 6px;
-  background: #30312F;
-  border-radius: 100px;
-  transition: width 0.3s ease;
-}
-
-.camera-lessons-list {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
-  width: 100%;
-}
-
-.camera-lesson-item {
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  padding: 14px 16px;
-  gap: 12px;
-  background: #FFFDF7;
-  border: 1px solid #EAE8DE;
-  border-radius: 14px;
-  cursor: pointer;
-  transition: all 0.18s ease;
-  text-decoration: none;
-}
-
-.camera-lesson-item:hover {
-  background: #F0EEE4;
-  border-color: #DEDED2;
-}
-
-.camera-lesson-item.active {
-  background: #E7F4D8;
-  border: 1px solid #B2CA9D;
-}
-
-.camera-lesson-details {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  flex-grow: 1;
-  min-width: 0;
-}
-
-.camera-lesson-item-title {
-  font-family: 'Inter', sans-serif;
-  font-weight: 500;
-  font-size: 14px;
-  line-height: 17px;
-  color: #30312F;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: 100%;
-}
-
-.camera-lesson-item.active .camera-lesson-item-title {
-  font-weight: 600;
-}
-
-.camera-lesson-item-duration {
-  font-family: 'Inter', sans-serif;
-  font-weight: 400;
-  font-size: 12px;
-  line-height: 15px;
-  color: #85847E;
-}
-
-/* Sidebar Card 2: Reward / AI Model Status */
-.camera-reward-card {
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  padding: 24px;
-  gap: 14px;
-  width: 100%;
-  background: #E7F4D8;
-  border-radius: 24px;
-}
-
-.camera-reward-heading {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-}
-
-.camera-reward-title {
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
-  font-size: 19px;
-  line-height: 23px;
-  color: #30312F;
-  margin: 0;
-}
-
-.camera-reward-desc {
-  font-family: 'Inter', sans-serif;
-  font-weight: 400;
-  font-size: 14px;
-  line-height: 160%;
-  color: #686962;
-  margin: 0;
-}
-
-.camera-reward-disclaimer {
-  font-family: 'Inter', sans-serif;
-  font-weight: 400;
-  font-size: 12px;
-  line-height: 150%;
-  color: #686962;
-  margin: 0;
-}
-
-/* Sidebar Card 3: Resources & Tools */
-.camera-resource-card {
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  padding: 24px;
-  gap: 12px;
-  width: 100%;
-  background: #FFFDF7;
-  border: 1px solid #DEDED2;
-  border-radius: 24px;
-}
-
-.camera-resource-title {
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
-  font-size: 18px;
-  line-height: 22px;
-  color: #30312F;
-  margin: 0;
-}
-
-.camera-resource-desc {
-  font-family: 'Inter', sans-serif;
-  font-weight: 400;
-  font-size: 14px;
-  line-height: 150%;
-  color: #686962;
-  margin: 0;
-}
-
-.camera-resource-action {
-  font-family: 'Inter', sans-serif;
-  font-weight: 500;
-  font-size: 14px;
-  line-height: 17px;
-  color: #30312F;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  text-decoration: underline;
-  transition: opacity 0.15s ease;
-}
-
-.camera-resource-action:hover {
-  opacity: 0.75;
 }

@@ -5,18 +5,23 @@
 
 :root {
   /* Surfaces */
-  --color-bg: #F7F8FA;
+  --color-bg: #F7F7F5;
   --color-surface: #FFFFFF;
-  --color-surface-muted: #F3F4F6;
+  --color-surface-muted: #EFEFEA;
+  --color-surface-card: #FFFDF7;
+  --color-surface-warm: #F0EEE4;
+  --color-btn-secondary: #FAF8EF;
 
   /* Borders */
-  --color-border: #E5E7EB;
+  --color-border: #E5E5DF;
+  --color-border-card: #DEDED2;
 
-  /* Text */
-  --color-ink: #111827;
-  --color-ink-secondary: #4B5563;
-  --color-ink-muted: #6B7280;
+  /* Text — Figma Specification */
+  --color-ink: #30312F;
+  --color-ink-secondary: #85847E;
+  --color-ink-muted: #A3A29B;
   --color-ink-inverse: #FFFFFF;
+  --color-tag-active-text: #36612D;
 
   /* Green (Brand Success) */
   --color-green-tint: #ECFDF5;
@@ -25,12 +30,12 @@
   --color-green-deep: #14532D;
   --color-green-bright: #22C55E;
 
-  /* NEW Accent (Blue) */
-  --color-accent-strong: #1D4ED8;
-  --color-accent-tint: #EFF6FF;
-  --color-accent-text: #1E40AF;
-  --color-accent-border: #BFDBFE;
-  --color-accent-hover: #1E40AF;
+  /* Accent & Active State — Figma #30312F */
+  --color-accent-strong: #30312F;
+  --color-accent-tint: #EFEFEA;
+  --color-accent-text: #30312F;
+  --color-accent-border: #D5D5CF;
+  --color-accent-hover: #1E1F1D;
 
   /* Soft Category Tints (Neutral-Professional) */
   --color-mint: #ECFDF5;

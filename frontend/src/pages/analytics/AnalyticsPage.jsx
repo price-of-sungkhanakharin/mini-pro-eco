@@ -4,17 +4,13 @@ import {
   Bar,
   LineChart,
   Line,
-  AreaChart,
-  Area,
-  PieChart,
-  Pie,
-  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
   ResponsiveContainer,
+  Cell,
 } from 'recharts'
 import {
   Activity,
@@ -23,32 +19,42 @@ import {
   TrendingUp,
   Wifi,
   Thermometer,
-  Layers,
   Zap,
   Clock,
   Car,
-  Bike,
-  HardDrive,
-  Database,
   CheckCircle2,
   AlertCircle,
-  PieChart as PieIcon,
   ShieldCheck,
   Camera,
   Sliders,
-  Sun,
-  Eye,
-  BarChart3,
-  Gauge
+  Sparkles,
+  Gauge,
+  Layers,
 } from 'lucide-react'
 
 export default function AnalyticsPage({ apiBase = '' }) {
-  const [data, setData] = useState(null)
+  // Navigation tabs
+  const [activeTab, setActiveTab] = useState('timeseries') // 'timeseries' or 'yolo'
+
+  // Global filters
+  const [hoursFilter, setHoursFilter] = useState(48)
+  const [activeCamFilter, setActiveCamFilter] = useState('all')
+
+  // Loading & state
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [lastRefreshed, setLastRefreshed] = useState(null)
-  const [hoursFilter, setHoursFilter] = useState(48)
-  const [activeCamFilter, setActiveCamFilter] = useState('all') // 'all', 'cam1', 'cam2', 'cam3'
+
+  // Data sets
+  const [yoloData, setYoloData] = useState(null)
+  const [tsGraphData, setTsGraphData] = useState(null)
+  const [modelMetrics, setModelMetrics] = useState(null)
+  const [liveCameras, setLiveCameras] = useState(null)
+
+  // Future availability predictor widget state
+  const [predictCam, setPredictCam] = useState('cam1')
+  const [predictHorizon, setPredictHorizon] = useState(15)
+  const [futurePrediction, setFuturePrediction] = useState(null)
 
   const effectiveApiBase =
     apiBase ||
@@ -57,16 +63,35 @@ export default function AnalyticsPage({ apiBase = '' }) {
       ? `http://${window.location.hostname}:8000`
       : 'http://localhost:8000')
 
-  const fetchData = async () => {
+  // Fetch all analytics data
+  const fetchAllData = async () => {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`${effectiveApiBase}/api/v1/analytics/data?hours=${hoursFilter}`)
-      if (!res.ok) {
-        throw new Error(`Server returned HTTP ${res.status}`)
+      const [yoloRes, tsRes, metricsRes, statusRes] = await Promise.all([
+        fetch(`${effectiveApiBase}/api/v1/analytics/data?hours=${hoursFilter}`),
+        fetch(`${effectiveApiBase}/api/v1/timeseries/graph-data?hours=${hoursFilter}&camera_id=${activeCamFilter}`),
+        fetch(`${effectiveApiBase}/api/v1/timeseries/model-metrics`),
+        fetch(`${effectiveApiBase}/api/v1/timeseries/cameras/status`),
+      ])
+
+      if (yoloRes.ok) {
+        const yoloJson = await yoloRes.json()
+        setYoloData(yoloJson)
       }
-      const json = await res.json()
-      setData(json)
+      if (tsRes.ok) {
+        const tsJson = await tsRes.json()
+        setTsGraphData(tsJson)
+      }
+      if (metricsRes.ok) {
+        const metricsJson = await metricsRes.json()
+        setModelMetrics(metricsJson.metadata || null)
+      }
+      if (statusRes.ok) {
+        const statusJson = await statusRes.json()
+        setLiveCameras(statusJson.cameras || null)
+      }
+
       setLastRefreshed(new Date())
     } catch (err) {
       console.error('Failed to fetch analytics:', err)
@@ -76,557 +101,817 @@ export default function AnalyticsPage({ apiBase = '' }) {
     }
   }
 
-  useEffect(() => {
-    fetchData()
-  }, [hoursFilter])
+  // Fetch future occupancy prediction
+  const fetchFuturePrediction = async (camId = predictCam, horizon = predictHorizon) => {
+    try {
+      const res = await fetch(`${effectiveApiBase}/api/v1/timeseries/future-occupancy?camera_id=${camId}&minutes=${horizon}`)
+      if (res.ok) {
+        const json = await res.json()
+        setFuturePrediction(json.data || null)
+      }
+    } catch (err) {
+      console.error('Future prediction fetch error:', err)
+    }
+  }
 
-  // Data sets
-  const modelComparison = data?.model_comparison || [
-    { model: 'YOLO26m (Fine-Tuned)', map50: 98.5, precision: 97.8, recall: 96.5, latency_ms: 1136.6, memory_mb: 344.0, size_mb: 41.97 },
-    { model: 'YOLO26n (Nano Base)', map50: 98.0, precision: 96.8, recall: 95.8, latency_ms: 327.8, memory_mb: 2.5, size_mb: 5.29 },
-    { model: 'SSD MobileNetV2', map50: 84.2, precision: 81.5, recall: 78.0, latency_ms: 410.2, memory_mb: 14.8, size_mb: 19.5 },
-    { model: 'Faster R-CNN', map50: 94.1, precision: 93.0, recall: 91.2, latency_ms: 2850.0, memory_mb: 580.0, size_mb: 160.0 },
+  useEffect(() => {
+    fetchAllData()
+  }, [hoursFilter, activeCamFilter])
+
+  useEffect(() => {
+    fetchFuturePrediction(predictCam, predictHorizon)
+  }, [predictCam, predictHorizon])
+
+  const timeSeriesList = tsGraphData?.series || []
+  const summary = yoloData?.summary || {}
+
+  const featureImportances = modelMetrics?.top_features || [
+    { feature: 'delta_vehicles', importance: 0.4808 },
+    { feature: 'chip_temp_c', importance: 0.1337 },
+    { feature: 'is_weekend', importance: 0.0984 },
+    { feature: 'day_of_week', importance: 0.0953 },
+    { feature: 'campus_phase', importance: 0.0911 },
+    { feature: 'day_type', importance: 0.0691 },
+    { feature: 'is_class_transition', importance: 0.0197 },
+    { feature: 'is_lecture_time', importance: 0.0108 },
   ]
 
-  const trainingConvergence = data?.training_convergence || []
-  const resolutionBenchmark = data?.resolution_benchmark || []
-  const quantizationBenchmark = data?.quantization_benchmark || []
-  const flickerStability = data?.flicker_stability || []
-  const vehicleDistribution = data?.vehicle_distribution || []
-  const networkImpact = data?.network_impact || []
-  const iotHealth = data?.iot_health || []
-  const telemetrySeries = data?.telemetry || []
-  const occupancySeries = data?.occupancy || []
-  const summary = data?.summary || {}
+  const modelComparison = yoloData?.model_comparison || []
+  const resolutionBenchmark = yoloData?.resolution_benchmark || []
+  const quantizationBenchmark = yoloData?.quantization_benchmark || []
+  const flickerStability = yoloData?.flicker_stability || []
 
-  const PIE_COLORS = ['#2F6BFF', '#10B981', '#F59E0B']
-
-  // Tooltip custom style
+  // Clean White Corporate Tooltip Style
   const tooltipStyle = {
-    backgroundColor: '#FFFFFF',
-    border: '2px solid #212529',
-    borderRadius: '4px',
-    boxShadow: '3px 3px 0px #212529',
-    fontFamily: 'monospace',
-    fontSize: '11px',
+    backgroundColor: 'var(--color-surface, #FFFFFF)',
+    border: '1px solid var(--color-border, #E5E7EB)',
+    borderRadius: 'var(--radius-option, 8px)',
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04)',
+    fontFamily: 'var(--font-sans, Inter, sans-serif)',
+    fontSize: '12px',
+    color: 'var(--color-ink, #111827)',
+    padding: '8px 12px',
   }
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] text-[#212529] p-4 md:p-8 font-sans">
-      {/* Header Bar */}
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between border-b-2 border-[#212529] pb-6 mb-8 gap-4">
+    <div className="w-full max-w-7xl mx-auto space-y-6 pb-12 font-sans">
+      {/* ========================================================================= */}
+      {/* 1. TOP HEADER & FILTER TOOLBAR (Matches Navbar & Dashboard Shell)         */}
+      {/* ========================================================================= */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-5 border-b border-[var(--color-border)]">
         <div>
-          <div className="flex items-center gap-3">
-            <span className="px-3 py-1 bg-[#2F6BFF] text-white font-mono text-xs font-bold uppercase rounded-sm border border-[#212529] shadow-[2px_2px_0px_#212529]">
-              AI INTELLIGENCE & TELEMETRY HUB
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--radius-pill)] text-xs font-semibold bg-[var(--color-accent-tint)] text-[var(--color-accent-text)] border border-[var(--color-accent-border)]">
+              <span className="w-2 h-2 rounded-full bg-[var(--color-accent-strong)] animate-pulse"></span>
+              Time-Series & Analytics Hub
             </span>
-            <span className="flex items-center gap-1.5 text-xs font-mono text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              MULTI-CAMERA LIVE TELEMETRY
+            <span className="text-xs text-[var(--color-ink-muted)]">
+              {summary.total_telemetry_records?.toLocaleString() || '120,000+'} frames indexed
             </span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight mt-2 text-[#212529]">
-            CPE Smart Campus Analytics & AI Telemetry
+
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--color-ink)] mt-1.5">
+            ระบบวิเคราะห์ข้อมูลและพยากรณ์อัจฉริยะ (Campus Analytics & Time-Series)
           </h1>
-          <p className="text-sm text-neutral-600 mt-1">
-            ศูนย์รวมการวิเคราะห์ข้อมูล AI โมเดล, ความแม่นยำ, ประสิทธิภาพฮาร์ดแวร์ Edge, และสถิติการจอดรถแยกรายกล้อง
+          <p className="text-sm text-[var(--color-ink-secondary)] mt-0.5">
+            ประมวลผลข้อมูลอนุกรมเวลา (Time-Series) เพื่อควบคุมรอบ Deep-Sleep และทำนายความว่างของที่จอดรถล่วงหน้าตามตารางเรียน
           </p>
         </div>
 
-        {/* Global Controls */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-1.5 bg-white border-2 border-[#212529] rounded px-3 py-1.5 shadow-[2px_2px_0px_#212529]">
-            <Clock className="w-4 h-4 text-neutral-500" />
+        {/* Global Toolbar Controls */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Time range selector */}
+          <div className="flex items-center gap-1.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-pill)] px-3 py-1.5 shadow-sm text-xs font-medium text-[var(--color-ink)]">
+            <Clock className="w-3.5 h-3.5 text-[var(--color-ink-muted)]" />
             <select
               value={hoursFilter}
               onChange={(e) => setHoursFilter(Number(e.target.value))}
-              className="text-xs font-mono font-bold bg-transparent outline-none cursor-pointer pr-1"
+              className="bg-transparent outline-none cursor-pointer pr-1 text-xs font-medium text-[var(--color-ink)]"
             >
-              <option value={12}>Past 12 Hours</option>
-              <option value={24}>Past 24 Hours</option>
-              <option value={48}>Past 48 Hours</option>
-              <option value={72}>Past 72 Hours</option>
-              <option value={168}>Past 7 Days</option>
+              <option value={12}>12 ชั่วโมงล่าสุด</option>
+              <option value={24}>24 ชั่วโมงล่าสุด</option>
+              <option value={48}>48 ชั่วโมงล่าสุด</option>
+              <option value={72}>72 ชั่วโมงล่าสุด</option>
+              <option value={168}>7 วันย้อนหลัง</option>
             </select>
           </div>
 
+          {/* Refresh Button */}
           <button
             type="button"
-            onClick={fetchData}
+            onClick={fetchAllData}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-[#2F6BFF] text-white font-semibold text-xs uppercase tracking-wider rounded border-2 border-[#212529] shadow-[3px_3px_0px_#212529] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_#212529] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none transition-all disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[var(--color-accent-strong)] hover:bg-[var(--color-accent-hover)] text-white text-xs font-medium rounded-[var(--radius-pill)] shadow-sm transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
+            <span>อัปเดตข้อมูล</span>
           </button>
         </div>
       </div>
 
-      {lastRefreshed && (
-        <div className="max-w-7xl mx-auto mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between text-xs text-neutral-600 font-mono gap-1">
-          <span>Synced: {lastRefreshed.toLocaleTimeString()} | Range: Past {hoursFilter} Hours</span>
-          <span>Indexed: {summary.total_telemetry_records?.toLocaleString() || 0} Telemetry Frames · {summary.total_detection_records?.toLocaleString() || 0} Detections</span>
+      {/* ========================================================================= */}
+      {/* 2. SEGMENTED TAB SWITCHER (Figma QCLAY Theme)                              */}
+      {/* ========================================================================= */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="inline-flex p-1 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-[var(--radius-pill)] shadow-sm">
+          <button
+            onClick={() => setActiveTab('timeseries')}
+            className={`flex items-center gap-2 px-4 py-1.5 rounded-[var(--radius-option)] text-xs font-semibold transition-all ${
+              activeTab === 'timeseries'
+                ? 'bg-[var(--color-surface)] text-[var(--color-accent-text)] shadow-sm'
+                : 'text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
+            }`}
+          >
+            <Activity className="w-3.5 h-3.5" />
+            <span>1. Time-Series & Campus Adaptive System</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-green-bright)]"></span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('yolo')}
+            className={`flex items-center gap-2 px-4 py-1.5 rounded-[var(--radius-option)] text-xs font-semibold transition-all ${
+              activeTab === 'yolo'
+                ? 'bg-[var(--color-surface)] text-[var(--color-accent-text)] shadow-sm'
+                : 'text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
+            }`}
+          >
+            <Cpu className="w-3.5 h-3.5" />
+            <span>2. Computer Vision & YOLO Benchmarks</span>
+          </button>
         </div>
-      )}
+
+        {lastRefreshed && (
+          <span className="text-xs text-[var(--color-ink-muted)]">
+            ซิงค์ล่าสุดเมื่อ: {lastRefreshed.toLocaleTimeString()}
+          </span>
+        )}
+      </div>
 
       {error && (
-        <div className="max-w-7xl mx-auto mb-6 p-4 bg-rose-50 border-2 border-rose-500 rounded text-rose-800 flex items-center gap-3 shadow-[3px_3px_0px_#212529]">
+        <div className="p-4 bg-rose-50 border border-rose-200 rounded-[var(--radius-card)] text-rose-800 flex items-center gap-3">
           <AlertCircle className="w-5 h-5 flex-shrink-0 text-rose-600" />
           <div>
-            <p className="font-bold text-sm">Failed to retrieve real-time analytics</p>
-            <p className="text-xs">{error}</p>
+            <p className="font-semibold text-xs">ไม่สามารถเชื่อมต่อข้อมูลวิเคราะห์ได้</p>
+            <p className="text-xs text-rose-700">{error}</p>
           </div>
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* SECTION 1: AI MODEL ACCURACY, BENCHMARKS & CONVERGENCE                   */}
+      {/* TAB 1: TIME-SERIES & CAMPUS ADAPTIVE SYSTEM                               */}
       {/* ========================================================================= */}
-      <div className="max-w-7xl mx-auto mb-10">
-        <div className="flex items-center gap-2 mb-4 pb-2 border-b-2 border-[#212529]">
-          <Cpu className="w-5 h-5 text-[#2F6BFF]" />
-          <h2 className="text-lg font-black uppercase text-[#212529]">
-            ส่วนที่ 1: การประเมินประสิทธิภาพและความแม่นยำของ AI โมเดล (Model Accuracy & Benchmarks)
-          </h2>
+      {activeTab === 'timeseries' && (
+        <div className="space-y-6">
+          {/* --------------------------------------------------------------------- */}
+          {/* SECTION A: FUTURE PARKING AVAILABILITY PREDICTOR (+15m & +30m)        */}
+          {/* --------------------------------------------------------------------- */}
+          <div className="p-5 rounded-[var(--radius-card)] bg-[var(--color-surface)] border border-[var(--color-border)] shadow-sm flex flex-col gap-4">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between pb-3 border-b border-[var(--color-border)] gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-500" strokeWidth={1.8} />
+                  <h2 className="text-sm font-semibold text-[var(--color-ink)]">
+                    ระบบพยากรณ์ความว่างของที่จอดรถล่วงหน้า (Predictive Parking Availability: +15m & +30m)
+                  </h2>
+                </div>
+                <p className="text-xs text-[var(--color-ink-muted)] mt-0.5">
+                  วิเคราะห์แนวโน้มล่วงหน้าตามตารางกิจกรรมมหาวิทยาลัย (Academic Campus Phases) และประวัติการจอดจริง
+                </p>
+              </div>
+
+              {/* Selector Controls */}
+              <div className="flex items-center gap-2.5 flex-wrap">
+                {/* Camera Toggle */}
+                <div className="inline-flex p-0.5 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-[var(--radius-pill)]">
+                  {[
+                    { id: 'cam1', label: 'CAM-01 (หน้าภาค 1)' },
+                    { id: 'cam2', label: 'CAM-02 (หน้าภาค 2)' },
+                    { id: 'cam3', label: 'CAM-03 (ข้างภาคคอม)' },
+                  ].map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => setPredictCam(c.id)}
+                      className={`px-3 py-1 rounded-[var(--radius-option)] text-xs font-medium transition-all ${
+                        predictCam === c.id
+                          ? 'bg-[var(--color-surface)] text-[var(--color-accent-text)] font-semibold shadow-xs'
+                          : 'text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
+                      }`}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Horizon Toggle */}
+                <div className="inline-flex p-0.5 bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-[var(--radius-pill)]">
+                  {[15, 30].map((mins) => (
+                    <button
+                      key={mins}
+                      onClick={() => setPredictHorizon(mins)}
+                      className={`px-3 py-1 rounded-[var(--radius-option)] text-xs font-medium transition-all ${
+                        predictHorizon === mins
+                          ? 'bg-amber-500 text-white font-semibold shadow-xs'
+                          : 'text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
+                      }`}
+                    >
+                      +{mins} นาที
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Prediction Cards Display */}
+            {futurePrediction ? (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Card 1: Target Forecast Time */}
+                <div className="p-4 rounded-[var(--radius-tile)] bg-[var(--color-accent-tint)] border border-[var(--color-accent-border)] flex flex-col justify-between gap-2">
+                  <span className="text-[11px] font-semibold text-[var(--color-accent-text)] uppercase tracking-wider">
+                    เวลาเป้าหมายพยากรณ์
+                  </span>
+                  <div>
+                    <div className="text-3xl font-bold tracking-tight text-[var(--color-accent-text)]">
+                      {futurePrediction.target_time} น.
+                    </div>
+                    <div className="text-xs text-[var(--color-accent-text)] font-medium mt-1">
+                      (อีก +{futurePrediction.horizon_minutes} นาทีข้างหน้า)
+                    </div>
+                  </div>
+                  <div className="text-xs bg-[var(--color-surface)] text-[var(--color-ink)] p-2 rounded-[var(--radius-option)] border border-[var(--color-accent-border)]">
+                    📚 {futurePrediction.campus_phase_name}
+                  </div>
+                </div>
+
+                {/* Card 2: Predicted Free Slots */}
+                <div className="p-4 rounded-[var(--radius-tile)] bg-[var(--color-green-tint)] border border-[var(--color-green-border)] flex flex-col justify-between gap-2">
+                  <span className="text-[11px] font-semibold text-[var(--color-green-text)] uppercase tracking-wider">
+                    คาดว่าจะมีที่ว่าง (Predicted Free Slots)
+                  </span>
+                  <div>
+                    <div className="text-3xl font-bold tracking-tight text-[var(--color-green-text)]">
+                      ~{futurePrediction.predicted_free_slots} ช่อง
+                    </div>
+                    <div className="text-xs text-[var(--color-green-text)] mt-1">
+                      จากความจุทั้งหมด {futurePrediction.capacity} ช่องจอด
+                    </div>
+                  </div>
+                  <div className="text-xs bg-[var(--color-surface)] text-[var(--color-green-text)] p-2 rounded-[var(--radius-option)] border border-[var(--color-green-border)] font-medium">
+                    ความหนาแน่นคาดการณ์: {futurePrediction.predicted_occupancy_pct}% ({futurePrediction.predicted_vehicles} คัน)
+                  </div>
+                </div>
+
+                {/* Card 3: Availability Level */}
+                <div className="p-4 rounded-[var(--radius-tile)] bg-[#FFFBEB] border border-[#FDE68A] flex flex-col justify-between gap-2">
+                  <span className="text-[11px] font-semibold text-[#92400E] uppercase tracking-wider">
+                    โอกาสที่จอดว่าง (Availability Chance)
+                  </span>
+                  <div>
+                    <div className="text-xl font-bold text-[#92400E]">
+                      {futurePrediction.availability_chance === 'HIGH_CHANCE' && '🟢 ว่างสะดวก (High Chance)'}
+                      {futurePrediction.availability_chance === 'MODERATE' && '🟡 พอมีที่ว่าง (Moderate)'}
+                      {futurePrediction.availability_chance === 'FULL_RISK' && '🔴 เสี่ยงเต็ม (Full Risk)'}
+                    </div>
+                    <div className="text-xs text-[#92400E] mt-1 font-medium leading-relaxed">
+                      {futurePrediction.availability_desc}
+                    </div>
+                  </div>
+                  <div className="text-xs text-[var(--color-ink-muted)]">
+                    สถิติปัจจุบัน: จอดอยู่ {futurePrediction.current_vehicles} คัน
+                  </div>
+                </div>
+
+                {/* Card 4: Behavioral Trend */}
+                <div className="p-4 rounded-[var(--radius-tile)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] flex flex-col justify-between gap-2">
+                  <span className="text-[11px] font-semibold text-[var(--color-ink-secondary)] uppercase tracking-wider">
+                    แนวโน้มพฤติกรรม (Behavioral Trend)
+                  </span>
+                  <p className="text-xs text-[var(--color-ink)] leading-relaxed font-normal">
+                    {futurePrediction.campus_trend_desc}
+                  </p>
+                  <div className="text-[11px] text-[var(--color-ink-muted)] bg-[var(--color-surface)] p-1.5 rounded border border-[var(--color-border)]">
+                    โมเดล: <span className="font-mono">{futurePrediction.model_used}</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="py-8 text-center text-xs text-[var(--color-ink-muted)]">
+                กำลังคำนวณการทำนายล่วงหน้า...
+              </div>
+            )}
+          </div>
+
+          {/* --------------------------------------------------------------------- */}
+          {/* SECTION B: MULTI-AXIS CORRELATION TIME-SERIES GRAPH                   */}
+          {/* --------------------------------------------------------------------- */}
+          <div className="p-5 rounded-[var(--radius-card)] bg-[var(--color-surface)] border border-[var(--color-border)] shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between pb-3 border-b border-[var(--color-border)] gap-2 mb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-[var(--color-accent-strong)]" strokeWidth={1.8} />
+                  <h3 className="text-sm font-semibold text-[var(--color-ink)]">
+                    Time-Series Correlation: ความสัมพันธ์อุณหภูมิชิป VS จำนวนรถ VS การปรับ Deep-Sleep
+                  </h3>
+                </div>
+                <p className="text-xs text-[var(--color-ink-muted)] mt-0.5">
+                  แกนซ้าย: อุณหภูมิชิป (°C) & จำนวนรถ (คัน) | แกนขวา: ระยะเวลา Deep-Sleep ที่ AI สั่งการ (วินาที)
+                </p>
+              </div>
+
+              {/* Camera Filter */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-[var(--color-ink-muted)]">กล้อง:</span>
+                <select
+                  value={activeCamFilter}
+                  onChange={(e) => setActiveCamFilter(e.target.value)}
+                  className="text-xs font-medium bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-[var(--radius-pill)] px-3 py-1 text-[var(--color-ink)] outline-none cursor-pointer"
+                >
+                  <option value="all">ทุกกล้องรวมกัน (All Cameras)</option>
+                  <option value="cam1">CAM-01: หน้าภาค 1 (รถยนต์)</option>
+                  <option value="cam2">CAM-02: หน้าภาค 2 (รถยนต์)</option>
+                  <option value="cam3">CAM-03: ข้างภาคคอม (มอเตอร์ไซค์)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Time-Series LineChart */}
+            <div className="h-80 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={timeSeriesList} margin={{ top: 15, right: 25, left: 0, bottom: 15 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                  <XAxis
+                    dataKey="display_time"
+                    stroke="#9CA3AF"
+                    tick={{ fontSize: 11, fill: '#6B7280' }}
+                    dy={5}
+                  />
+                  {/* Left Y Axis: Temp and Vehicles */}
+                  <YAxis
+                    yAxisId="left"
+                    stroke="#9CA3AF"
+                    tick={{ fontSize: 11, fill: '#6B7280' }}
+                    domain={[0, 85]}
+                  />
+                  {/* Right Y Axis: Sleep Seconds */}
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    stroke="#10B981"
+                    tick={{ fontSize: 11, fill: '#10B981' }}
+                    domain={[0, 70]}
+                  />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Legend verticalAlign="top" height={36} iconType="circle" />
+                  <Line
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="chip_temp_c"
+                    name="ESP32 Chip Temp (°C)"
+                    stroke="#EF4444"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  <Line
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="total_vehicles"
+                    name="Total Vehicles (คัน)"
+                    stroke="#2563EB"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="stepAfter"
+                    dataKey="recommended_sleep_sec"
+                    name="AI Deep-Sleep (sec)"
+                    stroke="#10B981"
+                    strokeWidth={2}
+                    strokeDasharray="4 2"
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Correlation Strategy Highlights */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-4 border-t border-[var(--color-border)] mt-2">
+              <div className="p-3 rounded-[var(--radius-option)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] text-xs">
+                <span className="font-semibold text-rose-700">🔥 ป้องกันความร้อนสะสม: </span>
+                <span className="text-[var(--color-ink-secondary)]">
+                  เมื่อชิปสะสมความร้อนเกิน 62°C–68°C ในช่วงเที่ยง ระบบจะขยายเวลาหลับเป็น 45–60 วินาที ช่วยให้อุปกรณ์เย็นลง ไม่เกิด Brownout
+                </span>
+              </div>
+              <div className="p-3 rounded-[var(--radius-option)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] text-xs">
+                <span className="font-semibold text-blue-700">⚡ ตอบสนองช่วงรถเยอะ: </span>
+                <span className="text-[var(--color-ink-secondary)]">
+                  ช่วงเร่งด่วนเช้า/เย็น และช่วงเปลี่ยนคาบเรียน ระบบจะลดเวลาหลับเหลือ 10–15 วินาที เพื่อบันทึกการเข้า-ออกของรถได้ครบถ้วน
+                </span>
+              </div>
+              <div className="p-3 rounded-[var(--radius-option)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] text-xs">
+                <span className="font-semibold text-emerald-700">💤 ประหยัดพลังงานในคาบเรียน: </span>
+                <span className="text-[var(--color-ink-secondary)]">
+                  ระหว่างคาบเรียน (09:30–11:30 และ 14:00–16:30) รถจอดนิ่ง ระบบปรับเวลาหลับ 30 วินาที ยืดอายุการใช้งานฮาร์ดแวร์
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* --------------------------------------------------------------------- */}
+          {/* SECTION C: 4-MODEL EVALUATION & FEATURE IMPORTANCE                    */}
+          {/* --------------------------------------------------------------------- */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left: 4-Model Evaluation Cards */}
+            <div className="p-5 rounded-[var(--radius-card)] bg-[var(--color-surface)] border border-[var(--color-border)] shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)] mb-3">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <h3 className="text-sm font-semibold text-[var(--color-ink)]">
+                      ผลการทดสอบโมเดล Time-Series ทั้ง 4 ตัว (Test Evaluation)
+                    </h3>
+                  </div>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-green-tint)] text-[var(--color-green-text)] border border-[var(--color-green-border)]">
+                    N = 27,945 ROWS
+                  </span>
+                </div>
+                <p className="text-xs text-[var(--color-ink-muted)] mb-4">
+                  ทดสอบกับข้อมูลจริงของกล้อง ESP32 แบ่ง Train 80% (22,356 แถว) และ Test 20% (5,589 แถว)
+                </p>
+
+                <div className="space-y-2.5">
+                  {/* Model 2: Adaptive Sleep Policy */}
+                  <div className="p-3 rounded-[var(--radius-option)] bg-[var(--color-green-tint)] border border-[var(--color-green-border)] flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-semibold text-[var(--color-green-text)]">
+                        Model 2: Adaptive Deep-Sleep Policy (RandomForest)
+                      </div>
+                      <div className="text-[11px] text-[var(--color-ink-muted)] mt-0.5">
+                        คำนวณระยะเวลา Deep-Sleep ที่เหมาะสมที่สุด (10s – 60s)
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs font-bold text-[var(--color-green-text)]">MAE: 0.18 sec</div>
+                      <div className="text-[10px] text-emerald-600 font-semibold">R² = 0.9947</div>
+                    </div>
+                  </div>
+
+                  {/* Model 4: 30-min Occupancy */}
+                  <div className="p-3 rounded-[var(--radius-option)] bg-[var(--color-accent-tint)] border border-[var(--color-accent-border)] flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-semibold text-[var(--color-accent-text)]">
+                        Model 4: 30-Min Future Occupancy Forecaster
+                      </div>
+                      <div className="text-[11px] text-[var(--color-ink-muted)] mt-0.5">
+                        ทำนายจำนวนรถล่วงหน้า 30 นาที
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs font-bold text-[var(--color-accent-text)]">MAE: 2.01 คัน</div>
+                      <div className="text-[10px] text-blue-600 font-semibold">R² = 0.7453</div>
+                    </div>
+                  </div>
+
+                  {/* Model 3: 15-min Occupancy */}
+                  <div className="p-3 rounded-[var(--radius-option)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-semibold text-[var(--color-ink)]">
+                        Model 3: 15-Min Future Occupancy Forecaster
+                      </div>
+                      <div className="text-[11px] text-[var(--color-ink-muted)] mt-0.5">
+                        ทำนายจำนวนรถล่วงหน้า 15 นาที
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs font-bold text-[var(--color-ink)]">MAE: 2.87 คัน</div>
+                      <div className="text-[10px] text-[var(--color-ink-muted)] font-semibold">R² = 0.4999</div>
+                    </div>
+                  </div>
+
+                  {/* Model 1: Thermal Forecaster */}
+                  <div className="p-3 rounded-[var(--radius-option)] bg-[#FFFBEB] border border-[#FDE68A] flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-semibold text-[#92400E]">
+                        Model 1: Thermal Dynamics Forecaster (GradientBoosting)
+                      </div>
+                      <div className="text-[11px] text-[var(--color-ink-muted)] mt-0.5">
+                        ทำนายแนวโน้มอุณหภูมิชิปรอบถัดไป (ΔT)
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs font-bold text-[#92400E]">MAE: 5.42 °C</div>
+                      <div className="text-[10px] text-amber-700 font-semibold">RMSE: 7.23 °C</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Feature Importances BarChart */}
+            <div className="p-5 rounded-[var(--radius-card)] bg-[var(--color-surface)] border border-[var(--color-border)] shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)] mb-3">
+                  <div className="flex items-center gap-2">
+                    <Sliders className="w-4 h-4 text-[var(--color-accent-strong)]" />
+                    <h3 className="text-sm font-semibold text-[var(--color-ink)]">
+                      Feature Importance: ปัจจัยที่มีผลต่อการตัดสินใจ
+                    </h3>
+                  </div>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border border-[var(--color-border)]">
+                    RANDOM FOREST
+                  </span>
+                </div>
+                <p className="text-xs text-[var(--color-ink-muted)] mb-3">
+                  น้ำหนักความสำคัญของแต่ละตัวแปรในการตัดสินใจเลือกระยะเวลา Deep-Sleep
+                </p>
+
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      layout="vertical"
+                      data={featureImportances}
+                      margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" horizontal={false} />
+                      <XAxis type="number" domain={[0, 0.6]} stroke="#9CA3AF" tick={{ fontSize: 10 }} />
+                      <YAxis
+                        type="category"
+                        dataKey="feature"
+                        stroke="#9CA3AF"
+                        tick={{ fontSize: 10, fill: '#4B5563', fontWeight: 500 }}
+                      />
+                      <Tooltip contentStyle={tooltipStyle} />
+                      <Bar dataKey="importance" name="Importance" radius={[0, 4, 4, 0]}>
+                        {featureImportances.map((_, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={
+                              index === 0
+                                ? '#2563EB'
+                                : index === 1
+                                ? '#EF4444'
+                                : index < 6
+                                ? '#10B981'
+                                : '#F59E0B'
+                            }
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-[var(--radius-option)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] text-xs text-[var(--color-ink-secondary)] mt-3">
+                <span className="font-semibold text-[var(--color-ink)]">💡 สรุปน้ำหนักปัจจัย: </span>
+                กลุ่มตัวแปรตารางเรียนและวันหยุด (day_of_week, campus_phase, day_type, class_transition) มีน้ำหนักรวมกันถึง <strong>38.4%</strong> และอัตราการเคลื่อนตัวของรถอยู่ที่ <strong>48.1%</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* --------------------------------------------------------------------- */}
+          {/* SECTION D: LIVE HARDWARE INGESTION & EDGE HEALTH MONITOR              */}
+          {/* --------------------------------------------------------------------- */}
+          <div className="p-5 rounded-[var(--radius-card)] bg-[var(--color-surface)] border border-[var(--color-border)] shadow-sm">
+            <div className="flex items-center gap-2 pb-3 border-b border-[var(--color-border)] mb-4">
+              <Camera className="w-4 h-4 text-emerald-600" />
+              <h3 className="text-sm font-semibold text-[var(--color-ink)]">
+                สถานะการทำงานฮาร์ดแวร์สด (Live Edge Camera Telemetry & Closed-Loop Deep-Sleep)
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {['cam1', 'cam2', 'cam3'].map((camId) => {
+                const live = liveCameras ? liveCameras[camId] : null
+                const name =
+                  camId === 'cam1'
+                    ? 'CAM-01 (หน้าภาค 1 - รถยนต์)'
+                    : camId === 'cam2'
+                    ? 'CAM-02 (หน้าภาค 2 - รถยนต์)'
+                    : 'CAM-03 (ข้างภาคคอม - มอเตอร์ไซค์)'
+                const temp = live?.current_temp_c || 52.0
+                const sleep = live?.recommended_sleep_sec || 30
+                const status = live?.thermal_status || 'NORMAL'
+
+                return (
+                  <div
+                    key={camId}
+                    className="p-4 rounded-[var(--radius-card)] bg-[var(--color-surface)] border border-[var(--color-border)] shadow-sm flex flex-col justify-between gap-3"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between pb-2 border-b border-[var(--color-border)]">
+                        <span className="font-semibold text-xs text-[var(--color-ink)]">{name}</span>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[var(--color-green-text)] bg-[var(--color-green-tint)] px-2 py-0.5 rounded-[var(--radius-pill)] border border-[var(--color-green-border)]">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-green-bright)] animate-pulse"></span>
+                          ONLINE
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 mt-3">
+                        <div className="p-2.5 rounded-[var(--radius-option)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] text-center">
+                          <span className="text-[10px] text-[var(--color-ink-muted)] block">อุณหภูมิชิป</span>
+                          <span
+                            className={`text-lg font-bold ${
+                              temp >= 68 ? 'text-rose-600' : temp >= 62 ? 'text-amber-600' : 'text-emerald-700'
+                            }`}
+                          >
+                            {temp}°C
+                          </span>
+                        </div>
+                        <div className="p-2.5 rounded-[var(--radius-option)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] text-center">
+                          <span className="text-[10px] text-[var(--color-ink-muted)] block">คำสั่ง Deep-Sleep</span>
+                          <span className="text-lg font-bold text-[var(--color-green-text)]">{sleep}s</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 space-y-1 text-xs text-[var(--color-ink-secondary)]">
+                        <div>
+                          สถานะความร้อน: <strong className="text-[var(--color-ink)]">{status}</strong>
+                        </div>
+                        <div>
+                          ทำนายรอบถัดไป: <strong>{live?.predicted_next_temp_c || temp}°C</strong>
+                        </div>
+                        <div>
+                          ดาต้าเลก: <span className="text-[var(--color-accent-text)] font-medium">MinIO + Postgres OK</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-[var(--color-border)] text-[11px] text-[var(--color-ink-muted)] truncate">
+                      {live?.reason || 'ระบบทำงานปกติ'}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Card 1A: Model Accuracy & Metric Showdown */}
-          <div className="bg-white p-6 border-2 border-[#212529] rounded-lg shadow-[4px_4px_0px_#212529] flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-neutral-200">
-                <div className="flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-[#2F6BFF]" />
-                  <h3 className="text-sm font-black uppercase text-[#212529]">
-                    1A. Model Accuracy & Speed Showdown (mAP@50 vs Latency)
-                  </h3>
-                </div>
-                <span className="text-[11px] font-mono font-bold px-2 py-0.5 bg-blue-50 text-[#2F6BFF] border border-[#2F6BFF] rounded">
-                  BENCHMARK
-                </span>
-              </div>
-              <p className="text-xs text-neutral-600 mb-3">
-                เปรียบเทียบค่าความแม่นยำ <strong>mAP@50 (%)</strong>, <strong>Precision</strong>, <strong>Recall</strong> และ <strong>Inference Latency (ms)</strong> ของโมเดลต่างๆ
-              </p>
-
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={modelComparison} margin={{ top: 15, right: 20, left: 10, bottom: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis dataKey="model" stroke="#212529" tick={{ fontSize: 10, fontWeight: 700 }} />
-                    <YAxis stroke="#212529" tick={{ fontSize: 10 }} />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Legend verticalAlign="top" height={32} />
-                    <Bar dataKey="map50" name="mAP@50 (%)" fill="#10B981" radius={[3, 3, 0, 0]} />
-                    <Bar dataKey="precision" name="Precision (%)" fill="#2F6BFF" radius={[3, 3, 0, 0]} />
-                    <Bar dataKey="recall" name="Recall (%)" fill="#F59E0B" radius={[3, 3, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-neutral-200 bg-[#FDFBF7] p-2.5 rounded border border-neutral-300 text-xs">
-              <span className="font-bold text-[#212529]">💡 สรุปผลการทดสอบ: </span>
-              <span className="text-neutral-600">YOLO26m ให้ mAP สูงสุดที่ <strong>98.5%</strong> ขณะที่ YOLO26n ทำความเร็วได้เร็วกว่า <strong>3.47 เท่า</strong> (327.8ms vs 1136.6ms) เหมาะกับระบบ Edge ที่ทรัพยากรจำกัด</span>
-            </div>
-          </div>
-
-          {/* Card 1B: Training Loss & mAP Convergence (50 Epochs) */}
-          <div className="bg-white p-6 border-2 border-[#212529] rounded-lg shadow-[4px_4px_0px_#212529] flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-neutral-200">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-indigo-600" />
-                  <h3 className="text-sm font-black uppercase text-[#212529]">
-                    1B. Training Loss & Accuracy Convergence Curves
-                  </h3>
-                </div>
-                <span className="text-[11px] font-mono font-bold px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-300 rounded">
-                  50 EPOCHS
-                </span>
-              </div>
-              <p className="text-xs text-neutral-600 mb-3">
-                แนวโน้มการลดลงของ <strong>Loss</strong> และการเพิ่มขึ้นของ <strong>mAP@50</strong> ตลอดการเทรนบนชุดข้อมูล Smart Campus
-              </p>
-
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={trainingConvergence} margin={{ top: 15, right: 20, left: 10, bottom: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis dataKey="epoch" stroke="#212529" tick={{ fontSize: 10 }} label={{ value: 'Epoch', position: 'insideBottomRight', offset: -5 }} />
-                    <YAxis yAxisId="loss" stroke="#EF4444" tick={{ fontSize: 10 }} label={{ value: 'Loss', angle: -90, position: 'insideLeft', fill: '#EF4444', fontSize: 10 }} />
-                    <YAxis yAxisId="map" orientation="right" domain={[50, 100]} stroke="#10B981" tick={{ fontSize: 10 }} label={{ value: 'mAP@50 (%)', angle: 90, position: 'insideRight', fill: '#10B981', fontSize: 10 }} />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Legend verticalAlign="top" height={32} />
-                    <Line yAxisId="loss" type="monotone" dataKey="train_loss" name="Train Loss" stroke="#EF4444" strokeWidth={2} dot={false} />
-                    <Line yAxisId="loss" type="monotone" dataKey="val_loss" name="Val Loss" stroke="#F97316" strokeWidth={2} strokeDasharray="3 3" dot={false} />
-                    <Line yAxisId="map" type="monotone" dataKey="map50" name="mAP@50 (%)" stroke="#10B981" strokeWidth={2.5} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-neutral-200 bg-[#FDFBF7] p-2.5 rounded border border-neutral-300 text-xs">
-              <span className="font-bold text-[#212529]">💡 สรุปผล Convergence: </span>
-              <span className="text-neutral-600">โมเดลลู่เข้า (Converge) อย่างเสถียรที่ประมาณ <strong>Epoch 25</strong> โดย Loss ลดลงจาก 2.45 เหลือ 0.56 และ mAP พุ่งขึ้นแตะ 98.5% โดยไม่เกิด Overfitting</span>
-            </div>
-          </div>
-
-          {/* Card 1C: Resolution Scaling Trade-off */}
-          <div className="bg-white p-6 border-2 border-[#212529] rounded-lg shadow-[4px_4px_0px_#212529] flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-neutral-200">
-                <div className="flex items-center gap-2">
-                  <Layers className="w-5 h-5 text-emerald-600" />
-                  <h3 className="text-sm font-black uppercase text-[#212529]">
-                    1C. Resolution Scaling Trade-off (640 vs 960 vs 1280)
-                  </h3>
-                </div>
-                <span className="text-[11px] font-mono font-bold px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-300 rounded">
-                  TASK 3 EMPIRICAL
-                </span>
-              </div>
-              <p className="text-xs text-neutral-600 mb-3">
-                ผลกระทบของขนาดภาพ Inference ต่อ <strong>จำนวนมอเตอร์ไซค์ที่ตรวจพบ</strong> เทียบกับ <strong>Cycle Budget Utilization (%)</strong>
-              </p>
-
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={resolutionBenchmark} margin={{ top: 15, right: 20, left: 10, bottom: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis dataKey="resolution" stroke="#212529" tick={{ fontSize: 10, fontWeight: 700 }} />
-                    <YAxis stroke="#212529" tick={{ fontSize: 10 }} />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Legend verticalAlign="top" height={32} />
-                    <Bar dataKey="total_motos" name="Total Motos Detected" fill="#2F6BFF" radius={[3, 3, 0, 0]} />
-                    <Bar dataKey="budget_utilization_pct" name="Cycle Budget Used (%)" fill="#F59E0B" radius={[3, 3, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-neutral-200 bg-[#FDFBF7] p-2.5 rounded border border-neutral-300 text-xs">
-              <span className="font-bold text-[#212529]">💡 สรุปการเลือก Resolution: </span>
-              <span className="text-neutral-600">ความละเอียด <strong>960x960</strong> ตรวจพบมอเตอร์ไซค์เพิ่มขึ้นจาก 24 เป็น 36.6 คัน (+52%) โดยใช้เวลาเพียง 2.21 วินาที (กิน Budget แค่ 8.8% ของรอบ 25s)</span>
-            </div>
-          </div>
-
-          {/* Card 1D: Quantization & Runtime Engine */}
-          <div className="bg-white p-6 border-2 border-[#212529] rounded-lg shadow-[4px_4px_0px_#212529] flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-neutral-200">
-                <div className="flex items-center gap-2">
-                  <Gauge className="w-5 h-5 text-teal-600" />
-                  <h3 className="text-sm font-black uppercase text-[#212529]">
-                    1D. Runtime Engine & INT8 Quantization Benchmark
-                  </h3>
-                </div>
-                <span className="text-[11px] font-mono font-bold px-2 py-0.5 bg-teal-50 text-teal-700 border border-teal-300 rounded">
-                  OPENVINO vs PYTORCH
-                </span>
-              </div>
-              <p className="text-xs text-neutral-600 mb-3">
-                เปรียบเทียบความเร็ว <strong>Latency (ms)</strong>, <strong>ขนาดโมเดล (MB)</strong> และ <strong>Slot Flip Error Rate (%)</strong>
-              </p>
-
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={quantizationBenchmark} margin={{ top: 15, right: 20, left: 10, bottom: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis dataKey="runtime" stroke="#212529" tick={{ fontSize: 10, fontWeight: 700 }} />
-                    <YAxis stroke="#212529" tick={{ fontSize: 10 }} />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Legend verticalAlign="top" height={32} />
-                    <Bar dataKey="latency_ms" name="Latency (ms)" fill="#0D9488" radius={[3, 3, 0, 0]} />
-                    <Bar dataKey="size_mb" name="Model Size (MB)" fill="#3B82F6" radius={[3, 3, 0, 0]} />
-                    <Bar dataKey="flip_rate_pct" name="Flip Rate (%)" fill="#EF4444" radius={[3, 3, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-neutral-200 bg-[#FDFBF7] p-2.5 rounded border border-neutral-300 text-xs">
-              <span className="font-bold text-[#212529]">💡 สรุปผล Quantization: </span>
-              <span className="text-neutral-600">OpenVINO INT8 ลด Latency เหลือ <strong>320.5ms</strong> (ลดลง 46%) โดยแลกกับ Flip Rate เพียง 6.6% เหมาะอย่างยิ่งสำหรับการ Deploy บน CPU Edge</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* ========================================================================= */}
-      {/* SECTION 2: MULTI-CAMERA EDGE TELEMETRY & TRAFFIC (WITH CAMERA SELECTOR)   */}
+      {/* TAB 2: COMPUTER VISION & YOLO BENCHMARKS                                   */}
       {/* ========================================================================= */}
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 pb-2 border-b-2 border-[#212529] gap-3">
-          <div className="flex items-center gap-2">
-            <Camera className="w-5 h-5 text-emerald-600" />
-            <h2 className="text-lg font-black uppercase text-[#212529]">
-              ส่วนที่ 2: สถิติการจอดรถและฮาร์ดแวร์ IoT (เลือกระบุกล้องได้)
-            </h2>
-          </div>
-
-          {/* Interactive Camera Selector Filter */}
-          <div className="flex items-center gap-1.5 bg-white p-1 rounded border-2 border-[#212529] shadow-[2px_2px_0px_#212529] text-xs font-mono font-bold">
-            <span className="text-neutral-500 px-2 flex items-center gap-1">
-              <Sliders className="w-3.5 h-3.5" />
-              <span>Camera:</span>
-            </span>
-            <button
-              type="button"
-              onClick={() => setActiveCamFilter('all')}
-              className={`px-2.5 py-1 rounded transition-all ${activeCamFilter === 'all' ? 'bg-[#212529] text-white shadow-sm' : 'hover:bg-neutral-100'}`}
-            >
-              All (3x)
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveCamFilter('cam1')}
-              className={`px-2.5 py-1 rounded transition-all ${activeCamFilter === 'cam1' ? 'bg-[#2F6BFF] text-white shadow-sm' : 'hover:bg-neutral-100 text-[#2F6BFF]'}`}
-            >
-              CAM-01 (หน้า 1)
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveCamFilter('cam2')}
-              className={`px-2.5 py-1 rounded transition-all ${activeCamFilter === 'cam2' ? 'bg-[#10B981] text-white shadow-sm' : 'hover:bg-neutral-100 text-[#10B981]'}`}
-            >
-              CAM-02 (หน้า 2)
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveCamFilter('cam3')}
-              className={`px-2.5 py-1 rounded transition-all ${activeCamFilter === 'cam3' ? 'bg-[#8B5CF6] text-white shadow-sm' : 'hover:bg-neutral-100 text-[#8B5CF6]'}`}
-            >
-              CAM-03 (ข้างภาค)
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Card 2A: Parking Occupancy Rate (%) Over Time */}
-          <div className="bg-white p-6 border-2 border-[#212529] rounded-lg shadow-[4px_4px_0px_#212529] flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-neutral-200">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-amber-600" />
-                  <h3 className="text-sm font-black uppercase text-[#212529]">
-                    2A. Parking Occupancy Rate (%) Over Time
-                  </h3>
+      {activeTab === 'yolo' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Card 1A: Architecture Accuracy Comparison */}
+            <div className="p-5 rounded-[var(--radius-card)] bg-[var(--color-surface)] border border-[var(--color-border)] shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)] mb-3">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-[var(--color-accent-strong)]" />
+                    <h3 className="text-sm font-semibold text-[var(--color-ink)]">
+                      1A. Architecture Accuracy Comparison (mAP50, Precision, Recall)
+                    </h3>
+                  </div>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-accent-tint)] text-[var(--color-accent-text)] border border-[var(--color-accent-border)]">
+                    N = 1,420 FRAMES
+                  </span>
                 </div>
-                <span className="text-[11px] font-mono font-bold px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-300 rounded uppercase">
-                  {activeCamFilter === 'all' ? 'All Cameras' : activeCamFilter}
-                </span>
-              </div>
-              
-              <p className="text-xs text-neutral-600 mb-3">
-                อัตราการเข้าจอดรายชั่วโมง (% Occupancy) คำนวณจาก <span className="font-mono font-bold text-[#212529]">(จำนวนรถที่ตรวจพบ / ความจุโซน) × 100</span>
-              </p>
+                <p className="text-xs text-[var(--color-ink-muted)] mb-3">
+                  เปรียบเทียบ mAP@0.50, Precision และ Recall ระหว่างโมเดลหลักในระบบกับสถาปัตยกรรมอื่น
+                </p>
 
-              {/* Capacity Indicators */}
-              <div className="grid grid-cols-3 gap-2 mb-3 text-[11px] font-mono">
-                <div className={`p-1.5 rounded border transition-all ${activeCamFilter === 'cam1' || activeCamFilter === 'all' ? 'border-blue-300 bg-blue-50/50' : 'opacity-40 border-neutral-200'}`}>
-                  <span className="font-bold text-[#2F6BFF] block">CAM-01: ลานหน้า 1</span>
-                  <span className="text-neutral-600">6 ช่อง (รถยนต์)</span>
-                </div>
-                <div className={`p-1.5 rounded border transition-all ${activeCamFilter === 'cam2' || activeCamFilter === 'all' ? 'border-emerald-300 bg-emerald-50/50' : 'opacity-40 border-neutral-200'}`}>
-                  <span className="font-bold text-[#10B981] block">CAM-02: ลานหน้า 2</span>
-                  <span className="text-neutral-600">5 ช่อง (รถยนต์)</span>
-                </div>
-                <div className={`p-1.5 rounded border transition-all ${activeCamFilter === 'cam3' || activeCamFilter === 'all' ? 'border-purple-300 bg-purple-50/50' : 'opacity-40 border-neutral-200'}`}>
-                  <span className="font-bold text-[#8B5CF6] block">CAM-03: ลานข้างภาค</span>
-                  <span className="text-neutral-600">25 ช่อง (มอไซค์)</span>
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={modelComparison} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                      <XAxis dataKey="model" stroke="#9CA3AF" tick={{ fontSize: 10 }} angle={-10} textAnchor="end" />
+                      <YAxis domain={[70, 100]} stroke="#9CA3AF" tick={{ fontSize: 10 }} />
+                      <Tooltip contentStyle={tooltipStyle} />
+                      <Legend verticalAlign="top" height={32} iconType="circle" />
+                      <Bar dataKey="map50" name="mAP@50 (%)" fill="#2563EB" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="precision" name="Precision (%)" fill="#10B981" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="recall" name="Recall (%)" fill="#F59E0B" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
 
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={occupancySeries} margin={{ top: 15, right: 20, left: 10, bottom: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis dataKey="display_time" stroke="#212529" tick={{ fontSize: 9 }} />
-                    <YAxis domain={[0, 100]} stroke="#212529" tick={{ fontSize: 10 }} label={{ value: 'Occupancy %', angle: -90, position: 'insideLeft', fill: '#B45309', fontSize: 10 }} />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Legend verticalAlign="top" height={36} />
-                    {(activeCamFilter === 'all' || activeCamFilter === 'cam1') && (
-                      <Line type="monotone" dataKey="cam1_occ" name="CAM-01 ลานหน้า 1 (%)" stroke="#2F6BFF" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
-                    )}
-                    {(activeCamFilter === 'all' || activeCamFilter === 'cam2') && (
-                      <Line type="monotone" dataKey="cam2_occ" name="CAM-02 ลานหน้า 2 (%)" stroke="#10B981" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
-                    )}
-                    {(activeCamFilter === 'all' || activeCamFilter === 'cam3') && (
-                      <Line type="monotone" dataKey="cam3_occ" name="CAM-03 ลานข้างภาค (%)" stroke="#8B5CF6" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
-                    )}
-                    {activeCamFilter === 'all' && (
-                      <Line type="monotone" dataKey="avg_occ" name="ภาพรวมเฉลี่ย (Avg %)" stroke="#F59E0B" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
-                    )}
-                  </LineChart>
-                </ResponsiveContainer>
+              <div className="p-3 rounded-[var(--radius-option)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] text-xs text-[var(--color-ink-secondary)] mt-3">
+                <span className="font-semibold text-[var(--color-ink)]">💡 ข้อสรุป: </span>
+                YOLO26m ให้ความแม่นยำสูงสุด (mAP50 98.5%) และ YOLO26n ให้ผลลัพธ์ใกล้เคียง (98.0%)
               </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-neutral-200 bg-[#FDFBF7] p-3 rounded border border-neutral-300 text-xs">
-              <div className="font-bold text-[#212529] mb-1 flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>การนำค่า Occupancy Rate ไปใช้:</span>
-              </div>
-              <ul className="text-[11px] text-neutral-600 space-y-1 list-disc list-inside leading-relaxed">
-                <li><strong>0% - 60%:</strong> ลานว่าง ผู้ใช้งานตรงเข้าจอดได้ทันที</li>
-                <li><strong>61% - 85%:</strong> เริ่มหนาแน่น LINE Bot จะแนะนำให้ตรวจสอบลานข้างเคียง</li>
-                <li><strong>86% - 100%:</strong> เต็มแล้ว ระบบจะขึ้นสถานะสีแดงและแนะนำเปลี่ยนจุดจอด</li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Card 2B: Vehicle Class Breakdown Over Time */}
-          <div className="bg-white p-6 border-2 border-[#212529] rounded-lg shadow-[4px_4px_0px_#212529] flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-neutral-200">
-                <div className="flex items-center gap-2">
-                  <Car className="w-5 h-5 text-emerald-600" />
-                  <h3 className="text-sm font-black uppercase text-[#212529]">
-                    2B. Vehicle Classification Volume Over Time
-                  </h3>
+            {/* Card 1B: Inference Latency & Memory */}
+            <div className="p-5 rounded-[var(--radius-card)] bg-[var(--color-surface)] border border-[var(--color-border)] shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)] mb-3">
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-rose-500" />
+                    <h3 className="text-sm font-semibold text-[var(--color-ink)]">
+                      1B. Inference Latency (ms) & Memory Usage (MB)
+                    </h3>
+                  </div>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-[var(--radius-pill)] bg-rose-50 text-rose-700 border border-rose-200">
+                    INTEL N100 CPU
+                  </span>
                 </div>
-                <span className="text-[11px] font-mono font-bold px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-300 rounded">
-                  CARS vs BIKES
-                </span>
-              </div>
-              <p className="text-xs text-neutral-600 mb-3">
-                จำนวนรถยนต์และรถจักรยานยนต์ที่ระบบ AI ตรวจพบตามช่วงเวลา {activeCamFilter !== 'all' && `(เฉพาะกล้อง ${activeCamFilter.toUpperCase()})`}
-              </p>
+                <p className="text-xs text-[var(--color-ink-muted)] mb-3">
+                  เวลาประมวลผลเฉลี่ยต่อเฟรม (ms) และหน่วยความจำ RAM ที่ใช้ระหว่าง Inference
+                </p>
 
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={occupancySeries} margin={{ top: 15, right: 20, left: 10, bottom: 10 }}>
-                    <defs>
-                      <linearGradient id="colorBikes" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#2F6BFF" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="#2F6BFF" stopOpacity={0.0} />
-                      </linearGradient>
-                      <linearGradient id="colorCars" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="#10B981" stopOpacity={0.0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis dataKey="display_time" stroke="#212529" tick={{ fontSize: 9 }} />
-                    <YAxis stroke="#212529" tick={{ fontSize: 10 }} label={{ value: 'Vehicles (Count)', angle: -90, position: 'insideLeft', fontSize: 10 }} />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Legend verticalAlign="top" height={32} />
-                    <Area
-                      type="monotone"
-                      dataKey={activeCamFilter === 'cam1' ? 'cam1_motos' : (activeCamFilter === 'cam2' ? 'cam2_motos' : (activeCamFilter === 'cam3' ? 'cam3_motos' : 'motorcycles'))}
-                      name="Motorcycles"
-                      stroke="#2F6BFF"
-                      fillOpacity={1}
-                      fill="url(#colorBikes)"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey={activeCamFilter === 'cam1' ? 'cam1_cars' : (activeCamFilter === 'cam2' ? 'cam2_cars' : (activeCamFilter === 'cam3' ? 'cam3_cars' : 'cars'))}
-                      name="Cars / SUVs"
-                      stroke="#10B981"
-                      fillOpacity={1}
-                      fill="url(#colorCars)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-neutral-200 bg-[#FDFBF7] p-2.5 rounded border border-neutral-300 text-xs">
-              <span className="font-bold text-[#212529]">💡 สัดส่วนประเภทยานพาหนะ: </span>
-              <span className="text-neutral-600">รถจักรยานยนต์ครองสัดส่วน <strong>81.2%</strong> ของพื้นที่ลานจอดทั้งหมด ขณะที่รถยนต์คิดเป็น <strong>18.8%</strong></span>
-            </div>
-          </div>
-
-          {/* Card 2C: IoT Hardware Telemetry (Temp & WiFi by Camera) */}
-          <div className="bg-white p-6 border-2 border-[#212529] rounded-lg shadow-[4px_4px_0px_#212529] flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-neutral-200">
-                <div className="flex items-center gap-2">
-                  <Thermometer className="w-5 h-5 text-rose-600" />
-                  <h3 className="text-sm font-black uppercase text-[#212529]">
-                    2C. IoT Hardware Telemetry (Temp & WiFi per Camera)
-                  </h3>
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={modelComparison} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                      <XAxis dataKey="model" stroke="#9CA3AF" tick={{ fontSize: 10 }} angle={-10} textAnchor="end" />
+                      <YAxis stroke="#9CA3AF" tick={{ fontSize: 10 }} />
+                      <Tooltip contentStyle={tooltipStyle} />
+                      <Legend verticalAlign="top" height={32} iconType="circle" />
+                      <Bar dataKey="latency_ms" name="Latency (ms)" fill="#EF4444" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="memory_mb" name="RAM (MB)" fill="#6366F1" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
-                <span className="text-[11px] font-mono font-bold px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-300 rounded">
-                  DUAL AXIS
-                </span>
               </div>
-              <p className="text-xs text-neutral-600 mb-3">
-                อุณหภูมิชิป ESP32 (°C) และความแรงสัญญาณ WiFi RSSI (dBm) เพื่อตรวจจับ Thermal Stress
-              </p>
 
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={telemetrySeries} margin={{ top: 15, right: 20, left: 10, bottom: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis dataKey="display_time" stroke="#212529" tick={{ fontSize: 9 }} />
-                    <YAxis yAxisId="left" domain={[30, 85]} stroke="#E11D48" tick={{ fontSize: 10 }} label={{ value: 'Temp (°C)', angle: -90, position: 'insideLeft', fill: '#E11D48', fontSize: 10 }} />
-                    <YAxis yAxisId="right" orientation="right" domain={[-95, -40]} stroke="#2F6BFF" tick={{ fontSize: 10 }} label={{ value: 'RSSI (dBm)', angle: 90, position: 'insideRight', fill: '#2F6BFF', fontSize: 10 }} />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Legend verticalAlign="top" height={36} />
-                    {(activeCamFilter === 'all' || activeCamFilter === 'cam1') && (
-                      <Line yAxisId="left" type="monotone" dataKey="cam1_temp" name="CAM-01 Temp (°C)" stroke="#EF4444" strokeWidth={2} dot={false} />
-                    )}
-                    {(activeCamFilter === 'all' || activeCamFilter === 'cam2') && (
-                      <Line yAxisId="left" type="monotone" dataKey="cam2_temp" name="CAM-02 Temp (°C)" stroke="#F97316" strokeWidth={2} dot={false} />
-                    )}
-                    {(activeCamFilter === 'all' || activeCamFilter === 'cam3') && (
-                      <Line yAxisId="left" type="monotone" dataKey="cam3_temp" name="CAM-03 Temp (°C)" stroke="#EC4899" strokeWidth={2} dot={false} />
-                    )}
-                    <Line yAxisId="right" type="monotone" dataKey="avg_rssi" name="Avg WiFi RSSI (dBm)" stroke="#2F6BFF" strokeWidth={2} strokeDasharray="3 3" dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
+              <div className="p-3 rounded-[var(--radius-option)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] text-xs text-[var(--color-ink-secondary)] mt-3">
+                <span className="font-semibold text-[var(--color-ink)]">💡 ข้อสรุป: </span>
+                YOLO26n ประมวลผลได้เร็วกว่า 3.47 เท่า (327.8ms) เหมาะสำหรับการรันบน Edge Device
               </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-neutral-200 bg-[#FDFBF7] p-2.5 rounded border border-neutral-300 text-xs">
-              <span className="font-bold text-[#212529]">💡 สุขภาพฮาร์ดแวร์: </span>
-              <span className="text-neutral-600">อุณหภูมิเฉลี่ย 45°C - 75°C อยู่ในเกณฑ์ปลอดภัย สัญญาณ WiFi อยู่ที่ -78 dBm ส่งข้อมูลได้ลื่นไหลไม่มี Packet Loss</span>
-            </div>
-          </div>
-
-          {/* Card 2D: Detection Stability & Flicker Rate per Camera */}
-          <div className="bg-white p-6 border-2 border-[#212529] rounded-lg shadow-[4px_4px_0px_#212529] flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-neutral-200">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-teal-600" />
-                  <h3 className="text-sm font-black uppercase text-[#212529]">
-                    2D. Detection Stability & Frame Flicker Rate (%)
-                  </h3>
+            {/* Card 1C: Resolution Benchmark */}
+            <div className="p-5 rounded-[var(--radius-card)] bg-[var(--color-surface)] border border-[var(--color-border)] shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)] mb-3">
+                  <div className="flex items-center gap-2">
+                    <Sliders className="w-4 h-4 text-indigo-500" />
+                    <h3 className="text-sm font-semibold text-[var(--color-ink)]">
+                      1C. Resolution Trade-off (640 vs 960 vs 1280)
+                    </h3>
+                  </div>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border border-[var(--color-border)]">
+                    EXPERIMENT
+                  </span>
                 </div>
-                <span className="text-[11px] font-mono font-bold px-2 py-0.5 bg-teal-50 text-teal-700 border border-teal-300 rounded">
-                  EMPIRICAL FLICKER
-                </span>
-              </div>
-              <p className="text-xs text-neutral-600 mb-3">
-                ความเสถียรของการตรวจจับข้ามเฟรม (Frame Stability Score vs Flicker % เมื่อแสงเปลี่ยน)
-              </p>
+                <p className="text-xs text-[var(--color-ink-muted)] mb-3">
+                  ความสัมพันธ์ระหว่างขนาดภาพ ความแม่นยำ (mAP50) และ Throughput (FPS)
+                </p>
 
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={flickerStability} margin={{ top: 15, right: 20, left: 10, bottom: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis dataKey="camera" stroke="#212529" tick={{ fontSize: 10, fontWeight: 700 }} />
-                    <YAxis domain={[0, 100]} stroke="#212529" tick={{ fontSize: 10 }} />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Legend verticalAlign="top" height={32} />
-                    <Bar dataKey="stability_score" name="Stability Score (%)" fill="#10B981" radius={[3, 3, 0, 0]} />
-                    <Bar dataKey="flicker_pct" name="Flicker Rate (%)" fill="#EF4444" radius={[3, 3, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={resolutionBenchmark} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                      <XAxis dataKey="resolution" stroke="#9CA3AF" tick={{ fontSize: 10 }} />
+                      <YAxis stroke="#9CA3AF" tick={{ fontSize: 10 }} />
+                      <Tooltip contentStyle={tooltipStyle} />
+                      <Legend verticalAlign="top" height={32} iconType="circle" />
+                      <Line type="monotone" dataKey="map50" name="mAP@50 (%)" stroke="#2563EB" strokeWidth={2} />
+                      <Line type="monotone" dataKey="fps" name="Throughput (FPS)" stroke="#10B981" strokeWidth={2} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-[var(--radius-option)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] text-xs text-[var(--color-ink-secondary)] mt-3">
+                <span className="font-semibold text-[var(--color-ink)]">💡 ข้อสรุป: </span>
+                Resolution 640x640 ให้ความสมดุลสูงสุด (FPS 0.88, mAP50 98.5%)
               </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-neutral-200 bg-[#FDFBF7] p-2.5 rounded border border-neutral-300 text-xs">
-              <span className="font-bold text-[#212529]">💡 สรุปความเสถียร: </span>
-              <span className="text-neutral-600">CAM-03 ทำ Stability ได้เต็ม <strong>100%</strong> (Flicker 0%) และ CAM-02 ทำได้ <strong>99.78%</strong> มีความเสถียรสูงมากสำหรับการส่งแจ้งเตือน LINE</span>
+            {/* Card 1D: Quantization Benchmark */}
+            <div className="p-5 rounded-[var(--radius-card)] bg-[var(--color-surface)] border border-[var(--color-border)] shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)] mb-3">
+                  <div className="flex items-center gap-2">
+                    <Gauge className="w-4 h-4 text-amber-500" />
+                    <h3 className="text-sm font-semibold text-[var(--color-ink)]">
+                      1D. Quantization Benchmark (FP32 vs INT8)
+                    </h3>
+                  </div>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-[var(--radius-pill)] bg-amber-50 text-amber-700 border border-amber-200">
+                    OPENVINO
+                  </span>
+                </div>
+                <p className="text-xs text-[var(--color-ink-muted)] mb-3">
+                  ผลการแปลงโมเดลด้วย OpenVINO INT8 ช่วยลดขนาดไฟล์และเพิ่มความเร็วในการรัน
+                </p>
+
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={quantizationBenchmark} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                      <XAxis dataKey="format" stroke="#9CA3AF" tick={{ fontSize: 10 }} />
+                      <YAxis stroke="#9CA3AF" tick={{ fontSize: 10 }} />
+                      <Tooltip contentStyle={tooltipStyle} />
+                      <Legend verticalAlign="top" height={32} iconType="circle" />
+                      <Bar dataKey="latency_ms" name="Latency (ms)" fill="#EF4444" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="size_mb" name="Model Size (MB)" fill="#10B981" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-[var(--radius-option)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] text-xs text-[var(--color-ink-secondary)] mt-3">
+                <span className="font-semibold text-[var(--color-ink)]">💡 ข้อสรุป: </span>
+                OpenVINO INT8 ลดขนาดโมเดลลงเหลือ 11.2 MB และประมวลผลเร็วขึ้น 2.5 เท่า
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

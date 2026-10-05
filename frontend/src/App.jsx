@@ -339,7 +339,7 @@ function App() {
             />
           )}
           {currentView === 'ecosystem' && (
-            <EcosystemPage />
+            <EcosystemPage onNavigate={handleNavigate} />
           )}
           {currentView === 'analytics' && (
             <AnalyticsPage apiBase={API_BASE_URL} />

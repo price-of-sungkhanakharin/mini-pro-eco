@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none">
+  <!-- Database Stack -->
+  <path d="M32 6C17.64 6 6 10.03 6 15V49C6 53.97 17.64 58 32 58C46.36 58 58 53.97 58 49V15C58 10.03 46.36 6 32 6Z" fill="#3D5A73"/>
+  <!-- Top Surface -->
+  <ellipse cx="32" cy="15" rx="26" ry="9" fill="#5C7F9D"/>
+  <!-- Highlights and Rings -->
+  <path d="M6 26.5C6 31.47 17.64 35.5 32 35.5C46.36 35.5 58 31.47 58 26.5" stroke="#283E52" stroke-width="3" fill="none"/>
+  <path d="M6 38C6 42.97 17.64 47 32 47C46.36 47 58 42.97 58 38" stroke="#283E52" stroke-width="3" fill="none"/>
+  <!-- Adminer Orange Gear / Wrench Accent -->
+  <circle cx="44" cy="44" r="14" fill="#F2994A"/>
+  <path d="M44 34L46 36L49 35L50 38L53 39L52 42L54 44L52 46L53 49L50 50L49 53L46 52L44 54L42 52L39 53L38 50L35 49L36 46L34 44L36 42L35 39L38 38L39 35L42 36L44 34Z" fill="#D35400"/>
+  <circle cx="44" cy="44" r="6" fill="#FFFDF7"/>
+</svg>

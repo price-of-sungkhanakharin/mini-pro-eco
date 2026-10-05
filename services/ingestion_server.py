@@ -68,6 +68,7 @@ DEFAULT_CONFIG = {
             "contrast": 1.15,
             "framesize": 13,
             "quality": 10,
+            "deep_sleep_sec": 20,
             "interval_sec": 15,
         },
         "front_dept_2": {
@@ -83,6 +84,7 @@ DEFAULT_CONFIG = {
             "contrast": 1.15,
             "framesize": 13,
             "quality": 10,
+            "deep_sleep_sec": 20,
             "interval_sec": 15,
         },
         "side_dept": {
@@ -98,6 +100,7 @@ DEFAULT_CONFIG = {
             "contrast": 1.15,
             "framesize": 13,
             "quality": 10,
+            "deep_sleep_sec": 20,
             "interval_sec": 15,
         },
     },
@@ -457,7 +460,8 @@ def upload():
     camera_id_param = request.args.get("camera_id") or request.form.get("camera_id") or ""
     client_ip = request.remote_addr or ""
     loc = resolve_location(raw_loc, camera_id_param, client_ip)
-    cam_id = LOCATIONS[loc].get("camera_id", loc)
+    loc_cfg = LOCATIONS.get(loc, {})
+    cam_id = loc_cfg.get("camera_id", loc)
 
     image_bytes = request.files.get("image").read() if request.files else request.get_data()
     if not image_bytes:
@@ -637,9 +641,16 @@ def upload():
         except Exception as re_err:
             logger.debug("Redis queue write error: %s", re_err)
 
-    # Hardware Deep Sleep & Adaptive Sampling Policy:
-    # Uses Time-Series ML models (Thermal & Traffic Dynamics)
-    deep_sleep_sec = 15
+    # 2-Way Control & Hardware Deep Sleep Configuration:
+    # Dynamically fetched from the camera's configuration (or defaults):
+    # - framesize: loc_cfg.get("framesize", 9)
+    # - quality: loc_cfg.get("quality", 10)
+    # - deep_sleep_sec: loc_cfg.get("deep_sleep_sec", 20)
+    framesize = int(loc_cfg.get("framesize", 9))
+    quality = int(loc_cfg.get("quality", 10))
+    deep_sleep_sec = int(loc_cfg.get("deep_sleep_sec", 20))
+
+    # Time-Series ML models (Thermal & Traffic Dynamics) for predictive analytics
     ts_recommendation = None
     if timeseries_service is not None:
         try:
@@ -647,23 +658,20 @@ def upload():
                 camera_id=cam_id,
                 current_telemetry=telemetry_dict,
             )
-            deep_sleep_sec = int(ts_recommendation.get("recommended_sleep_sec", 15))
         except Exception as _ts_err:
             logger.debug("Timeseries sleep calc error: %s", _ts_err)
 
     interval_sec = deep_sleep_sec
     interval_ms = interval_sec * 1000
-    framesize = int(LOCATIONS.get(loc, {}).get("framesize", SERVER_CONFIG.get("framesize", 13)))
-    quality = int(LOCATIONS.get(loc, {}).get("quality", SERVER_CONFIG.get("quality", 10)))
 
     response_payload = {
         "status": "success",
         "success": True,
         "framesize": framesize,
         "quality": quality,
+        "deep_sleep_sec": deep_sleep_sec,
         "interval_sec": interval_sec,
         "interval_ms": interval_ms,
-        "deep_sleep_sec": deep_sleep_sec,
         "camera_id": cam_id,
         "folder": cam_id,
         "location": loc,
@@ -1218,6 +1226,14 @@ def settings():
                 except ValueError:
                     pass
 
+            ds_val = request.args.get("deep_sleep_sec") or req_data.get("deep_sleep_sec")
+            if ds_val is not None:
+                try:
+                    LOCATIONS[loc]["deep_sleep_sec"] = int(ds_val)
+                    LOCATIONS[loc]["interval_sec"] = int(ds_val)
+                except ValueError:
+                    pass
+
             # Persist to config.json
             try:
                 CONFIG["locations"] = LOCATIONS
@@ -1233,8 +1249,9 @@ def settings():
             "brightness": LOCATIONS[loc_key].get("brightness", 1.0),
             "contrast": LOCATIONS[loc_key].get("contrast", 1.0),
             "rotation": LOCATIONS[loc_key].get("rotation", 0),
-            "framesize": LOCATIONS[loc_key].get("framesize", 13),
+            "framesize": LOCATIONS[loc_key].get("framesize", 9),
             "quality": LOCATIONS[loc_key].get("quality", 10),
+            "deep_sleep_sec": LOCATIONS[loc_key].get("deep_sleep_sec", 20),
             "interval_sec": LOCATIONS[loc_key].get("interval_sec", 15),
         }
         for loc_key in LOCATIONS

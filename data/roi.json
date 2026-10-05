@@ -150,13 +150,14 @@
   "cam3": {
     "camera_id": "cam3",
     "name": "ลานข้างภาคคอม (มอเตอร์ไซค์)",
-    "capacity": 25,
+    "capacity": 50,
+    "slots": [],
     "zones": [
       {
         "id": "zone_cam3_bike_1",
         "name": "โซนมอเตอร์ไซค์ 1",
         "type": "motorcycle",
-        "capacity": 12,
+        "capacity": 25,
         "polygon": [
           [
             598,
@@ -180,7 +181,7 @@
         "id": "zone_cam3_bike_2",
         "name": "โซนมอเตอร์ไซค์ 2",
         "type": "motorcycle",
-        "capacity": 13,
+        "capacity": 25,
         "polygon": [
           [
             901,
@@ -200,7 +201,25 @@
           ]
         ]
       }
+    ],
+    "polygon": [
+      [
+        598,
+        199
+      ],
+      [
+        370,
+        1184
+      ],
+      [
+        726,
+        1179
+      ],
+      [
+        784,
+        184
+      ]
     ]
   },
-  "_updated_at": "2026-10-05T10:04:59.316345"
+  "_updated_at": "2026-10-06T01:02:55.941479"
 }

@@ -1,10 +1,10 @@
 /* ==========================================================================
    APP SHELL & LAYOUT STYLES — 2-Row Desktop Header & Light Editorial Shell
-   Navbar: Desktop 2-Row (112px = 64px + 48px), Mobile 1-Row (72px)
+   Navbar: Desktop 2-Row (100px = 52px + 48px), Mobile 1-Row (72px)
    ========================================================================== */
 
 :root {
-  --navbar-h: 112px;
+  --navbar-h: 100px;
   --content-max: 1680px;
   --page-pad-x: 40px;
 }
@@ -42,7 +42,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   Sticky Top Navbar (Desktop 2-Row, Mobile 1-Row)
+   Sticky Top Navbar (Desktop 2-Row 100px, Mobile 1-Row 72px)
    -------------------------------------------------------------------------- */
 .cpe-navbar {
   position: sticky;
@@ -51,53 +51,58 @@
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  background-color: var(--color-bg);
+  background-color: var(--color-bg, #F7F7F5);
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
 }
 
-/* --------------------------------------------------------------------------
-   Row 1: Brand & Top-Right Actions (Desktop 64px, Mobile 72px)
-   -------------------------------------------------------------------------- */
-.navbar-row-top {
-  height: 64px;
-  padding: 0 max(var(--page-pad-x), calc((100% - var(--content-max)) / 2));
-  background-color: var(--color-bg);
+.navbar-row-inner {
+  max-width: 1440px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 var(--page-pad-x, 40px);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  box-sizing: border-box;
+}
+
+/* --------------------------------------------------------------------------
+   Row 1: Brand & Top-Right Actions (Desktop 52px, Mobile 72px)
+   -------------------------------------------------------------------------- */
+.navbar-row-top {
+  height: 52px;
+  background-color: var(--color-bg, #F7F7F5);
+  display: flex;
+  align-items: center;
   width: 100%;
   box-sizing: border-box;
+  border-bottom: 1px solid var(--color-border);
 }
 
 @media (max-width: 1023px) {
   .navbar-row-top {
     height: 72px;
-    border-bottom: 1px solid var(--color-border);
   }
 }
 
-/* Brand Group */
+/* Brand Group (Figma: gap 7px, 136x26px) */
 .navbar-brand-wrapper {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 12px;
+  gap: 7px;
   flex-shrink: 0;
 }
 
-@media (max-width: 1279px) {
-  .navbar-brand-wrapper {
-    gap: 8px;
-  }
-}
-
-/* Chain Mark Logo (40x26px, 4px border) */
+/* Chain Mark Logo (Figma: 40x26px, 4px border #30312F) */
 .brand-chain-mark {
   box-sizing: border-box;
   width: 40px;
   height: 26px;
-  border: 4px solid var(--color-ink);
-  border-radius: 6px;
+  border: 4px solid var(--color-ink, #30312F);
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -106,34 +111,30 @@
 }
 
 .brand-chain-inner {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  background-color: var(--color-ink);
+  width: 8px;
+  height: 8px;
+  border-radius: 1px;
+  background-color: var(--color-ink, #30312F);
 }
 
+/* Wordmark (Figma: Inter, 17px, line-height 21px, #30312F) */
 .brand-wordmark {
   font-family: var(--font-sans);
-  font-weight: 600;
+  font-weight: 500;
   font-size: 17px;
   line-height: 21px;
-  color: var(--color-ink);
+  color: var(--color-ink, #30312F);
   letter-spacing: -0.01em;
   white-space: nowrap;
 }
 
-@media (max-width: 1279px) {
-  .brand-wordmark {
-    font-size: 15px;
-  }
-}
-
 .navbar-status-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: var(--radius-full);
-  background-color: var(--color-green-text);
+  background-color: var(--color-green-bright, #22C55E);
   flex-shrink: 0;
+  margin-left: 2px;
 }
 
 /* Right Actions Group */
@@ -386,51 +387,73 @@
   line-height: 1.2;
 }
 
-/* Logout Button */
+/* Action Button (Figma Spec: 48px height, 100px radius, #30312F bg, white text) */
+.navbar-action-btn,
 .navbar-logout-btn {
+  box-sizing: border-box;
   display: inline-flex;
+  flex-direction: row;
+  justify-content: center;
   align-items: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 12px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--color-border);
-  background-color: var(--color-bg);
-  color: var(--color-ink);
-  font-size: 13px;
+  padding: 0px 24px;
+  gap: 8px;
+  height: 42px;
+  background-color: var(--color-ink, #30312F);
+  border: 1px solid var(--color-ink, #30312F);
+  border-radius: 100px;
+  color: var(--color-ink-inverse, #FFFFFF);
+  font-family: var(--font-sans);
   font-weight: 500;
+  font-size: 14px;
+  line-height: 17px;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: all 0.15s ease;
   flex-shrink: 0;
 }
 
+.navbar-action-btn:hover,
 .navbar-logout-btn:hover {
-  background-color: var(--color-surface-muted);
+  background-color: #1E1F1D;
+  border-color: #1E1F1D;
+  transform: translateY(-1px);
 }
 
+.navbar-action-btn:active,
+.navbar-logout-btn:active {
+  transform: translateY(0);
+}
+
+.navbar-action-btn:focus-visible,
 .navbar-logout-btn:focus-visible {
-  outline: 2px solid var(--color-accent-strong);
+  outline: 2px solid var(--color-ink, #30312F);
   outline-offset: 2px;
 }
 
+.navbar-action-icon,
 .navbar-logout-icon {
   width: 14px;
   height: 14px;
-  color: var(--color-ink);
+  color: #FFFFFF;
 }
 
+.navbar-action-label,
 .navbar-logout-text {
-  font-size: 13px;
+  font-family: var(--font-sans);
   font-weight: 500;
-  color: var(--color-ink);
+  font-size: 14px;
+  line-height: 17px;
+  color: #FFFFFF;
 }
 
 @media (max-width: 640px) {
+  .navbar-action-label,
   .navbar-logout-text {
     display: none;
   }
+  .navbar-action-btn,
   .navbar-logout-btn {
-    padding: 0 10px;
+    padding: 0 12px;
+    height: 38px;
   }
 }
 
@@ -467,12 +490,12 @@
 
 /* --------------------------------------------------------------------------
    Row 2: Desktop Navigation Links (48px, >=1024px)
+   Right-Aligned Menu with Active State (Figma Spec: 36px gap, 22x2px indicator)
    -------------------------------------------------------------------------- */
 .navbar-row-bottom {
   display: none;
   height: 48px;
-  padding: 0 max(var(--page-pad-x), calc((100% - var(--content-max)) / 2));
-  background-color: var(--color-bg);
+  background-color: var(--color-bg, #F7F7F5);
   border-bottom: 1px solid var(--color-border);
   width: 100%;
   box-sizing: border-box;
@@ -485,13 +508,69 @@
   }
 }
 
-.navbar-links-group {
+.navbar-row-bottom-inner {
   display: flex;
   align-items: center;
-  justify-content: safe center;
-  gap: 32px;
+  justify-content: space-between;
   height: 100%;
   width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 var(--page-pad-x, 40px);
+  box-sizing: border-box;
+}
+
+/* Left Active View Tracker Badge */
+.navbar-active-view-context {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 100px;
+  background-color: var(--color-surface-muted, #EFEFEA);
+  border: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.navbar-view-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-green-bright, #22C55E);
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.navbar-view-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-ink-secondary, #85847E);
+  letter-spacing: 0.05em;
+}
+
+.navbar-view-name {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-ink, #30312F);
+}
+
+@media (max-width: 1200px) {
+  .navbar-active-view-context {
+    display: none;
+  }
+}
+
+/* Right Navigation Links (Figma: 36px gap, right-aligned) */
+.navbar-links-group {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 36px;
+  height: 100%;
+  margin-left: auto;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -502,52 +581,79 @@
   }
 }
 
+/* Navigation Item (Figma: flex column, 8px 0px padding, 7px gap) */
+.navbar-nav-item,
 .navbar-desktop-link {
-  position: relative;
-  height: 100%;
+  box-sizing: border-box;
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
-  font-family: var(--font-sans);
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-ink-secondary);
-  text-decoration: none;
-  cursor: pointer;
+  justify-content: center;
+  padding: 8px 0px 4px 0px;
+  gap: 7px;
+  height: 48px;
   background: transparent;
   border: none;
-  padding: 0 2px;
-  transition: color 0.15s ease;
-  white-space: nowrap;
+  cursor: pointer;
+  position: relative;
+  text-decoration: none;
+  transition: all 0.15s ease;
   flex-shrink: 0;
 }
 
-.navbar-desktop-link:hover {
-  color: var(--color-ink);
-}
-
+.navbar-nav-item:focus-visible,
 .navbar-desktop-link:focus-visible {
-  outline: 2px solid var(--color-accent-strong);
+  outline: 2px solid var(--color-ink, #30312F);
   outline-offset: 2px;
+  border-radius: 4px;
 }
 
+.navbar-nav-item:focus:not(:focus-visible),
 .navbar-desktop-link:focus:not(:focus-visible) {
   outline: none;
 }
 
-.navbar-desktop-link.active {
-  color: var(--color-ink);
-  font-weight: 500;
+/* Navigation Link (Figma: Inter, 16px, line-height 19px, #85847E) */
+.navbar-nav-link,
+.navbar-desktop-link > span:first-child {
+  font-family: var(--font-sans);
+  font-style: normal;
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 19px;
+  color: var(--color-ink-secondary, #85847E);
+  transition: color 0.15s ease, font-weight 0.15s ease;
+  white-space: nowrap;
 }
 
+.navbar-nav-item:hover .navbar-nav-link,
+.navbar-desktop-link:hover > span:first-child {
+  color: var(--color-ink, #30312F);
+}
+
+/* Active Navigation Link (Figma: Inter, 16px, font-weight 500, #30312F) */
+.navbar-nav-item.active .navbar-nav-link,
+.navbar-desktop-link.active > span:first-child {
+  font-weight: 500;
+  color: var(--color-ink, #30312F);
+}
+
+/* Active Indicator (Figma: 22px width, 2px height, #30312F, 1px radius) */
 .nav-link-indicator {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
   width: 22px;
   height: 2px;
-  background-color: var(--color-accent-strong);
+  background-color: var(--color-ink, #30312F);
   border-radius: 1px;
+  opacity: 0;
+  transform: scaleX(0);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  flex-shrink: 0;
+}
+
+.navbar-nav-item.active .nav-link-indicator,
+.navbar-desktop-link.active .nav-link-indicator {
+  opacity: 1;
+  transform: scaleX(1);
 }
 
 /* --------------------------------------------------------------------------

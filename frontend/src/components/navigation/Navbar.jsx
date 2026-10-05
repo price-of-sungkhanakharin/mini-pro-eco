@@ -6,6 +6,13 @@ import {
   Clock,
   LogOut
 } from 'lucide-react'
+import {
+  FastAPILogo,
+  MinIOLogo,
+  PostgreSQLLogo,
+  RedisLogo,
+  LabelStudioLogo
+} from '../ui/ServiceLogos'
 
 export default function Navbar({
   user,
@@ -58,131 +65,149 @@ export default function Navbar({
     { id: 'details', label: 'รายละเอียดโครงการ' }
   ]
 
-  // Exact 5 original services from A3 audit
+  // Exact 5 original services from A3 audit with authentic logos
   const aiStackServices = [
-    { name: 'FastAPI Gateway', port: ':8000' },
-    { name: 'MinIO Object Store', port: ':9000' },
-    { name: 'PostgreSQL 17 DB', port: ':5432' },
-    { name: 'Redis Task Queue', port: ':6379' },
-    { name: 'Label Studio', port: ':8080' }
+    { name: 'FastAPI Gateway', port: ':8000', logo: FastAPILogo },
+    { name: 'MinIO Object Store', port: ':9000', logo: MinIOLogo },
+    { name: 'PostgreSQL 17 DB', port: ':5432', logo: PostgreSQLLogo },
+    { name: 'Redis Task Queue', port: ':6379', logo: RedisLogo },
+    { name: 'Label Studio', port: ':8080', logo: LabelStudioLogo }
   ]
+
+  const currentItem = navItems.find((i) => i.id === currentView) || navItems[0]
 
   return (
     <header className="cpe-navbar">
-      {/* Row 1: Brand (Left), Right Controls (Right) */}
+      {/* Row 1: Brand (Left), Right Controls & Action Button */}
       <div className="navbar-row-top">
-        {/* Brand Group */}
-        <div className="navbar-brand-wrapper">
-          <div className="brand-chain-mark">
-            <span className="brand-chain-inner" />
+        <div className="navbar-row-inner">
+          {/* Brand Group (Figma Spec: 40x26 chain mark, 17px Inter #30312F wordmark, 7px gap) */}
+          <div className="navbar-brand-wrapper">
+            <div className="brand-chain-mark">
+              <span className="brand-chain-inner" />
+            </div>
+            <span className="brand-wordmark">CPE Smart Parking AI</span>
+            <span className="navbar-status-dot" aria-label="System status online" />
           </div>
-          <span className="brand-wordmark">CPE Smart Parking AI</span>
-          <span className="navbar-status-dot" aria-label="System status online" />
-        </div>
 
-        {/* Right Actions Group */}
-        <div className="navbar-top-right">
-          {/* AI Stack Status Popover Chip (Desktop >=1024px) */}
-          <div className="navbar-stack-wrapper" ref={popoverRef}>
+          {/* Right Actions Group */}
+          <div className="navbar-top-right">
+            {/* AI Stack Status Popover Chip (Desktop >=1024px) */}
+            <div className="navbar-stack-wrapper" ref={popoverRef}>
+              <button
+                ref={stackButtonRef}
+                type="button"
+                onClick={() => setIsStackOpen((prev) => !prev)}
+                className={`navbar-stack-chip ${isStackOpen ? 'active' : ''}`}
+                aria-expanded={isStackOpen}
+                aria-haspopup="true"
+                title="ดูสถานะ AI Ecosystem Stack"
+              >
+                <Layers className="navbar-stack-icon" />
+                <span className="navbar-stack-label">AI Stack (5)</span>
+                <ChevronDown className={`navbar-stack-arrow ${isStackOpen ? 'open' : ''}`} />
+              </button>
+
+              {isStackOpen && (
+                <div className="navbar-stack-popover" role="dialog" aria-label="AI Ecosystem Stack">
+                  <div className="stack-popover-header">
+                    <span className="stack-popover-title">AI ECOSYSTEM STACK</span>
+                  </div>
+                  <div className="stack-popover-list">
+                    {aiStackServices.map((svc) => {
+                      const Logo = svc.logo
+                      return (
+                        <div key={svc.name} className="stack-status-row">
+                          <div className="stack-service-info">
+                            <span className="status-indicator-dot" />
+                            {Logo && <Logo size={16} className="inline-block" />}
+                            <span className="stack-service-name">{svc.name}</span>
+                          </div>
+                          <span className="stack-service-port">{svc.port}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Clock Display */}
+            <div className="navbar-clock">
+              <Clock className="navbar-clock-icon" />
+              <span className="navbar-clock-time">
+                {time.toLocaleTimeString('th-TH', { hour12: false })}
+              </span>
+            </div>
+
+            {/* User Profile Badge */}
+            <div className="navbar-user-badge">
+              <div className="navbar-user-avatar">
+                {user?.email ? user.email.charAt(0).toUpperCase() : 'A'}
+              </div>
+              <div className="navbar-user-info">
+                <span className="navbar-user-name">
+                  {user?.email ? user.email.split('@')[0] : 'Admin'}
+                </span>
+                <span className="navbar-user-role">
+                  {user?.role || 'ADMIN'}
+                </span>
+              </div>
+            </div>
+
+            {/* Action Button (Figma Spec: 48px height, 100px radius, #30312F bg, white text) */}
             <button
-              ref={stackButtonRef}
               type="button"
-              onClick={() => setIsStackOpen((prev) => !prev)}
-              className={`navbar-stack-chip ${isStackOpen ? 'active' : ''}`}
-              aria-expanded={isStackOpen}
-              aria-haspopup="true"
-              title="ดูสถานะ AI Ecosystem Stack"
+              onClick={onLogout}
+              className="navbar-action-btn"
+              title="ออกจากระบบ"
             >
-              <Layers className="navbar-stack-icon" />
-              <span className="navbar-stack-label">AI Stack (5)</span>
-              <ChevronDown className={`navbar-stack-arrow ${isStackOpen ? 'open' : ''}`} />
+              <LogOut className="navbar-action-icon" />
+              <span className="navbar-action-label">Logout</span>
             </button>
 
-            {isStackOpen && (
-              <div className="navbar-stack-popover" role="dialog" aria-label="AI Ecosystem Stack">
-                <div className="stack-popover-header">
-                  <span className="stack-popover-title">AI ECOSYSTEM STACK</span>
-                </div>
-                <div className="stack-popover-list">
-                  {aiStackServices.map((svc) => (
-                    <div key={svc.name} className="stack-status-row">
-                      <div className="stack-service-info">
-                        <span className="status-indicator-dot" />
-                        <span className="stack-service-name">{svc.name}</span>
-                      </div>
-                      <span className="stack-service-port">{svc.port}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Mobile Hamburger Toggle (<1024px) */}
+            <button
+              type="button"
+              onClick={onToggleMobileDrawer}
+              className="navbar-hamburger-btn"
+              aria-label="Toggle navigation drawer"
+              aria-expanded={isMobileDrawerOpen}
+            >
+              <Menu className="navbar-hamburger-icon" />
+            </button>
           </div>
-
-          {/* Clock Display */}
-          <div className="navbar-clock">
-            <Clock className="navbar-clock-icon" />
-            <span className="navbar-clock-time">
-              {time.toLocaleTimeString('th-TH', { hour12: false })}
-            </span>
-          </div>
-
-          {/* User Profile Badge */}
-          <div className="navbar-user-badge">
-            <div className="navbar-user-avatar">
-              {user?.email ? user.email.charAt(0).toUpperCase() : 'A'}
-            </div>
-            <div className="navbar-user-info">
-              <span className="navbar-user-name">
-                {user?.email ? user.email.split('@')[0] : 'Admin'}
-              </span>
-              <span className="navbar-user-role">
-                {user?.role || 'ADMIN'}
-              </span>
-            </div>
-          </div>
-
-          {/* Logout Button */}
-          <button
-            type="button"
-            onClick={onLogout}
-            className="navbar-logout-btn"
-            title="ออกจากระบบ"
-          >
-            <LogOut className="navbar-logout-icon" />
-            <span className="navbar-logout-text">Logout</span>
-          </button>
-
-          {/* Mobile Hamburger Toggle (<1024px) */}
-          <button
-            type="button"
-            onClick={onToggleMobileDrawer}
-            className="navbar-hamburger-btn"
-            aria-label="Toggle navigation drawer"
-            aria-expanded={isMobileDrawerOpen}
-          >
-            <Menu className="navbar-hamburger-icon" />
-          </button>
         </div>
       </div>
 
-      {/* Row 2: Desktop Navigation Links (>=1024px) */}
+      {/* Row 2: Desktop Navigation Links (>=1024px) Right-Aligned with Active Indicator */}
       <nav className="navbar-row-bottom" aria-label="Main Navigation">
-        <div className="navbar-links-group">
-          {navItems.map((item) => {
-            const isActive = currentView === item.id
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onSelectView?.(item.id)}
-                className={`navbar-desktop-link ${isActive ? 'active' : ''}`}
-                aria-current={isActive ? 'page' : undefined}
-              >
-                <span>{item.label}</span>
-                {isActive && <span className="nav-link-indicator" />}
-              </button>
-            )
-          })}
+        <div className="navbar-row-inner navbar-row-bottom-inner">
+          {/* Left Context: Active View Indicator Badge */}
+          <div className="navbar-active-view-context">
+            <span className="navbar-view-dot" />
+            <span className="navbar-view-tag">ACTIVE VIEW:</span>
+            <span className="navbar-view-name">{currentItem.label}</span>
+          </div>
+
+          {/* Right: Desktop Navigation items (Figma Spec: 36px gap, #85847E inactive, #30312F active + 22x2px indicator) */}
+          <div className="navbar-links-group">
+            {navItems.map((item) => {
+              const isActive = currentView === item.id
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => onSelectView?.(item.id)}
+                  className={`navbar-nav-item ${isActive ? 'active' : ''}`}
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  <span className="navbar-nav-link">{item.label}</span>
+                  <span className={`nav-link-indicator ${isActive ? 'active' : ''}`} />
+                </button>
+              )
+            })}
+          </div>
         </div>
       </nav>
     </header>

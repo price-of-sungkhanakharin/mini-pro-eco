@@ -16,6 +16,11 @@ class InvalidSignatureError(Exception):
 
 from backend.app.core.config import settings
 
+try:
+    from backend.app.services.timeseries_service import timeseries_service
+except Exception as _ts_err:
+    timeseries_service = None
+
 logger = logging.getLogger(__name__)
 
 # SSL context for outbound LINE API requests
@@ -254,6 +259,9 @@ def build_quick_reply_payload():
     """Returns clean LINE Quick Reply buttons attached to message bottom without emojis."""
     return {
         "items": [
+            {"type": "action", "action": {"type": "message", "label": "ทำนายอีก 15 นาที", "text": "ทำนายอีก 15 นาที"}},
+            {"type": "action", "action": {"type": "message", "label": "ทำนายอีก 30 นาที", "text": "ทำนายอีก 30 นาที"}},
+            {"type": "action", "action": {"type": "message", "label": "ตรวจสุขภาพกล้อง", "text": "ตรวจสุขภาพกล้อง"}},
             {"type": "action", "action": {"type": "message", "label": "สรุปภาพรวม", "text": "สรุปภาพรวม"}},
             {"type": "action", "action": {"type": "message", "label": "หาที่จอดรถยนต์", "text": "หาที่จอดรถยนต์"}},
             {"type": "action", "action": {"type": "message", "label": "หาที่จอดมอไซค์", "text": "หาที่จอดมอไซค์"}},
@@ -345,6 +353,66 @@ def format_quick_response(user_msg: str) -> Tuple[Optional[str], List[str], Opti
     c1_data = get_cam_slots("cam1")
     c2_data = get_cam_slots("cam2")
     c3_data = get_cam_slots("cam3")
+
+    # 0A. Future Occupancy Prediction (ทำนายอีก 15 นาที / ทำนายอีก 30 นาที)
+    if any(k in msg_clean for k in ["ทำนายอีก15นาที", "ทำนาย15นาที", "อีก15นาที", "15นาที"]) and timeseries_service:
+        p1 = timeseries_service.predict_future_occupancy("cam1", horizon_minutes=15)
+        p2 = timeseries_service.predict_future_occupancy("cam2", horizon_minutes=15)
+        p3 = timeseries_service.predict_future_occupancy("cam3", horizon_minutes=15)
+
+        lines = [
+            "[น้องจ๊อดพยากรณ์: คาดการณ์ที่จอดล่วงหน้า 15 นาที]",
+            f"เวลาเป้าหมาย: {p1['target_time']} น. ({p1['campus_phase_name']})",
+            f"แนวโน้ม: {p1['campus_trend_desc']}",
+            "",
+            "คาดการณ์จำนวนช่องว่าง:",
+            f"- หน้าภาค 1 (CAM1 รถยนต์): ว่าง ~{p1['predicted_free_slots']}/{p1['capacity']} ช่อง [{p1['availability_chance']}]",
+            f"- หน้าภาค 2 (CAM2 รถยนต์): ว่าง ~{p2['predicted_free_slots']}/{p2['capacity']} ช่อง [{p2['availability_chance']}]",
+            f"- ข้างภาคคอม (CAM3 มอไซค์): ว่าง ~{p3['predicted_free_slots']}/{p3['capacity']} ช่อง [{p3['availability_chance']}]",
+            "",
+            f"สรุป: {p1['availability_desc']}"
+        ]
+        return "\n".join(lines), ["cam1", "cam2", "cam3"], None
+
+    if any(k in msg_clean for k in ["ทำนายอีก30นาที", "ทำนาย30นาที", "อีก30นาที", "30นาที"]) and timeseries_service:
+        p1 = timeseries_service.predict_future_occupancy("cam1", horizon_minutes=30)
+        p2 = timeseries_service.predict_future_occupancy("cam2", horizon_minutes=30)
+        p3 = timeseries_service.predict_future_occupancy("cam3", horizon_minutes=30)
+
+        lines = [
+            "[น้องจ๊อดพยากรณ์: คาดการณ์ที่จอดล่วงหน้า 30 นาที]",
+            f"เวลาเป้าหมาย: {p1['target_time']} น. ({p1['campus_phase_name']})",
+            f"แนวโน้ม: {p1['campus_trend_desc']}",
+            "",
+            "คาดการณ์จำนวนช่องว่าง:",
+            f"- หน้าภาค 1 (CAM1 รถยนต์): ว่าง ~{p1['predicted_free_slots']}/{p1['capacity']} ช่อง [{p1['availability_chance']}]",
+            f"- หน้าภาค 2 (CAM2 รถยนต์): ว่าง ~{p2['predicted_free_slots']}/{p2['capacity']} ช่อง [{p2['availability_chance']}]",
+            f"- ข้างภาคคอม (CAM3 มอไซค์): ว่าง ~{p3['predicted_free_slots']}/{p3['capacity']} ช่อง [{p3['availability_chance']}]",
+            "",
+            f"สรุป: {p1['availability_desc']}"
+        ]
+        return "\n".join(lines), ["cam1", "cam2", "cam3"], None
+
+    # 0B. Camera Hardware Health & Telemetry Status (ตรวจสุขภาพกล้อง / อุณหภูมิกล้อง)
+    if any(k in msg_clean for k in ["ตรวจสุขภาพกล้อง", "สุขภาพกล้อง", "สถานะกล้อง", "อุณหภูมิ", "ความร้อน", "ฮาร์ดแวร์"]) and timeseries_service:
+        r1 = timeseries_service.compute_optimal_sleep("cam1")
+        r2 = timeseries_service.compute_optimal_sleep("cam2")
+        r3 = timeseries_service.compute_optimal_sleep("cam3")
+
+        lines = [
+            "[น้องจ๊อดรายงาน: สถานะสุขภาพฮาร์ดแวร์และอุณหภูมิกล้อง]",
+            "ระบบ Time-Series AI ควบคุมรอบ Deep-Sleep อัตโนมัติ:",
+            "",
+            "- หน้าภาค 1 (CAM1):",
+            f"  อุณหภูมิชิป: {r1['current_temp_c']}°C [{r1['thermal_status']}] | สั่ง Deep-Sleep: {r1['recommended_sleep_sec']} วินาที",
+            "- หน้าภาค 2 (CAM2):",
+            f"  อุณหภูมิชิป: {r2['current_temp_c']}°C [{r2['thermal_status']}] | สั่ง Deep-Sleep: {r2['recommended_sleep_sec']} วินาที",
+            "- ข้างภาคคอม (CAM3):",
+            f"  อุณหภูมิชิป: {r3['current_temp_c']}°C [{r3['thermal_status']}] | สั่ง Deep-Sleep: {r3['recommended_sleep_sec']} วินาที",
+            "",
+            "ทุกกล้องเชื่อมต่อระบบดาต้าเลก MinIO และ PostgreSQL บันทึกข้อมูลครบถ้วนครับพี่!"
+        ]
+        return "\n".join(lines), ["cam1", "cam2", "cam3"], None
 
     # 1. Car Only (หาที่จอดรถยนต์) -> Send CAM1 and CAM2 images with car filter
     if any(k in msg for k in ["หาที่จอดรถยนต์", "รถยนต์", "สี่ล้อ", "รถเก๋ง", "รถกระบะ"]) or "car" in msg_lower:
@@ -455,7 +523,10 @@ def format_quick_response(user_msg: str) -> Tuple[Optional[str], List[str], Opti
             f"- หน้าภาค 2 (CAM2): ว่าง {len(c2_data['bike_vac'])}/{c2_data['bike_total']} ช่อง",
             f"- หน้าภาค 1 (CAM1): ว่าง {len(c1_data['bike_vac'])}/{c1_data['bike_total']} ช่อง",
             "",
-            "กดปุ่มเมนูด้านล่างเพื่อเจาะดูแต่ละโซนได้เลยครับพี่!"
+            "[ฟังก์ชันใหม่ AI Time-Series & กล้อง IoT]:",
+            "- พิมพ์ 'ทำนายอีก 15 นาที' หรือ 'ทำนายอีก 30 นาที' เพื่อดูแนวโน้มช่องว่างล่วงหน้า",
+            "- พิมพ์ 'ตรวจสุขภาพกล้อง' เพื่อเช็คความร้อนและการสั่งการ Deep-Sleep",
+            "(หรือแตะปุ่ม Quick Reply ด้านล่างได้เลยครับพี่!)"
         ]
         return "\n".join(lines), ["cam1", "cam2", "cam3"], None
 
@@ -495,7 +566,16 @@ def format_default_fallback_response() -> Tuple[str, List[str], Optional[str]]:
         "[น้องจ๊อด หาที่จอดรถ รายงานตัวครับพี่]",
         f"ชัดเจนในเลนเรา! ตอนนี้ลานจอดมีที่ว่างรวม {total_vac} ช่อง",
         "",
-        "แตะเลือกปุ่มลัดด้านล่างเพื่อเช็คสถานะและดูภาพสดแต่ละโซนได้ทันทีเลยครับพี่!",
+        "[พิมพ์คำสั่งหรือแตะปุ่ม Quick Reply ด้านล่าง]:",
+        "- ทำนายอีก 15 นาที (คาดการณ์ช่องว่างล่วงหน้า 15 นาทีด้วย ML)",
+        "- ทำนายอีก 30 นาที (คาดการณ์ช่องว่างล่วงหน้า 30 นาทีด้วย ML)",
+        "- ตรวจสุขภาพกล้อง (เช็คอุณหภูมิชิป ESP32 และเวลา Deep-Sleep)",
+        "- สรุปภาพรวม (เช็คช่องว่างทุกโซน)",
+        "- หาที่จอดรถยนต์ (ส่องเฉพาะช่องรถยนต์)",
+        "- หาที่จอดมอไซค์ (ส่องเฉพาะช่องมอเตอร์ไซค์)",
+        "",
+        "แตะเลือกปุ่มลัด Quick Reply ด้านล่างได้ทันทีเลยครับพี่!",
+        "(หากมีแถบเมนูด้านล่างบังอยู่ ให้แตะไอคอนแป้นพิมพ์มุมซ้ายล่างเพื่อเปิดปุ่ม Quick Reply ครับ)"
     ]
     return "\n".join(lines), ["cam1", "cam2", "cam3"], None
 

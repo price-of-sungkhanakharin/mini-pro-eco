@@ -26,6 +26,7 @@
       "contrast": 1.0,
       "framesize": 13,
       "quality": 10,
+      "deep_sleep_sec": 20,
       "interval_sec": 15
     },
     "front_dept_2": {
@@ -45,6 +46,7 @@
       "contrast": 1.15,
       "framesize": 13,
       "quality": 10,
+      "deep_sleep_sec": 20,
       "interval_sec": 15
     },
     "side_dept": {
@@ -69,6 +71,7 @@
       "contrast": 1.15,
       "framesize": 13,
       "quality": 10,
+      "deep_sleep_sec": 20,
       "interval_sec": 15
     }
   },

@@ -77,6 +77,7 @@ export default function DashboardPage({ onOpenModal, onNavigate }) {
       {/* S2: AiForecast + EdgeTelemetry (2 equal columns >=1024px, align-items: start) */}
       <div className="dashboard-ai-grid">
         <AiForecast
+          selectedZone={selectedZone}
           avgChance={avgChance}
           totalCarFree={totalCarFree}
           totalCarTotal={totalCarTotal}

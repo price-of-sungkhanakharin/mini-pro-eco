@@ -19,7 +19,7 @@ router = APIRouter(tags=["LINE Chatbot"])
 @router.post(
     "/api/v1/line/webhook",
     summary="LINE Messaging API Webhook",
-    description="Receives events from LINE Messaging API, verifies signature, and replies using dotBlue AI.",
+    description="Receives events from LINE Messaging API, verifies signature, and replies with Quick Reply buttons and live parking snapshots.",
     responses={
         200: {"description": "Webhook event handled successfully"},
         400: {"description": "Missing or invalid signature"},
@@ -54,37 +54,34 @@ async def line_webhook(
 @router.get(
     "/api/v1/line/status",
     summary="Get LINE Bot Status & Parking Summary",
-    description="Check the current parking occupancy context that the LINE Bot feeds to dotBlue AI.",
+    description="Check the current parking occupancy context and bot status.",
 )
 def get_bot_status() -> Dict[str, Any]:
     """Return the current active parking state used by the bot."""
     return {
         "bot_name": "น้องจ๊อด หาที่จอดรถ",
         "bot_id": "@422ubvyc",
-        "model": "openai/gpt-5.6-luna",
-        "endpoint": "https://ai.psu.blue/v1",
+        "mode": "rule_based_quick_reply",
         "current_state": CURRENT_PARKING_STATE,
     }
 
 
 @router.post(
     "/api/v1/line/test-query",
-    summary="Simulate user question to dotBlue AI / Quick Reply",
+    summary="Simulate user question or button click to LINE Bot",
     description="Allows testing the bot's responses and snapshot attachments directly via REST API without sending a message in LINE.",
 )
 async def test_bot_query(payload: Dict[str, str]):
-    """Test AI query response or quick response directly."""
+    """Test quick response or default fallback directly."""
     question = payload.get("question", "ตอนนี้มีที่จอดรถว่างไหม")
-    from backend.app.services.line_bot_service import format_quick_response
+    from backend.app.services.line_bot_service import format_quick_response, format_default_fallback_response
     fast_reply, target_cams, vehicle_filter = format_quick_response(question)
     if fast_reply:
         answer = fast_reply
         mode = "quick_reply"
     else:
-        answer = line_bot_service.query_dotblue_advisor(question)
-        mode = "dotblue_ai"
-        target_cams = []
-        vehicle_filter = None
+        answer, target_cams, vehicle_filter = format_default_fallback_response()
+        mode = "fallback_menu"
 
     v_param = f"&vehicle_type={vehicle_filter}" if vehicle_filter else ""
     image_urls = [f"/api/v1/line/snapshot/{cam}?mode=chatbot{v_param}" for cam in target_cams]

@@ -191,7 +191,7 @@ export default function RoboflowStudio({ apiBase }) {
       <div className="rf-overview-card">
         <div className="rf-overview-main">
           <div className="rf-icon-badge">
-            <FolderGit2 className="w-6 h-6 text-indigo-400" />
+            <FolderGit2 className="w-6 h-6 text-[var(--color-accent-strong)]" strokeWidth={1.7} />
           </div>
           <div>
             <div className="rf-title-row">
@@ -205,13 +205,13 @@ export default function RoboflowStudio({ apiBase }) {
               ระบบส่งภาพจากกล้อง CCTV สู่แพลตฟอร์ม Roboflow โดยอัตโนมัติทุก 30 นาที แยกกลุ่มตาม กล้อง / วัน / ชั่วโมง พร้อมระบบ Audit Log ใน PostgreSQL ป้องกันภาพซ้ำ
             </p>
             <div className="rf-meta-tags">
-              <span className="rf-tag font-mono text-indigo-300">
+              <span className="rf-tag font-mono text-[var(--color-accent-text)]">
                 Workspace: kimbiew / {syncStatus?.project_name || 'cctv-parking'}
               </span>
-              <span className="rf-tag text-slate-400">
+              <span className="rf-tag text-[var(--color-ink-secondary)]">
                 โหมด: 06:00 - 20:00 (Daylight Ingestion)
               </span>
-              <span className="rf-tag text-slate-400">
+              <span className="rf-tag text-[var(--color-ink-secondary)]">
                 Format: 15 ภาพ / รอบ
               </span>
             </div>
@@ -227,7 +227,7 @@ export default function RoboflowStudio({ apiBase }) {
             className="rf-btn-sync-now"
             title="สั่งยิงรอบ 30 นาทีทันที (15 ภาพ)"
           >
-            <Zap className={`w-4 h-4 text-amber-300 ${triggering ? 'animate-bounce' : ''}`} />
+            <Zap className={`w-4 h-4 text-[var(--color-status-mod-text)] ${triggering ? 'animate-bounce' : ''}`} strokeWidth={1.7} />
             <span>{triggering ? 'กำลังส่งภาพ...' : 'ซิงค์ภาพทันที (Force Sync)'}</span>
           </button>
 
@@ -239,7 +239,7 @@ export default function RoboflowStudio({ apiBase }) {
             title="เปิดโปรเจกต์ kimbiew/cctv-parking บน Roboflow Studio"
           >
             <span>เปิด Roboflow Studio</span>
-            <ExternalLink className="w-3.5 h-3.5" />
+            <ExternalLink className="w-3.5 h-3.5" strokeWidth={1.7} />
           </a>
 
           <button
@@ -248,7 +248,7 @@ export default function RoboflowStudio({ apiBase }) {
             className="rf-btn-refresh-icon"
             title="รีเฟรชข้อมูลสถานะ"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-indigo-400' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-[var(--color-accent-strong)]' : ''}`} strokeWidth={1.7} />
           </button>
         </div>
       </div>
@@ -258,11 +258,11 @@ export default function RoboflowStudio({ apiBase }) {
         {/* Metric 1: 30-min Auto-Sync Countdown */}
         <div className="rf-metric-box">
           <div className="rf-metric-top">
-            <span className="flex items-center gap-1.5 text-indigo-400">
-              <Clock className="w-3.5 h-3.5" />
+            <span className="flex items-center gap-1.5 text-[var(--color-accent-strong)]">
+              <Clock className="w-3.5 h-3.5" strokeWidth={1.7} />
               รอบส่งอัตโนมัติ (30m)
             </span>
-            <span className="font-mono text-[10px] text-slate-400">06:00 - 20:00</span>
+            <span className="font-mono text-[10px] text-[var(--color-ink-secondary)]">06:00 - 20:00</span>
           </div>
           <div className="rf-metric-body">
             <span className="rf-metric-num">{formatTime(countdown)}</span>
@@ -280,14 +280,14 @@ export default function RoboflowStudio({ apiBase }) {
         {/* Metric 2: Pending Queue */}
         <div className="rf-metric-box">
           <div className="rf-metric-top">
-            <span className="flex items-center gap-1.5 text-amber-400">
-              <Camera className="w-3.5 h-3.5" />
+            <span className="flex items-center gap-1.5 text-[var(--color-status-mod-text)]">
+              <Camera className="w-3.5 h-3.5" strokeWidth={1.7} />
               คิวรอส่งรอบต่อไป
             </span>
-            <span className="font-mono text-[10px] text-amber-500">PostgreSQL</span>
+            <span className="font-mono text-[10px] text-[var(--color-status-mod-text)] font-semibold">PostgreSQL</span>
           </div>
           <div className="rf-metric-body">
-            <span className="rf-metric-num" style={{ color: '#fbbf24' }}>
+            <span className="rf-metric-num" style={{ color: 'var(--color-status-mod-text)' }}>
               {(syncStatus?.pending_count ?? 120).toLocaleString()}
             </span>
             <span className="rf-metric-unit">รูป พร้อมส่ง</span>
@@ -298,14 +298,14 @@ export default function RoboflowStudio({ apiBase }) {
         {/* Metric 3: Uploaded to Roboflow Cloud */}
         <div className="rf-metric-box">
           <div className="rf-metric-top">
-            <span className="flex items-center gap-1.5 text-emerald-400">
-              <CheckCircle2 className="w-3.5 h-3.5" />
+            <span className="flex items-center gap-1.5 text-[var(--color-status-free-text)]">
+              <CheckCircle2 className="w-3.5 h-3.5" strokeWidth={1.7} />
               อัปโหลดสำเร็จแล้ว
             </span>
-            <span className="font-mono text-[10px] text-emerald-500">Cloud Sync</span>
+            <span className="font-mono text-[10px] text-[var(--color-status-free-text)] font-semibold">Cloud Sync</span>
           </div>
           <div className="rf-metric-body">
-            <span className="rf-metric-num" style={{ color: '#34d399' }}>
+            <span className="rf-metric-num" style={{ color: 'var(--color-status-free-text)' }}>
               {totalUploadedCount.toLocaleString()}
             </span>
             <span className="rf-metric-unit">รูป ในระบบ</span>
@@ -316,14 +316,14 @@ export default function RoboflowStudio({ apiBase }) {
         {/* Metric 4: Historical Backlog Total */}
         <div className="rf-metric-box">
           <div className="rf-metric-top">
-            <span className="flex items-center gap-1.5 text-purple-400">
-              <Archive className="w-3.5 h-3.5" />
+            <span className="flex items-center gap-1.5 text-[var(--color-accent-strong)]">
+              <Archive className="w-3.5 h-3.5" strokeWidth={1.7} />
               ภาพประวัติสะสมทั้งหมด
             </span>
-            <span className="font-mono text-[10px] text-purple-400">3 จุดกล้อง</span>
+            <span className="font-mono text-[10px] text-[var(--color-accent-text)] font-semibold">3 จุดกล้อง</span>
           </div>
           <div className="rf-metric-body">
-            <span className="rf-metric-num" style={{ color: '#c084fc' }}>
+            <span className="rf-metric-num" style={{ color: 'var(--color-accent-text)' }}>
               {totalBacklog.toLocaleString()}
             </span>
             <span className="rf-metric-unit">รูป ทั้งหมด</span>
@@ -337,7 +337,7 @@ export default function RoboflowStudio({ apiBase }) {
         <div className="rf-card-block-header">
           <div>
             <h3 className="rf-block-title">
-              <Archive className="w-4 h-4 text-purple-400" />
+              <Archive className="w-4 h-4 text-[var(--color-accent-strong)]" strokeWidth={1.7} />
               <span>ส่งภาพย้อนหลังแยกตามกล้อง (Partitioned Historical Backlog Sync)</span>
             </h3>
             <p className="rf-block-desc">
@@ -352,7 +352,7 @@ export default function RoboflowStudio({ apiBase }) {
                 onClick={handleCancelBulk}
                 className="rf-btn-cancel-job"
               >
-                <Square className="w-3.5 h-3.5 fill-current" />
+                <Square className="w-3.5 h-3.5 fill-current" strokeWidth={1.7} />
                 <span>ยกเลิกงาน (Cancel Job)</span>
               </button>
             ) : (
@@ -362,7 +362,7 @@ export default function RoboflowStudio({ apiBase }) {
                 disabled={startingBulk}
                 className="rf-btn-start-job"
               >
-                <Play className="w-3.5 h-3.5 fill-current" />
+                <Play className="w-3.5 h-3.5 fill-current" strokeWidth={1.7} />
                 <span>
                   {startingBulk
                     ? 'กำลังเริ่มส่ง...'
@@ -386,7 +386,7 @@ export default function RoboflowStudio({ apiBase }) {
               >
                 <div className="rf-cam-card-top">
                   <span>{cam.name}</span>
-                  {isSelected && <Check className="w-4 h-4 text-indigo-400" />}
+                  {isSelected && <Check className="w-4 h-4 text-[var(--color-accent-strong)]" strokeWidth={1.7} />}
                 </div>
                 <div className="rf-cam-card-bottom">
                   <span className="rf-cam-num">{count.toLocaleString()}</span>
@@ -401,7 +401,7 @@ export default function RoboflowStudio({ apiBase }) {
         <div className="rf-status-banner">
           <div className="rf-status-item">
             <span className="rf-status-item-label">โครงสร้าง Batch Name บน Roboflow</span>
-            <span className="rf-status-item-val font-mono text-sky-300">
+            <span className="rf-status-item-val font-mono text-[var(--color-ink)]">
               {selectedCam === 'all'
                 ? 'CAM{1..3}_YYYY-MM-DD_HHh'
                 : `${selectedCam.toUpperCase()}_YYYY-MM-DD_HHh`}
@@ -410,25 +410,25 @@ export default function RoboflowStudio({ apiBase }) {
 
           <div className="rf-status-item">
             <span className="rf-status-item-label">แท็กกำกับภาพ (Tags)</span>
-            <span className="rf-status-item-val font-mono text-purple-300">
+            <span className="rf-status-item-val font-mono text-[var(--color-ink-secondary)]">
               {selectedCam === 'all' ? 'cam1, cam2, cam3' : selectedCam} • 2026-09-24 • 06:00-20:00
             </span>
           </div>
 
           <div className="rf-status-item">
             <span className="rf-status-item-label">สถานะ Worker</span>
-            <span className="rf-status-item-val flex items-center gap-1.5 font-mono text-emerald-400">
-              <span className={`w-2 h-2 rounded-full ${job?.is_active ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`}></span>
+            <span className="rf-status-item-val flex items-center gap-1.5 font-mono text-[var(--color-status-free-text)]">
+              <span className={`w-2 h-2 rounded-full ${job?.is_active ? 'bg-[var(--color-status-mod-text)] animate-ping' : 'bg-[var(--color-status-free-text)]'}`}></span>
               <span>{job?.status || 'IDLE'}</span>
               {job?.target_camera && (
-                <span className="text-[10px] text-indigo-300 bg-indigo-950/60 px-1.5 py-0.5 rounded">[{job.target_camera}]</span>
+                <span className="text-[10px] text-[var(--color-ink-secondary)] bg-[var(--color-surface)] border border-[var(--color-border)] px-1.5 py-0.5 rounded-[var(--radius-pill)]">[{job.target_camera}]</span>
               )}
             </span>
           </div>
 
           <div className="rf-status-item" style={{ flex: '1 1 200px' }}>
             <span className="rf-status-item-label">ข้อความล่าสุด</span>
-            <span className="rf-status-item-val text-slate-300 truncate" title={job?.last_message}>
+            <span className="rf-status-item-val text-[var(--color-ink-secondary)] truncate" title={job?.last_message}>
               {job?.last_message || 'พร้อมส่งข้อมูลย้อนหลัง'}
             </span>
           </div>
@@ -437,9 +437,9 @@ export default function RoboflowStudio({ apiBase }) {
         {/* Active Job Progress Bar */}
         {job?.is_active && job?.total_candidates > 0 && (
           <div>
-            <div className="flex justify-between text-xs text-slate-300 mb-1.5">
+            <div className="flex justify-between text-xs text-[var(--color-ink-secondary)] mb-1.5 font-medium">
               <span>ความคืบหน้าการส่งข้อมูลภาพย้อนหลัง:</span>
-              <span className="font-mono text-purple-300 font-bold">
+              <span className="font-mono text-[var(--color-ink)] font-bold">
                 {job?.processed_images} / {job?.total_candidates} รูป ({Math.round((job?.processed_images / job?.total_candidates) * 100)}%)
               </span>
             </div>
@@ -458,7 +458,7 @@ export default function RoboflowStudio({ apiBase }) {
         <div className="rf-card-block-header">
           <div>
             <h3 className="rf-block-title">
-              <Database className="w-4 h-4 text-emerald-400" />
+              <Database className="w-4 h-4 text-[var(--color-accent-strong)]" strokeWidth={1.7} />
               <span>ประวัติการส่งข้อมูลภาพ (Audit Logs - roboflow_image_uploads)</span>
             </h3>
             <p className="rf-block-desc">
@@ -504,7 +504,7 @@ export default function RoboflowStudio({ apiBase }) {
 
                   return (
                     <tr key={item.id} className="rf-table-row">
-                      <td className="font-mono text-slate-500">{item.id}</td>
+                      <td className="font-mono text-[var(--color-ink-muted)]">{item.id}</td>
                       <td>
                         <span className={`rf-cam-pill ${camId}`}>
                           {item.camera_id ? item.camera_id.toUpperCase() : '-'}
@@ -512,13 +512,13 @@ export default function RoboflowStudio({ apiBase }) {
                       </td>
                       <td>
                         <span
-                          className="font-mono text-slate-200 block truncate max-w-[260px]"
+                          className="font-mono text-[var(--color-ink)] block truncate max-w-[260px]"
                           title={item.file_path}
                         >
                           {fileName}
                         </span>
                       </td>
-                      <td className="text-slate-400 font-mono text-[11px]">
+                      <td className="text-[var(--color-ink-secondary)] font-mono text-[11px]">
                         {item.captured_at
                           ? new Date(item.captured_at).toLocaleTimeString('th-TH', {
                               hour: '2-digit',
@@ -530,14 +530,14 @@ export default function RoboflowStudio({ apiBase }) {
                       <td>
                         <span className={`rf-badge-status ${statusKey}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${
-                            statusKey === 'uploaded' ? 'bg-emerald-400' :
-                            statusKey === 'uploading' ? 'bg-sky-400' :
-                            statusKey === 'failed' ? 'bg-rose-400' : 'bg-amber-400'
+                            statusKey === 'uploaded' ? 'bg-[var(--color-status-free-text)]' :
+                            statusKey === 'uploading' ? 'bg-[var(--color-accent-strong)]' :
+                            statusKey === 'failed' ? 'bg-[var(--color-status-full-text)]' : 'bg-[var(--color-status-mod-text)]'
                           }`}></span>
                           {item.status || 'PENDING'}
                         </span>
                       </td>
-                      <td className="text-slate-400 font-mono text-[11px]">
+                      <td className="text-[var(--color-ink-secondary)] font-mono text-[11px]">
                         {item.uploaded_at ? (
                           new Date(item.uploaded_at).toLocaleTimeString('th-TH', {
                             hour: '2-digit',
@@ -545,12 +545,12 @@ export default function RoboflowStudio({ apiBase }) {
                             second: '2-digit'
                           })
                         ) : (
-                          <span className="text-slate-500 italic">รอรอบ 30 นาที</span>
+                          <span className="text-[var(--color-ink-muted)] italic">รอรอบ 30 นาที</span>
                         )}
                       </td>
                       <td>
                         <span
-                          className="font-mono text-indigo-300 block truncate max-w-[120px]"
+                          className="font-mono text-[var(--color-accent-text)] block truncate max-w-[120px]"
                           title={item.roboflow_image_id || ''}
                         >
                           {item.roboflow_image_id || '-'}
@@ -561,7 +561,7 @@ export default function RoboflowStudio({ apiBase }) {
                 })
               ) : (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--color-ink-secondary)' }}>
                     ไม่มีรายการภาพในตัวกรองนี้
                   </td>
                 </tr>

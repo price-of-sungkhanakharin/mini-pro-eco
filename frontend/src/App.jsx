@@ -8,6 +8,9 @@ import SetupPage from './pages/setup/SetupPage.jsx'
 import AutoTrainerPage from './pages/trainer/AutoTrainerPage.jsx'
 import IngestionLogsPage from './pages/ingestion_logs/IngestionLogsPage.jsx'
 import EcosystemPage from './pages/ecosystem/EcosystemPage.jsx'
+import AnalyticsPage from './pages/analytics/AnalyticsPage.jsx'
+import ProjectDetailsPage from './pages/details/ProjectDetailsPage.jsx'
+
 import {
   getSavedOrInitialSlots,
   calculateSlotCounts,
@@ -67,10 +70,11 @@ function App() {
     return saved ? JSON.parse(saved) : null
   })
 
-  // Dashboard Navigation State
   const [currentView, setCurrentView] = useState(() => {
-    if (typeof window !== 'undefined' && window.location.search.includes('view=setup')) {
-      return 'setup'
+    if (typeof window !== 'undefined') {
+      if (window.location.search.includes('view=setup')) {
+        return 'setup'
+      }
     }
     return 'dashboard'
   })
@@ -336,6 +340,12 @@ function App() {
           )}
           {currentView === 'ecosystem' && (
             <EcosystemPage />
+          )}
+          {currentView === 'analytics' && (
+            <AnalyticsPage apiBase={API_BASE_URL} />
+          )}
+          {currentView === 'details' && (
+            <ProjectDetailsPage onNavigate={handleNavigate} />
           )}
         </BaseLayout>
       )}

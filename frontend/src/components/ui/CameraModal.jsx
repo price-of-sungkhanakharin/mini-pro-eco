@@ -23,6 +23,14 @@ import {
 } from 'lucide-react'
 import { formatTimestampThai, formatUptime, formatHeapKb } from '../../utils/dumpData'
 
+/**
+ * CameraModal (Modern Fluid Bento Box High-Resolution CCTV Inspector)
+ * Features:
+ * - 1600x1200 native feed inspection with dynamic SVG ROI polygons
+ * - Real-time ESP32 edge telemetry cards (Chip Temp, WiFi RSSI, Heap KB, Uptime)
+ * - Real-time AI 15-minute vacancy prediction banner
+ * - Interactive slot registry filterable by vehicle type and occupancy
+ */
 export default function CameraModal({ camera, onClose, onNavigate }) {
   const [showRoi, setShowRoi] = useState(true)
   const [slotFilter, setSlotFilter] = useState('all') // 'all' | 'car' | 'bike' | 'vacant' | 'occupied'
@@ -53,10 +61,10 @@ export default function CameraModal({ camera, onClose, onNavigate }) {
 
   const wifiRssi = parseInt(telemetry.wifi_rssi_dbm || -82, 10)
   const getWifiQuality = (rssi) => {
-    if (rssi >= -60) return { label: 'Strong (-60dBm)', color: 'text-emerald-400', badgeBg: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' }
-    if (rssi >= -75) return { label: 'Good (-75dBm)', color: 'text-emerald-300', badgeBg: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' }
-    if (rssi >= -85) return { label: 'Fair (-85dBm)', color: 'text-amber-300', badgeBg: 'bg-amber-500/10 text-amber-300 border-amber-500/30' }
-    return { label: 'Weak (<-85dBm)', color: 'text-rose-400', badgeBg: 'bg-rose-500/10 text-rose-300 border-rose-500/30' }
+    if (rssi >= -60) return { label: 'Strong (-60dBm)', color: 'text-emerald-400', badgeBg: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' }
+    if (rssi >= -75) return { label: 'Good (-75dBm)', color: 'text-emerald-300', badgeBg: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' }
+    if (rssi >= -85) return { label: 'Fair (-85dBm)', color: 'text-amber-300', badgeBg: 'bg-amber-500/15 text-amber-300 border-amber-500/30' }
+    return { label: 'Weak (<-85dBm)', color: 'text-rose-400', badgeBg: 'bg-rose-500/15 text-rose-300 border-rose-500/30' }
   }
   const wifiQuality = getWifiQuality(wifiRssi)
 
@@ -77,21 +85,21 @@ export default function CameraModal({ camera, onClose, onNavigate }) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Top Header Bar */}
-        <div className="modal-header-bar">
+        <div className="camera-modal-header">
           <div className="flex items-center gap-3">
-            <div className="modal-cam-badge font-bold tracking-wider">
+            <div className="cam-code-tag font-bold tracking-wider text-[var(--color-status-free-text)]">
               {camera.slotCode || 'CAM-01'}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="modal-title">{camera.name}</h3>
+                <h3 className="text-base font-bold text-[var(--color-ink)] tracking-tight">{camera.name}</h3>
                 {isRealCam && (
                   <span className="badge-chip badge-chip-live text-[10px] tracking-wide">
                     REAL EDGE DATA
                   </span>
                 )}
               </div>
-              <span className="modal-subtitle">
+              <span className="text-xs text-[var(--color-ink-secondary)]">
                 {camera.subtitle || 'กล้องตรวจจับอัจฉริยะ'} • {camera.device || 'ESP32-CAM'} ({camera.ip || '172.30.91.44'})
               </span>
             </div>
@@ -105,54 +113,53 @@ export default function CameraModal({ camera, onClose, onNavigate }) {
                 onClick={() => setShowRoi(!showRoi)}
                 title="เปิด/ปิด ผังพิกัดช่องจอด ROI บนภาพ"
               >
-                <Layers className="w-3.5 h-3.5" />
+                <Layers className="w-3.5 h-3.5" strokeWidth={1.7} />
                 <span>{showRoi ? 'ซ่อนผัง ROI' : 'แสดงผัง ROI'}</span>
               </button>
             )}
 
-            <span className={`modal-live-tag ${camera.isOnline !== false ? 'online' : 'offline'}`}>
+            <span className={`cam-live-indicator ${camera.isOnline !== false ? 'online' : 'offline'}`}>
               {camera.isOnline !== false ? (
                 <>
-                  <span className="live-ping"></span>
                   <span className="live-dot"></span>
                   <span>{isRealCam ? 'ONLINE • 5s SYNC' : 'LIVE FEED'}</span>
                 </>
               ) : (
                 <>
                   <span className="offline-dot"></span>
-                  <span className="text-rose-300 font-bold">OFFLINE ({camera.statusInfo?.diffText || 'ภาพล่าสุดเกิน 15 นาที'})</span>
+                  <span className="text-[var(--color-status-full-text)] font-bold">OFFLINE ({camera.statusInfo?.diffText || 'ภาพล่าสุดเกิน 15 นาที'})</span>
                 </>
               )}
             </span>
 
             <button
               type="button"
-              className="btn-modal-close"
+              className="btn-refresh-stream"
               onClick={onClose}
               title="ปิดหน้าต่าง (Esc)"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" strokeWidth={1.7} />
             </button>
           </div>
         </div>
 
         {/* Modal Body Grid */}
-        <div className="modal-body-grid">
+        <div className="camera-modal-body">
           {/* Main Visual Viewport */}
-          <div className="modal-viewport-container">
-            <div className="modal-canvas-wrapper">
+          <div className="camera-modal-canvas-wrap flex flex-col justify-between">
+            <div className="w-full relative flex items-center justify-center">
               {camera.imageUrl ? (
-                <div className="modal-img-frame relative">
+                <div className="relative w-full overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)] bg-black">
                   <img
                     src={camera.imageUrl}
                     alt={camera.name}
-                    className="modal-feed-img"
+                    className="camera-modal-img w-full h-auto object-contain max-h-[60vh]"
                   />
 
                   {/* Offline HUD Alert */}
                   {camera.isOnline === false && (
                     <div className="cam-offline-banner">
-                      <AlertTriangle className="w-4 h-4 text-rose-300 shrink-0 animate-pulse" />
+                      <AlertTriangle className="w-4 h-4 text-rose-100 shrink-0 animate-pulse" strokeWidth={1.7} />
                       <span>
                         กล้องออฟไลน์ • ภาพล่าสุด {camera.statusInfo?.diffText || 'เกิน 15 นาที'}
                       </span>
@@ -162,7 +169,7 @@ export default function CameraModal({ camera, onClose, onNavigate }) {
                   {/* SVG ROI Vector Overlay */}
                   {showRoi && slots.length > 0 && (
                     <svg
-                      className="modal-svg-roi-overlay"
+                      className="absolute inset-0 w-full h-full pointer-events-none"
                       viewBox="0 0 1600 1200"
                     >
                       {slots.map((slot) => {
@@ -179,9 +186,11 @@ export default function CameraModal({ camera, onClose, onNavigate }) {
                           <g key={slot.id}>
                             <polygon
                               points={pointsString}
-                              className={`slot-polygon ${
-                                isBike ? 'bike-polygon' : 'car-polygon'
-                              } ${isOccupied ? 'occupied' : 'vacant'}`}
+                              className={`transition-all duration-300 ${
+                                isOccupied
+                                  ? 'fill-rose-500/25 stroke-rose-400 stroke-2'
+                                  : 'fill-emerald-500/25 stroke-emerald-400 stroke-2'
+                              }`}
                             />
                             <rect
                               x={center.x - 38}
@@ -189,15 +198,13 @@ export default function CameraModal({ camera, onClose, onNavigate }) {
                               width={76}
                               height={28}
                               rx={6}
-                              className={`slot-label-bg ${
-                                isBike ? 'bike-label' : 'car-label'
-                              } ${isOccupied ? 'occupied' : 'vacant'}`}
+                              className={isOccupied ? 'fill-rose-600/90' : 'fill-emerald-600/90'}
                             />
                             <text
                               x={center.x}
                               y={center.y + 5}
                               textAnchor="middle"
-                              className="slot-label-text"
+                              className="fill-white text-[13px] font-bold font-mono"
                             >
                               {slot.id}
                             </text>
@@ -208,48 +215,45 @@ export default function CameraModal({ camera, onClose, onNavigate }) {
                   )}
 
                   {/* High-Tech HUD Badges on image */}
-                  <div className="modal-hud-badge-top">
+                  <div className="absolute top-3 left-3 bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-[var(--radius-pill)] border border-white/20 text-[11px] text-white flex items-center gap-1.5 font-mono">
                     <span className={`w-2 h-2 rounded-full ${camera.isOnline !== false ? 'bg-emerald-400 animate-ping' : 'bg-rose-400'}`}></span>
                     <span>1600 × 1200 UXGA • {camera.isOnline !== false ? 'Native Resolution' : 'OFFLINE ARCHIVE'}</span>
                   </div>
 
                   {camera.snapshotTimestamp && (
-                    <div className="modal-hud-badge-bottom">
+                    <div className="absolute bottom-3 right-3 bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-[var(--radius-pill)] border border-white/20 text-[11px] text-emerald-300 font-mono">
                       REC: {formatTimestampThai(camera.snapshotTimestamp)}
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 gap-2">
-                  <Activity className="w-8 h-8 opacity-40 animate-pulse" />
+                <div className="w-full h-64 flex flex-col items-center justify-center text-[var(--color-ink-muted)] gap-2">
+                  <Activity className="w-8 h-8 opacity-40 animate-pulse" strokeWidth={1.7} />
                   <p className="text-sm">กำลังเชื่อมต่อสัญญาณภาพกล้อง...</p>
                 </div>
               )}
             </div>
 
-            {/* Viewport Meta Bar */}
-            <div className="modal-viewport-footer">
-              <div className="flex items-center gap-4 text-xs text-slate-400">
-                <span>FPS: <strong className="text-white">{camera.fps || '0.2'}</strong></span>
-                <span>Latency: <strong className="text-white">{camera.latency || '5.0s'}</strong></span>
-                <span>IP: <span className="text-cyan-400 font-medium font-mono">{camera.ip}</span></span>
-                {telemetry.filename && (
-                  <span className="hidden sm:inline">ไฟล์: <span className="text-emerald-400 font-medium font-mono">{telemetry.filename}</span></span>
-                )}
+            {/* Viewport Meta Footer */}
+            <div className="w-full mt-3 pt-3 border-t border-[var(--color-border)] flex items-center justify-between text-xs text-[var(--color-ink-secondary)] flex-wrap gap-2">
+              <div className="flex items-center gap-4">
+                <span>FPS: <strong className="text-[var(--color-ink)] font-mono">{camera.fps || '0.2'}</strong></span>
+                <span>Latency: <strong className="text-[var(--color-ink)] font-mono">{camera.latency || '5.0s'}</strong></span>
+                <span>IP: <span className="text-[var(--color-ink)] font-medium font-mono">{camera.ip}</span></span>
               </div>
-              <span className={`text-xs font-semibold flex items-center gap-1.5 px-2.5 py-1 rounded-md border ${
+              <span className={`text-xs font-semibold flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--radius-pill)] border ${
                 camera.isOnline !== false
-                  ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
-                  : 'text-rose-300 bg-rose-500/20 border-rose-500/40'
+                  ? 'text-[var(--color-status-free-text)] bg-[var(--color-status-free-bg)] border-[var(--color-status-free-border)]'
+                  : 'text-[var(--color-status-full-text)] bg-[var(--color-status-full-bg)] border-[var(--color-status-full-border)]'
               }`}>
                 {camera.isOnline !== false ? (
                   <>
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-[var(--color-status-free-text)]" strokeWidth={1.7} />
                     <span>{telemetry.status || 'ONLINE (HEALTHY)'}</span>
                   </>
                 ) : (
                   <>
-                    <AlertTriangle className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
+                    <AlertTriangle className="w-3.5 h-3.5 text-[var(--color-status-full-text)] animate-pulse" strokeWidth={1.7} />
                     <span>OFFLINE (ภาพล่าสุดเกิน 15 นาที)</span>
                   </>
                 )}
@@ -257,205 +261,158 @@ export default function CameraModal({ camera, onClose, onNavigate }) {
             </div>
           </div>
 
-          {/* Right Detail Pane (Redesigned with Small Gray Labels & Huge Vivid Values) */}
-          <div className="modal-detail-pane flex flex-col justify-between">
+          {/* Right Detail Pane (Bento Telemetry Cards & Slot Registry) */}
+          <div className="camera-modal-side">
             <div className="flex flex-col gap-3.5">
               
               {/* SECTION 1: HARDWARE & EDGE TELEMETRY */}
-              <div className="telem-block-group">
-                <div className="telem-block-header">
-                  <span className="telem-block-title">ESP32 Hardware & Telemetry</span>
-                  <span className="telem-block-tag">Real Edge Node</span>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[var(--color-ink)] uppercase tracking-wider">ESP32 Hardware & Telemetry</span>
+                  <span className="text-[10px] text-[var(--color-status-free-text)] font-mono font-bold bg-[var(--color-status-free-bg)] px-2 py-0.5 rounded-[var(--radius-pill)] border border-[var(--color-status-free-border)]">Real Node</span>
                 </div>
 
                 {/* 4 Multi-colored KPI Stat Tiles */}
-                <div className="grid grid-cols-2 gap-2.5">
-                  {/* Tile 1: Chip Temperature (Amber / Orange / Red) */}
-                  <div className={`telem-stat-tile ${isHighTemp ? 'tile-glow-danger' : 'tile-glow-amber'}`}>
-                    <div className="tile-label-row">
-                      <span className="tile-label">CHIP TEMPERATURE</span>
-                      <Thermometer className={`w-3.5 h-3.5 ${isHighTemp ? 'text-rose-400' : 'text-amber-400'}`} />
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Tile 1: Chip Temperature */}
+                  <div className="bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-[var(--radius-tile)] p-2.5 flex flex-col justify-between">
+                    <div className="flex items-center justify-between text-[var(--color-ink-secondary)] text-[10px] font-semibold uppercase">
+                      <span>Chip Temp</span>
+                      <Thermometer className={`w-3.5 h-3.5 ${isHighTemp ? 'text-[var(--color-status-full-text)]' : 'text-[var(--color-status-mod-text)]'}`} strokeWidth={1.7} />
                     </div>
-                    <div className="tile-value-row">
-                      <span className={`tile-value-giant ${isHighTemp ? 'text-rose-400' : 'text-amber-400'}`}>
+                    <div className="flex items-baseline gap-1 my-1">
+                      <span className={`text-lg font-black font-mono tabular-nums ${isHighTemp ? 'text-[var(--color-status-full-text)]' : 'text-[var(--color-status-mod-text)]'}`}>
                         {chipTemp.toFixed(1)}
                       </span>
-                      <span className="tile-unit-symbol text-amber-300/80">°C</span>
+                      <span className="text-xs text-[var(--color-ink-secondary)]">°C</span>
                     </div>
-                    <div className="tile-footer-status">
-                      <span className={`tile-badge ${isHighTemp ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'}`}>
-                        {isHighTemp ? 'ความร้อนสูง (High)' : 'ปกติ (Safe)'}
-                      </span>
-                    </div>
+                    <span className={`text-[10px] font-semibold ${isHighTemp ? 'text-[var(--color-status-full-text)]' : 'text-[var(--color-status-mod-text)]'}`}>
+                      {isHighTemp ? 'ความร้อนสูง (High)' : 'ปกติ (Safe)'}
+                    </span>
                   </div>
 
-                  {/* Tile 2: Wi-Fi Signal RSSI (Electric Emerald) */}
-                  <div className="telem-stat-tile tile-glow-emerald">
-                    <div className="tile-label-row">
-                      <span className="tile-label">WI-FI SIGNAL RSSI</span>
-                      <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+                  {/* Tile 2: Wi-Fi Signal RSSI */}
+                  <div className="bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-[var(--radius-tile)] p-2.5 flex flex-col justify-between">
+                    <div className="flex items-center justify-between text-[var(--color-ink-secondary)] text-[10px] font-semibold uppercase">
+                      <span>WiFi Signal</span>
+                      <Wifi className="w-3.5 h-3.5 text-[var(--color-status-free-text)]" strokeWidth={1.7} />
                     </div>
-                    <div className="tile-value-row">
-                      <span className="tile-value-giant text-emerald-400">
+                    <div className="flex items-baseline gap-1 my-1">
+                      <span className="text-lg font-black font-mono text-[var(--color-status-free-text)] tabular-nums">
                         {wifiRssi}
                       </span>
-                      <span className="tile-unit-symbol text-emerald-300/80">dBm</span>
+                      <span className="text-xs text-[var(--color-ink-secondary)]">dBm</span>
                     </div>
-                    <div className="tile-footer-status">
-                      <span className={`tile-badge border ${wifiQuality.badgeBg}`}>
-                        {wifiQuality.label}
-                      </span>
-                    </div>
+                    <span className="text-[10px] font-semibold text-[var(--color-status-free-text)]">
+                      {wifiQuality.label}
+                    </span>
                   </div>
 
-                  {/* Tile 3: Free Heap Memory (Electric Cyan) */}
-                  <div className="telem-stat-tile tile-glow-cyan">
-                    <div className="tile-label-row">
-                      <span className="tile-label">FREE HEAP RAM</span>
-                      <HardDrive className="w-3.5 h-3.5 text-cyan-400" />
+                  {/* Tile 3: Free Heap Memory */}
+                  <div className="bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-[var(--radius-tile)] p-2.5 flex flex-col justify-between">
+                    <div className="flex items-center justify-between text-[var(--color-ink-secondary)] text-[10px] font-semibold uppercase">
+                      <span>Free Heap</span>
+                      <HardDrive className="w-3.5 h-3.5 text-[var(--color-accent-strong)]" strokeWidth={1.7} />
                     </div>
-                    <div className="tile-value-row">
-                      <span className="tile-value-giant text-cyan-400">
+                    <div className="flex items-baseline gap-1 my-1">
+                      <span className="text-lg font-black font-mono text-[var(--color-ink)] tabular-nums">
                         {Math.round(freeHeap / 1024)}
                       </span>
-                      <span className="tile-unit-symbol text-cyan-300/80">KB</span>
+                      <span className="text-xs text-[var(--color-ink-secondary)]">KB</span>
                     </div>
-                    <div className="tile-footer-status">
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        PSRAM: <strong className="text-cyan-300">{(freePsram / (1024 * 1024)).toFixed(1)} MB</strong>
-                      </span>
-                    </div>
+                    <span className="text-[10px] text-[var(--color-ink-secondary)] font-mono tabular-nums">
+                      PSRAM: {(freePsram / (1024 * 1024)).toFixed(1)}MB
+                    </span>
                   </div>
 
-                  {/* Tile 4: Device Uptime (Vivid Purple) */}
-                  <div className="telem-stat-tile tile-glow-purple">
-                    <div className="tile-label-row">
-                      <span className="tile-label">DEVICE UPTIME</span>
-                      <Clock className="w-3.5 h-3.5 text-purple-400" />
+                  {/* Tile 4: Device Uptime */}
+                  <div className="bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-[var(--radius-tile)] p-2.5 flex flex-col justify-between">
+                    <div className="flex items-center justify-between text-[var(--color-ink-secondary)] text-[10px] font-semibold uppercase">
+                      <span>Uptime</span>
+                      <Clock className="w-3.5 h-3.5 text-[var(--color-accent-strong)]" strokeWidth={1.7} />
                     </div>
-                    <div className="tile-value-row">
-                      <span className="tile-value-giant text-purple-400">
+                    <div className="flex items-baseline gap-1 my-1">
+                      <span className="text-sm font-bold font-mono text-[var(--color-ink)] truncate tabular-nums">
                         {formatUptime(uptimeSec)}
                       </span>
                     </div>
-                    <div className="tile-footer-status">
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        AEC Light: <strong className="text-purple-300">{aecVal}</strong>
-                      </span>
-                    </div>
+                    <span className="text-[10px] text-[var(--color-ink-secondary)] font-mono">
+                      AEC: {aecVal}
+                    </span>
                   </div>
                 </div>
               </div>
 
               {/* SECTION 2: PARKING CAPACITY & AVAILABILITY */}
-              <div className="telem-block-group">
-                <div className="telem-block-header">
-                  <span className="telem-block-title">Parking Capacity & Real-Time Slots</span>
-                  <span className="telem-block-tag">ROI Status</span>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[var(--color-ink)] uppercase tracking-wider">Parking Capacity</span>
+                  <span className="text-[10px] text-[var(--color-ink-secondary)] font-mono">ROI Summary</span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2.5">
-                  {/* Car Capacity (Vivid Emerald) */}
-                  <div className="telem-stat-tile tile-glow-emerald">
-                    <div className="tile-label-row">
-                      <span className="tile-label">ช่องจอดรถยนต์</span>
-                      <Car className="w-3.5 h-3.5 text-emerald-400" />
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Car Capacity */}
+                  <div className="bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-[var(--radius-tile)] p-2.5 flex flex-col">
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--color-accent-strong)] mb-1">
+                      <span>รถยนต์</span>
+                      <Car className="w-3.5 h-3.5" strokeWidth={1.7} />
                     </div>
-                    <div className="tile-value-row">
-                      <span className="tile-value-giant text-emerald-400">
-                        {carFree}
-                      </span>
-                      <span className="text-sm font-medium text-slate-400">/ {carTotal} ช่อง</span>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-xl font-black font-mono text-[var(--color-ink)] tabular-nums">{carFree}</span>
+                      <span className="text-xs text-[var(--color-ink-secondary)]">/ {carTotal} ช่อง</span>
                     </div>
-                    <div className="w-full bg-black/40 rounded-full h-1.5 mt-2 overflow-hidden">
+                    <div className="w-full bg-[var(--color-border)] rounded-full h-1.5 mt-2 overflow-hidden">
                       <div
-                        className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                        className="bg-[var(--color-accent-strong)] h-full rounded-full transition-all duration-500"
                         style={{ width: `${carTotal > 0 ? (carFree / carTotal) * 100 : 0}%` }}
                       ></div>
                     </div>
                   </div>
 
-                  {/* Motorcycle Capacity (Vivid Cyan) */}
-                  <div className="telem-stat-tile tile-glow-cyan">
-                    <div className="tile-label-row">
-                      <span className="tile-label">ช่องจอดจักรยานยนต์</span>
-                      <Bike className="w-3.5 h-3.5 text-cyan-400" />
+                  {/* Motorcycle Capacity */}
+                  <div className="bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-[var(--radius-tile)] p-2.5 flex flex-col">
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--color-status-free-text)] mb-1">
+                      <span>มอเตอร์ไซค์</span>
+                      <Bike className="w-3.5 h-3.5" strokeWidth={1.7} />
                     </div>
-                    <div className="tile-value-row">
-                      <span className="tile-value-giant text-cyan-400">
-                        {bikeFree}
-                      </span>
-                      <span className="text-sm font-medium text-slate-400">/ {bikeTotal} ช่อง</span>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-xl font-black font-mono text-[var(--color-ink)] tabular-nums">{bikeFree}</span>
+                      <span className="text-xs text-[var(--color-ink-secondary)]">/ {bikeTotal} ช่อง</span>
                     </div>
-                    <div className="w-full bg-black/40 rounded-full h-1.5 mt-2 overflow-hidden">
+                    <div className="w-full bg-[var(--color-border)] rounded-full h-1.5 mt-2 overflow-hidden">
                       <div
-                        className="bg-cyan-500 h-full rounded-full transition-all duration-500"
+                        className="bg-[var(--color-status-free-text)] h-full rounded-full transition-all duration-500"
                         style={{ width: `${bikeTotal > 0 ? (bikeFree / bikeTotal) * 100 : 0}%` }}
                       ></div>
                     </div>
                   </div>
                 </div>
-
-                {/* AI Forecast Banner */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                  {carTotal > 0 && (
-                    <div className="ai-forecast-card">
-                      <div className="flex items-center gap-2">
-                        <Car className="w-4 h-4 text-emerald-400" />
-                        <span className="tile-label" style={{ color: '#34d399', opacity: 0.9 }}>
-                          ทำนายรถยนต์ (+15น.)
-                        </span>
-                      </div>
-                      <div className="flex items-baseline gap-1 mt-0.5">
-                        <span className={`text-base font-bold ${carFree >= 2 ? 'text-emerald-400' : carFree === 1 ? 'text-amber-400' : 'text-rose-400'}`}>
-                          {carFree >= 2 ? 'โอกาสมีที่จอดสูง' : carFree === 1 ? 'โอกาสปานกลาง' : 'เต็ม'}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {bikeTotal > 0 && (
-                    <div className="ai-forecast-card">
-                      <div className="flex items-center gap-2">
-                        <Bike className="w-4 h-4 text-cyan-400" />
-                        <span className="tile-label" style={{ color: '#22d3ee', opacity: 0.9 }}>
-                          ทำนายมอไซค์ (+15น.)
-                        </span>
-                      </div>
-                      <div className="flex items-baseline gap-1 mt-0.5">
-                        <span className={`text-base font-bold ${bikeFree >= 3 || (bikeTotal > 0 && bikeFree / bikeTotal >= 0.15) ? 'text-emerald-400' : bikeFree >= 1 ? 'text-amber-400' : 'text-rose-400'}`}>
-                          {bikeFree >= 3 || (bikeTotal > 0 && bikeFree / bikeTotal >= 0.15) ? 'โอกาสมีที่จอดสูง' : bikeFree >= 1 ? 'โอกาสปานกลาง' : 'เต็ม'}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
               </div>
 
               {/* SECTION 3: SLOT REGISTRY LIST */}
-              <div className="telem-block-group">
-                <div className="telem-block-header">
-                  <span className="telem-block-title">รายการช่องจอด (Slot Registry • {slots.length})</span>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[var(--color-ink)] uppercase tracking-wider">Slot Registry ({slots.length})</span>
                   
                   {/* Filter Pills */}
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 bg-[var(--color-surface-muted)] p-0.5 rounded-[var(--radius-pill)] border border-[var(--color-border)]">
                     <button
                       type="button"
-                      className={`mini-filter-pill ${slotFilter === 'all' ? 'active' : ''}`}
+                      className={`px-2 py-0.5 rounded-[var(--radius-pill)] text-[10px] font-medium transition-colors ${slotFilter === 'all' ? 'bg-[var(--color-surface)] text-[var(--color-ink)] shadow-sm font-bold' : 'text-[var(--color-ink-secondary)]'}`}
                       onClick={() => setSlotFilter('all')}
                     >
                       ทั้งหมด
                     </button>
                     <button
                       type="button"
-                      className={`mini-filter-pill ${slotFilter === 'vacant' ? 'active-green' : ''}`}
+                      className={`px-2 py-0.5 rounded-[var(--radius-pill)] text-[10px] font-medium transition-colors ${slotFilter === 'vacant' ? 'bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border border-[var(--color-status-free-border)]' : 'text-[var(--color-ink-secondary)]'}`}
                       onClick={() => setSlotFilter('vacant')}
                     >
                       ว่าง
                     </button>
                     <button
                       type="button"
-                      className={`mini-filter-pill ${slotFilter === 'occupied' ? 'active-red' : ''}`}
+                      className={`px-2 py-0.5 rounded-[var(--radius-pill)] text-[10px] font-medium transition-colors ${slotFilter === 'occupied' ? 'bg-[var(--color-status-full-bg)] text-[var(--color-status-full-text)] border border-[var(--color-status-full-border)]' : 'text-[var(--color-ink-secondary)]'}`}
                       onClick={() => setSlotFilter('occupied')}
                     >
                       มีรถ
@@ -463,9 +420,9 @@ export default function CameraModal({ camera, onClose, onNavigate }) {
                   </div>
                 </div>
 
-                <div className="modal-slots-scroll-list max-h-[180px]">
+                <div className="flex flex-col gap-1.5 max-h-[160px] overflow-y-auto pr-1">
                   {filteredSlots.length === 0 ? (
-                    <div className="text-center py-4 text-xs text-slate-500">
+                    <div className="text-center py-4 text-xs text-[var(--color-ink-muted)]">
                       ไม่มีช่องจอดตรงตามตัวกรอง
                     </div>
                   ) : (
@@ -474,25 +431,27 @@ export default function CameraModal({ camera, onClose, onNavigate }) {
                       return (
                         <div
                           key={slot.id}
-                          className="modal-slot-card"
+                          className="bg-[var(--color-surface-muted)] border border-[var(--color-border)] rounded-[var(--radius-tile)] p-2 flex items-center justify-between text-xs"
                         >
                           <div className="flex items-center gap-2">
-                            <span className="slot-id-badge">
+                            <span className="font-mono font-bold text-[var(--color-ink)] flex items-center gap-1">
                               {isBike ? (
-                                <Bike className="w-3.5 h-3.5 text-cyan-400" />
+                                <Bike className="w-3.5 h-3.5 text-[var(--color-accent-strong)]" strokeWidth={1.7} />
                               ) : (
-                                <Car className="w-3.5 h-3.5 text-emerald-400" />
+                                <Car className="w-3.5 h-3.5 text-[var(--color-accent-strong)]" strokeWidth={1.7} />
                               )}
                               <span>{slot.id}</span>
                             </span>
-                            <span className="text-[11px] text-slate-300 truncate max-w-[130px]">
+                            <span className="text-[11px] text-[var(--color-ink-secondary)] truncate max-w-[120px]">
                               {slot.vehicle_name || (slot.occupied ? 'มีรถจอดอยู่' : 'ว่างพร้อมจอด')}
                             </span>
                           </div>
 
                           <span
-                            className={`status-pill ${
-                              slot.occupied ? 'pill-occupied' : 'pill-vacant'
+                            className={`px-2 py-0.5 rounded-[var(--radius-pill)] text-[10px] font-bold font-mono ${
+                              slot.occupied
+                                ? 'bg-[var(--color-status-full-bg)] text-[var(--color-status-full-text)] border border-[var(--color-status-full-border)]'
+                                : 'bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border border-[var(--color-status-free-border)]'
                             }`}
                           >
                             {slot.occupied ? 'Occupied' : 'Vacant'}

@@ -1,0 +1,104 @@
+{
+  "model_version": "v1.2-campus-forecaster",
+  "trained_at": "2026-10-05T15:31:02.944295+00:00",
+  "total_dataset_rows": 27945,
+  "train_rows": 22356,
+  "test_rows": 5589,
+  "feature_cols": [
+    "chip_temp_c",
+    "delta_temp",
+    "light_aec_value",
+    "wifi_rssi",
+    "uptime_sec",
+    "total_vehicles",
+    "occupancy_pct",
+    "delta_vehicles",
+    "hour",
+    "minute",
+    "day_of_week",
+    "day_type",
+    "is_weekend",
+    "is_rush_hour",
+    "campus_phase",
+    "is_class_transition",
+    "is_lecture_time",
+    "is_lunch_flux",
+    "cam_cam1",
+    "cam_cam2",
+    "cam_cam3"
+  ],
+  "campus_phases": {
+    "0": "night_idle / weekend_idle",
+    "1": "morning_early (07:00-08:30)",
+    "2": "morning_rush (08:30-09:30)",
+    "3": "morning_lecture (09:30-11:30)",
+    "4": "lunch_flux (11:30-13:00)",
+    "5": "afternoon_rush (13:00-14:00)",
+    "6": "afternoon_lecture (14:00-16:30)",
+    "7": "evening_departure (16:30-19:00)"
+  },
+  "thermal_forecaster_metrics": {
+    "mae_celsius": 5.423,
+    "rmse_celsius": 7.234,
+    "r2_score": 0.1149
+  },
+  "sleep_policy_metrics": {
+    "mae_seconds": 0.18,
+    "rmse_seconds": 0.7,
+    "r2_score": 0.9947
+  },
+  "occupancy_15m_metrics": {
+    "mae_vehicles": 2.87,
+    "r2_score": 0.4999
+  },
+  "occupancy_30m_metrics": {
+    "mae_vehicles": 2.01,
+    "r2_score": 0.7453
+  },
+  "top_features": [
+    {
+      "feature": "delta_vehicles",
+      "importance": 0.4808
+    },
+    {
+      "feature": "chip_temp_c",
+      "importance": 0.1337
+    },
+    {
+      "feature": "is_weekend",
+      "importance": 0.0984
+    },
+    {
+      "feature": "day_of_week",
+      "importance": 0.0953
+    },
+    {
+      "feature": "campus_phase",
+      "importance": 0.0911
+    },
+    {
+      "feature": "day_type",
+      "importance": 0.0691
+    },
+    {
+      "feature": "is_class_transition",
+      "importance": 0.0197
+    },
+    {
+      "feature": "is_lecture_time",
+      "importance": 0.0108
+    },
+    {
+      "feature": "is_rush_hour",
+      "importance": 0.001
+    },
+    {
+      "feature": "delta_temp",
+      "importance": 0.0
+    }
+  ],
+  "safe_temp_threshold_celsius": 60.0,
+  "critical_temp_threshold_celsius": 68.0,
+  "min_sleep_sec": 10,
+  "max_sleep_sec": 60
+}

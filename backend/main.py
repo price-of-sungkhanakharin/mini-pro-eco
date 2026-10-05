@@ -2,6 +2,7 @@
 
 import time
 import traceback
+from typing import Optional
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,7 +12,9 @@ from backend.app.core.config import settings
 from backend.db.database import Base, engine
 from backend.app.models import DatasetModel, ModelRegistryModel, ParkingOccupancyModel, UserModel  # noqa: F401
 from backend.app.routers import (
+    analytics_router,
     auth,
+    auto_label_router,
     datasets,
     gpu_trainer_router,
     health,
@@ -19,10 +22,13 @@ from backend.app.routers import (
     label_studio_router,
     line_bot_router,
     minio_router,
+    ml_backend_proxy,
     modal_trainer_router,
     models,
     parking_router,
     roboflow_router,
+    settings_router,
+    timeseries_router,
     train,
 )
 from backend.app.utils.logger import logger
@@ -67,7 +73,7 @@ tags_metadata = [
     },
     {
         "name": "LINE Chatbot",
-        "description": "LINE Messaging API integration with dotBlue AI for smart parking advisory",
+        "description": "LINE Messaging API integration with Quick Reply buttons for smart parking advisory",
     },
     {
         "name": "Roboflow Annotation Platform",
@@ -232,13 +238,35 @@ app.include_router(minio_router.router)
 app.include_router(label_studio_router.router)
 app.include_router(line_bot_router.router)
 app.include_router(parking_router.router)
+app.include_router(settings_router.router)
+app.include_router(analytics_router.router)
 app.include_router(roboflow_router.router)
 app.include_router(modal_trainer_router.router)
 app.include_router(gpu_trainer_router.router)
+app.include_router(timeseries_router.router)
+app.include_router(ml_backend_proxy.router)
+app.include_router(auto_label_router.router)
+
+
+# Root-level SSO Aliases for convenient ecosystem navigation
+@app.get("/sso/label-studio", tags=["Authentication"], summary="Label Studio SSO Alias")
+async def sso_label_studio_alias(request: Request, task: Optional[int] = None, redirect_to: Optional[str] = None):
+    return await auth.label_studio_sso(request, task=task, redirect_to=redirect_to)
+
+
+@app.get("/sso/postgres", tags=["Authentication"], summary="Adminer Postgres SSO Alias")
+def sso_postgres_alias(request: Request):
+    return auth.postgres_sso(request)
+
+
+@app.get("/sso/minio", tags=["Authentication"], summary="MinIO Console SSO Alias")
+async def sso_minio_alias(request: Request):
+    return await auth.minio_sso(request)
 
 
 @app.get("/")
 def root():
     """Gateway Root API endpoint."""
     return {"message": "Welcome to FastAPI AI Ecosystem Gateway API"}
+
 

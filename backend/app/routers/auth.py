@@ -1,3 +1,4 @@
+from typing import Optional
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
@@ -151,7 +152,7 @@ def postgres_sso(request: Request):
     summary="Label Studio Single Sign-On Auto Login",
     description="Logs in automatically to Label Studio and redirects browser seamlessly.",
 )
-async def label_studio_sso(request: Request):
+async def label_studio_sso(request: Request, task: Optional[int] = None, redirect_to: Optional[str] = None):
     """Log in to Label Studio and redirect user seamlessly without prompt."""
     label_studio_port = 8080
     target_host = request.url.hostname or "localhost"
@@ -179,7 +180,13 @@ async def label_studio_sso(request: Request):
     except Exception:
         pass
 
-    target_url = f"http://{target_host}:{label_studio_port}/projects/1"
+    if task:
+        target_url = f"http://{target_host}:{label_studio_port}/projects/1/data?task={task}"
+    elif redirect_to:
+        target_url = f"http://{target_host}:{label_studio_port}{redirect_to}"
+    else:
+        target_url = f"http://{target_host}:{label_studio_port}/projects/1"
+
     response = RedirectResponse(url=target_url, status_code=status.HTTP_302_FOUND)
     if sessionid:
         response.set_cookie(

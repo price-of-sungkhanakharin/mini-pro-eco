@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 import {
   MapPin,
-  Pentagon,
   MousePointer,
   Trash2,
-  Download,
   Upload,
   RotateCcw,
   X,
@@ -17,8 +15,7 @@ import {
   CheckCircle2,
   RefreshCw,
   Save,
-  Plus,
-  ArrowRight
+  Sliders
 } from 'lucide-react'
 import {
   SYSTEM_CAMERAS,
@@ -30,8 +27,7 @@ import {
   fetchRoiFromServer,
   getSavedOrInitialZones,
   saveZonesToStorage,
-  normalizeZones,
-  formatPolygonForServer
+  normalizeZones
 } from '../../../utils/dumpData'
 
 // Native image resolution of the camera snapshot (1600x1200)
@@ -51,7 +47,7 @@ function calculatePolygonArea(points) {
   return Math.round(Math.abs(area) / 2)
 }
 
-export default function ParkingSetup({ onNavigate, embedded = false, initialCameraId = 'cam1' }) {
+export default function ParkingSetup({ onNavigate, embedded = false, initialCameraId = 'cam1', apiBase: propApiBase }) {
   // Active Camera Selection State (cam1, cam2, cam3)
   const [selectedCamId, setSelectedCamId] = useState(() => initialCameraId || 'cam1')
   const activeCam = getCameraConfig(selectedCamId)
@@ -61,6 +57,13 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
   const [liveCameraMeta, setLiveCameraMeta] = useState(null)
   const [autoLivePolling, setAutoLivePolling] = useState(false)
   const [isSyncingServer, setIsSyncingServer] = useState(false)
+
+  // Camera Hardware Capture Settings (Framesize & Quality)
+  const [camHardwareSettings, setCamHardwareSettings] = useState({
+    framesize: 13,
+    quality: 10,
+    interval_sec: 15
+  })
 
   // Custom uploaded/configured snapshot image for current camera
   const [customCamImage, setCustomCamImage] = useState(() => getCameraImage(selectedCamId))
@@ -78,10 +81,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
   // Vertex dragging state
   const [dragging, setDragging] = useState(null)
 
-  // Modals & Notifications
-  const [showExportModal, setShowExportModal] = useState(false)
-  const [showImportModal, setShowImportModal] = useState(false)
-  const [importJsonText, setImportJsonText] = useState('')
+  // Notifications
   const [notification, setNotification] = useState(null)
 
   const fileInputRef = useRef(null)
@@ -104,9 +104,64 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
     }
   }
 
+  // Fetch camera framesize & quality settings
+  const fetchCameraSettings = async (camId) => {
+    try {
+      const apiBase = getIngestionApiBase()
+      const res = await fetch(`${apiBase}/api/settings?camera_id=${camId}`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data && data[camId]) {
+          setCamHardwareSettings({
+            framesize: data[camId].framesize ?? 13,
+            quality: data[camId].quality ?? 10,
+            interval_sec: data[camId].interval_sec ?? 15
+          })
+        }
+      }
+    } catch (e) {
+      console.warn('Could not load camera settings:', e)
+    }
+  }
+
+  // Save camera hardware capture settings
+  const handleSaveHardwareSettings = async (newSettings) => {
+    try {
+      setIsSyncingServer(true)
+      const apiBase = getIngestionApiBase()
+      await fetch(`${apiBase}/api/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          camera_id: selectedCamId,
+          ...newSettings
+        })
+      })
+      try {
+        await fetch('/api/v1/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            camera_id: selectedCamId,
+            brightness: 1.0,
+            contrast: 1.0,
+            rotation: 0,
+            ...newSettings
+          })
+        })
+      } catch (err) {}
+      showToast(`บันทึก Framesize (${newSettings.framesize}) & Quality (${newSettings.quality}) เรียบร้อย!`)
+    } catch (err) {
+      showToast('บันทึกการตั้งค่าไม่สำเร็จ', 'error')
+    } finally {
+      setIsSyncingServer(false)
+    }
+  }
+
   // Load live camera feed on mount and when switching cameras
   useEffect(() => {
     fetchCameraLive(selectedCamId)
+    fetchCameraSettings(selectedCamId)
     setLiveSnapshotKey(Date.now())
     setCustomCamImage(getCameraImage(selectedCamId))
     setZoneDraft([])
@@ -365,7 +420,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
       {/* Toast Notification */}
       {notification && (
         <div className={`toast-notification ${notification.type}`}>
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <CheckCircle2 className="w-4 h-4 shrink-0" strokeWidth={1.8} />
           <span>{notification.msg}</span>
         </div>
       )}
@@ -419,7 +474,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                 }}
                 title="เลือกและปรับแต่งจุดมุมโพลีกอน"
               >
-                <MousePointer className="w-3.5 h-3.5" />
+                <MousePointer className="w-3.5 h-3.5" strokeWidth={1.8} />
                 <span>เลือก / ขยับจุด</span>
               </button>
 
@@ -433,7 +488,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                   setSelectedZoneId(null)
                 }}
               >
-                <Car className="w-3.5 h-3.5" />
+                <Car className="w-3.5 h-3.5" strokeWidth={1.8} />
                 <span>+ วาดโซนรถยนต์ (Car)</span>
               </button>
 
@@ -447,7 +502,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                   setSelectedZoneId(null)
                 }}
               >
-                <Bike className="w-3.5 h-3.5" />
+                <Bike className="w-3.5 h-3.5" strokeWidth={1.8} />
                 <span>+ วาดโซนมอเตอร์ไซค์ (Bike)</span>
               </button>
 
@@ -468,7 +523,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                     }}
                     title="ยกเลิกการวาด"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <X className="w-3.5 h-3.5" strokeWidth={1.8} />
                     <span>ยกเลิก</span>
                   </button>
                 </>
@@ -476,7 +531,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
             </div>
 
             {/* Right Group: Live Camera Actions */}
-            <div className="toolbar-group ml-auto">
+            <div className="toolbar-group ml-auto flex-wrap gap-2">
               <input
                 type="file"
                 ref={fileInputRef}
@@ -487,7 +542,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
 
               <button
                 type="button"
-                className="tool-btn highlight"
+                className="tool-btn"
                 onClick={() => {
                   setLiveSnapshotKey(Date.now())
                   fetchCameraLive(selectedCamId)
@@ -495,7 +550,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                 }}
                 title={`ดึงภาพ Snapshot สดล่าสุดจาก ${activeCam.code}`}
               >
-                <RefreshCw className="w-3.5 h-3.5 text-emerald-400" />
+                <RefreshCw className="w-3.5 h-3.5 text-[var(--color-green-text)]" strokeWidth={1.8} />
                 <span>ดึงภาพสด</span>
               </button>
 
@@ -505,7 +560,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                 onClick={() => fileInputRef.current?.click()}
                 title={`อัปโหลดภาพสำหรับ ${activeCam.code}`}
               >
-                <Upload className="w-3.5 h-3.5 text-cyan-400" />
+                <Upload className="w-3.5 h-3.5 text-[var(--color-ink-secondary)]" strokeWidth={1.8} />
                 <span>อัปโหลดภาพ</span>
               </button>
 
@@ -516,7 +571,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                   onClick={handleResetImage}
                   title="คืนค่ากลับเป็นภาพสดของกล้องนี้"
                 >
-                  <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+                  <RotateCcw className="w-3.5 h-3.5 text-[var(--color-ink-secondary)]" strokeWidth={1.8} />
                   <span>คืนค่าภาพสด</span>
                 </button>
               )}
@@ -527,7 +582,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                 onClick={() => setShowZoneOverlay(!showZoneOverlay)}
                 title="เปิด/ปิด การแสดงกรอบโซน"
               >
-                <Layers className={`w-3.5 h-3.5 ${showZoneOverlay ? 'text-indigo-400' : 'text-slate-500'}`} />
+                <Layers className="w-3.5 h-3.5" strokeWidth={1.8} />
                 <span>Zone Mask</span>
               </button>
 
@@ -537,14 +592,14 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                 onClick={() => setShowLabels(!showLabels)}
                 title="เปิด/ปิด ป้ายชื่อโซน"
               >
-                {showLabels ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5 text-slate-500" />}
+                {showLabels ? <Eye className="w-3.5 h-3.5" strokeWidth={1.8} /> : <EyeOff className="w-3.5 h-3.5" strokeWidth={1.8} />}
                 <span>Labels</span>
               </button>
             </div>
           </div>
 
           {/* Interactive Canvas Viewport */}
-          <div className="roi-viewport-wrapper polygon" ref={containerRef}>
+          <div className="roi-viewport-wrapper" ref={containerRef}>
             {/* Background Image for Active Camera */}
             <img
               src={activeImageUrl}
@@ -613,15 +668,15 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                             <circle
                               cx={pt.x}
                               cy={pt.y}
-                              r={12}
+                              r={14}
                               className={`zone-handle-vertex ${isBikeZone ? 'bike-handle' : ''}`}
                               onMouseDown={(e) => handleZonePointMouseDown(e, zone.id, pIdx)}
                             />
                             <text
                               x={pt.x}
-                              y={pt.y - 15}
+                              y={pt.y - 18}
                               textAnchor="middle"
-                              className="text-[11px] fill-white font-bold font-mono"
+                              className="text-[14px] fill-[var(--color-ink)] font-bold font-mono"
                               pointerEvents="none"
                             >
                               P{pIdx + 1}
@@ -668,17 +723,17 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                 <span className="badge-tag">
                   {activeCam.code} • {activeCam.name}
                 </span>
-                <span className="text-slate-400 font-mono">
-                  ความจุรวม: <strong className="text-emerald-400">{totalCap}</strong> (รถยนต์: {totalCarCap} • มอไซค์: {totalBikeCap})
+                <span className="text-[var(--color-ink-secondary)] font-mono text-xs">
+                  ความจุรวม: <strong className="text-[var(--color-green-text)] font-semibold">{totalCap}</strong> (รถยนต์: {totalCarCap} • มอไซค์: {totalBikeCap})
                 </span>
               </div>
 
-              <div className="flex items-center gap-3 font-mono text-slate-400">
+              <div className="flex items-center gap-3 font-mono text-[var(--color-ink-secondary)] text-xs">
                 <span>
-                  Cursor: <strong>X:{cursorPos.x} Y:{cursorPos.y}</strong>
+                  Cursor: <strong className="text-[var(--color-ink)] font-semibold">X:{cursorPos.x} Y:{cursorPos.y}</strong>
                 </span>
                 <span>
-                  ความละเอียด: <strong>{NATIVE_WIDTH}×{NATIVE_HEIGHT}</strong>
+                  ความละเอียด: <strong className="text-[var(--color-ink)] font-semibold">{NATIVE_WIDTH}×{NATIVE_HEIGHT}</strong>
                 </span>
               </div>
             </div>
@@ -686,10 +741,10 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
 
           {/* Quick Usage Tips Helper */}
           <div className="roi-help-banner">
-            <div className="flex items-center gap-2 text-xs text-slate-300">
-              <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div className="flex items-center gap-2 text-xs text-[var(--color-ink-secondary)]">
+              <Sparkles className="w-4 h-4 text-[var(--color-green-text)] shrink-0" strokeWidth={1.8} />
               <span>
-                <strong>คำแนะนำการตั้งค่าโซน (Pure Zone Setup):</strong> กด <strong>"+ วาดโซนรถยนต์"</strong> หรือ <strong>"+ วาดโซนมอเตอร์ไซค์"</strong> แล้วคลิก 4 มุมบนภาพเพื่อสร้างกรอบพื้นที่ จากนั้นลากจุดมุม P1-P4 เพื่อปรับองศา และกรอกจำนวนความจุ (Capacity) ในแถบด้านขวาได้ทันที
+                <strong className="text-[var(--color-ink)]">คำแนะนำการตั้งค่าโซน (Pure Zone Setup):</strong> กด <strong className="text-[var(--color-ink)]">"+ วาดโซนรถยนต์"</strong> หรือ <strong className="text-[var(--color-ink)]">"+ วาดโซนมอเตอร์ไซค์"</strong> แล้วคลิก 4 มุมบนภาพเพื่อสร้างกรอบพื้นที่ จากนั้นลากจุดมุม P1-P4 เพื่อปรับองศา และกรอกจำนวนความจุ (Capacity) ในแถบด้านขวาได้ทันที
               </span>
             </div>
           </div>
@@ -697,10 +752,10 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
 
         {/* Right Column: Zone Management Inspector */}
         <div className="setup-inspector-panel">
-          <div className="inspector-card zone-card">
+          <div className="inspector-card">
             <div className="inspector-card-header">
               <div className="inspector-title">
-                <Layers className="w-4 h-4 text-indigo-400" />
+                <Layers className="w-4 h-4 text-[var(--color-ink)]" strokeWidth={1.8} />
                 <span>กำหนดโซนและจำนวนความจุ • {activeCam.code} ({zones.length} โซน)</span>
               </div>
 
@@ -711,7 +766,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                   onClick={handleClearAllZones}
                   title="ล้างโซนทั้งหมดของกล้องนี้"
                 >
-                  <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                  <Trash2 className="w-3.5 h-3.5 text-[var(--color-status-full-text)]" strokeWidth={1.8} />
                 </button>
               )}
             </div>
@@ -720,16 +775,16 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
             <div className="zone-metrics-grid mb-3">
               <div className="zone-metric-tile">
                 <span className="zone-metric-label">ความจุรวม</span>
-                <span className="zone-metric-val highlight">
+                <span className="zone-metric-val">
                   {totalCap} ช่อง
                 </span>
               </div>
               <div className="zone-metric-tile">
                 <span className="zone-metric-label">สัดส่วนประเภท</span>
                 <span className="zone-metric-val">
-                  <span className="text-emerald-400">{totalCarCap} รถ</span>
+                  <span className="text-[var(--color-green-text)]">{totalCarCap} รถ</span>
                   {' • '}
-                  <span className="text-cyan-400">{totalBikeCap} มอไซค์</span>
+                  <span className="text-[var(--color-ink)]">{totalBikeCap} มอไซค์</span>
                 </span>
               </div>
             </div>
@@ -745,29 +800,29 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                   return (
                     <div
                       key={zone.id || zIdx}
-                      className={`zone-item-card ${isSelected ? (isBike ? 'active bike' : 'active car') : ''}`}
+                      className={`zone-item-card ${isSelected ? 'active' : ''}`}
                       onClick={() => setSelectedZoneId(zone.id)}
                     >
                       {/* Zone Item Header */}
                       <div className="zone-item-header">
-                        <div className="zone-item-title-group flex-1">
+                        <div className="zone-item-title-group flex-1 flex items-center gap-2">
                           {isBike ? (
-                            <Bike className="w-4 h-4 text-cyan-400 shrink-0" />
+                            <Bike className="w-4 h-4 text-[var(--color-ink)] shrink-0" strokeWidth={1.8} />
                           ) : (
-                            <Car className="w-4 h-4 text-indigo-400 shrink-0" />
+                            <Car className="w-4 h-4 text-[var(--color-ink)] shrink-0" strokeWidth={1.8} />
                           )}
                           <input
                             type="text"
                             value={zone.name}
                             onChange={(e) => handleUpdateZoneName(zone.id, e.target.value)}
                             onClick={(e) => e.stopPropagation()}
-                            className="bg-slate-900/90 border border-slate-700/80 rounded px-2 py-0.5 text-xs text-white font-semibold flex-1"
+                            className="zone-name-input"
                           />
                           <select
                             value={zone.type}
                             onChange={(e) => handleUpdateZoneType(zone.id, e.target.value)}
                             onClick={(e) => e.stopPropagation()}
-                            className="bg-slate-800 text-slate-200 border border-slate-700 text-[11px] rounded px-1.5 py-0.5 font-medium"
+                            className="zone-type-select"
                           >
                             <option value="car">รถยนต์</option>
                             <option value="motorcycle">มอเตอร์ไซค์</option>
@@ -783,14 +838,14 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                           }}
                           title="ลบโซนนี้"
                         >
-                          <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                          <Trash2 className="w-3.5 h-3.5 text-[var(--color-status-full-text)]" strokeWidth={1.8} />
                         </button>
                       </div>
 
                       {/* Zone Capacity Input & Metrics */}
-                      <div className="mt-2.5 p-2 rounded bg-slate-900/60 border border-white/5 flex items-center justify-between gap-2">
+                      <div className="zone-item-capacity-row">
                         <div className="flex items-center gap-2">
-                          <label className="text-[11px] font-semibold text-slate-300">ความจุช่องจอด (คัน):</label>
+                          <label className="text-[12px] font-medium text-[var(--color-ink-secondary)]">ความจุช่องจอด (คัน):</label>
                           <input
                             type="number"
                             min="1"
@@ -798,10 +853,10 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                             value={zone.capacity || (isBike ? 9 : 6)}
                             onChange={(e) => handleUpdateZoneCapacity(zone.id, e.target.value)}
                             onClick={(e) => e.stopPropagation()}
-                            className="w-16 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-emerald-400 font-bold text-center"
+                            className="zone-cap-input"
                           />
                         </div>
-                        <span className="text-[11px] text-slate-400 font-mono">
+                        <span className="text-[11px] text-[var(--color-ink-secondary)] font-mono">
                           {areaPct}% ของภาพ
                         </span>
                       </div>
@@ -817,7 +872,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                     onClick={handleManualSaveAll}
                     disabled={isSyncingServer}
                   >
-                    <Save className="w-4 h-4" />
+                    <Save className="w-4 h-4" strokeWidth={1.8} />
                     <span>
                       {isSyncingServer ? 'กำลังบันทึก...' : `บันทึกการตั้งค่าโซน (${activeCam.code})`}
                     </span>
@@ -826,13 +881,81 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
               </div>
             ) : (
               <div className="text-center py-8">
-                <Layers className="w-12 h-12 text-indigo-400/50 mx-auto mb-2 animate-pulse" />
-                <h4 className="text-sm font-bold text-indigo-200 mb-1">ยังไม่มีการกำหนดโซน</h4>
-                <p className="text-xs text-slate-400 leading-relaxed px-2">
-                  คลิก <strong>"+ วาดโซนรถยนต์"</strong> หรือ <strong>"+ วาดโซนมอเตอร์ไซค์"</strong> ด้านบน แล้วคลิก 4 มุมบนภาพเพื่อตีกรอบพื้นที่และระบุความจุช่องจอด
+                <Layers className="w-12 h-12 text-[var(--color-ink-muted)] mx-auto mb-2" strokeWidth={1.5} />
+                <h4 className="text-sm font-semibold text-[var(--color-ink)] mb-1">ยังไม่มีการกำหนดโซน</h4>
+                <p className="text-xs text-[var(--color-ink-secondary)] leading-relaxed px-2">
+                  คลิก <strong className="text-[var(--color-ink)]">"+ วาดโซนรถยนต์"</strong> หรือ <strong className="text-[var(--color-ink)]">"+ วาดโซนมอเตอร์ไซค์"</strong> ด้านบน แล้วคลิก 4 มุมบนภาพเพื่อตีกรอบพื้นที่และระบุความจุช่องจอด
                 </p>
               </div>
             )}
+          </div>
+
+          {/* Camera Frame Size & Quality Control Box */}
+          <div className="inspector-card mt-3">
+            <div className="inspector-card-header">
+              <div className="inspector-title">
+                <Sliders className="w-4 h-4 text-[var(--color-ink)]" strokeWidth={1.8} />
+                <span>ฮาร์ดแวร์กล้อง ({activeCam.code} Capture Settings)</span>
+              </div>
+            </div>
+
+            <div className="p-3 bg-[var(--color-card)] flex flex-col gap-2.5">
+              <div className="form-group-setup">
+                <label className="text-[12px] font-medium text-[var(--color-ink-secondary)]">
+                  Camera Frame Size (ESP32 ID):
+                </label>
+                <select
+                  value={camHardwareSettings.framesize}
+                  onChange={(e) =>
+                    setCamHardwareSettings((prev) => ({
+                      ...prev,
+                      framesize: Number(e.target.value)
+                    }))
+                  }
+                  className="w-full text-xs font-mono py-1.5 px-2 bg-white border-2 border-[var(--color-border)] rounded shadow-[2px_2px_0px_#212529]"
+                >
+                  <option value={13}>13: UXGA (1600x1200) - Default</option>
+                  <option value={12}>12: SXGA (1280x1024)</option>
+                  <option value={11}>11: HD (1280x720)</option>
+                  <option value={10}>10: XGA (1024x768)</option>
+                  <option value={9}>9: SVGA (800x600)</option>
+                  <option value={8}>8: VGA (640x480)</option>
+                  <option value={7}>7: CIF (400x296)</option>
+                  <option value={6}>6: QVGA (320x240)</option>
+                </select>
+              </div>
+
+              <div className="form-group-setup">
+                <label className="text-[12px] font-medium text-[var(--color-ink-secondary)]">
+                  JPEG Quality (1-63, 10 = ละเอียดสูง):
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="63"
+                  value={camHardwareSettings.quality}
+                  onChange={(e) =>
+                    setCamHardwareSettings((prev) => ({
+                      ...prev,
+                      quality: Number(e.target.value)
+                    }))
+                  }
+                  className="w-full text-xs font-mono py-1.5 px-2 bg-white border-2 border-[var(--color-border)] rounded shadow-[2px_2px_0px_#212529]"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleSaveHardwareSettings(camHardwareSettings)}
+                className="btn-step-confirm mt-1 w-full flex items-center justify-center gap-2 py-1.5 text-xs"
+                disabled={isSyncingServer}
+              >
+                <Save className="w-3.5 h-3.5" strokeWidth={1.8} />
+                <span>
+                  {isSyncingServer ? 'กำลังบันทึก...' : `บันทึก Framesize & Quality (${activeCam.code})`}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

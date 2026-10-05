@@ -32,9 +32,20 @@ from PIL import Image, ImageEnhance
 import psutil
 import psycopg2
 from psycopg2.extras import Json
+import sys
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 CONFIG_PATH = BASE_DIR / "config.json"
+
+# Dynamic Time-Series Thermal & Sleep Optimization Service
+BACKEND_DIR = BASE_DIR / "backend"
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.append(str(BACKEND_DIR))
+
+try:
+    from app.services.timeseries_service import timeseries_service
+except Exception as _ts_imp_err:
+    timeseries_service = None
 
 DEFAULT_CONFIG = {
     "server": {
@@ -55,6 +66,8 @@ DEFAULT_CONFIG = {
             "rotation": 180,
             "brightness": 0.82,
             "contrast": 1.15,
+            "framesize": 13,
+            "quality": 10,
             "interval_sec": 15,
         },
         "front_dept_2": {
@@ -68,6 +81,8 @@ DEFAULT_CONFIG = {
             "rotation": 180,
             "brightness": 0.82,
             "contrast": 1.15,
+            "framesize": 13,
+            "quality": 10,
             "interval_sec": 15,
         },
         "side_dept": {
@@ -81,6 +96,8 @@ DEFAULT_CONFIG = {
             "rotation": 180,
             "brightness": 0.80,
             "contrast": 1.15,
+            "framesize": 13,
+            "quality": 10,
             "interval_sec": 15,
         },
     },
@@ -454,14 +471,12 @@ def upload():
     jpg_filename = f"{timestamp_str}.jpg"
     json_filename = f"{timestamp_str}.json"
 
-    # Requested Structure: data/dataset/<camera_id>/<YYYY-MM-DD>/<HH>/images & json
+    # Storage Structure: data/dataset/<camera_id>/<YYYY-MM-DD>/<HH>/images (No redundant disk JSON)
     images_dir = DATA_DATASET_DIR / cam_id / date_str / hour_str / "images"
-    json_dir = DATA_DATASET_DIR / cam_id / date_str / hour_str / "json"
     images_dir.mkdir(parents=True, exist_ok=True)
-    json_dir.mkdir(parents=True, exist_ok=True)
 
     dest_jpg = images_dir / jpg_filename
-    dest_json = json_dir / json_filename
+    dest_json = None
 
     # Image Enhancement: Rotation, Brightness & Contrast
     rotation = LOCATIONS.get(loc, {}).get("rotation", 0)
@@ -538,9 +553,7 @@ def upload():
         "telemetry": telemetry_dict,
     }
 
-    with open(dest_json, "w", encoding="utf-8") as jf:
-        json.dump(telemetry_payload, jf, indent=2, ensure_ascii=False)
-
+    # In-memory telemetry caching (No disk JSON write)
     LATEST_TELEMETRY[loc] = telemetry_payload
     LATEST_TELEMETRY[cam_id] = telemetry_payload
 
@@ -601,28 +614,53 @@ def upload():
                 "OK" if postgres_recorded else "FAILED",
                 client_ip)
 
-    # Redis Heartbeat & Dynamic Health State (TTL 45s)
+    # Redis In-Memory State & Queue (RAM Hot Layer)
     if redis_client:
         try:
-            redis_client.set(f"camera:{cam_id}:heartbeat", "online", ex=45)
-            redis_client.set(f"camera:{loc}:heartbeat", "online", ex=45)
-            redis_client.set(f"camera:{cam_id}:latest_frame", str(dest_jpg), ex=120)
-            redis_client.set(f"camera:{cam_id}:telemetry", json.dumps(telemetry_payload, ensure_ascii=False), ex=300)
-        except Exception as re_err:
-            logger.debug("Redis heartbeat write warning: %s", re_err)
+            redis_client.set(f"camera:{cam_id}:heartbeat", "online", ex=60)
+            redis_client.set(f"camera:{loc}:heartbeat", "online", ex=60)
+            redis_client.set(f"camera:{cam_id}:latest_frame", str(dest_jpg), ex=300)
+            redis_client.set(f"camera:{cam_id}:telemetry", json.dumps(telemetry_payload, ensure_ascii=False), ex=86400)
 
-    # Hardware Deep Sleep & Interval Calculation:
-    # Always include deep_sleep_sec = 15 regardless of day or night so ESP32-CAM enters hardware deep sleep
+            # Asynchronous Queue for YOLO detection & live subscribers
+            queue_item = {
+                "camera_id": cam_id,
+                "location": loc,
+                "image_path": str(dest_jpg),
+                "timestamp": now.isoformat(),
+                "file_size": len(image_bytes),
+                "telemetry": telemetry_dict,
+            }
+            redis_client.lpush("camera:ingestion:queue", json.dumps(queue_item, ensure_ascii=False))
+            redis_client.ltrim("camera:ingestion:queue", 0, 499)
+            redis_client.publish("camera:frame:events", json.dumps(queue_item, ensure_ascii=False))
+        except Exception as re_err:
+            logger.debug("Redis queue write error: %s", re_err)
+
+    # Hardware Deep Sleep & Adaptive Sampling Policy:
+    # Uses Time-Series ML models (Thermal & Traffic Dynamics)
     deep_sleep_sec = 15
-    interval_sec = LOCATIONS.get(loc, {}).get(
-        "interval_sec",
-        SERVER_CONFIG.get("upload_interval_sec", 15)
-    )
+    ts_recommendation = None
+    if timeseries_service is not None:
+        try:
+            ts_recommendation = timeseries_service.compute_optimal_sleep(
+                camera_id=cam_id,
+                current_telemetry=telemetry_dict,
+            )
+            deep_sleep_sec = int(ts_recommendation.get("recommended_sleep_sec", 15))
+        except Exception as _ts_err:
+            logger.debug("Timeseries sleep calc error: %s", _ts_err)
+
+    interval_sec = deep_sleep_sec
     interval_ms = interval_sec * 1000
+    framesize = int(LOCATIONS.get(loc, {}).get("framesize", SERVER_CONFIG.get("framesize", 13)))
+    quality = int(LOCATIONS.get(loc, {}).get("quality", SERVER_CONFIG.get("quality", 10)))
 
     response_payload = {
         "status": "success",
         "success": True,
+        "framesize": framesize,
+        "quality": quality,
         "interval_sec": interval_sec,
         "interval_ms": interval_ms,
         "deep_sleep_sec": deep_sleep_sec,
@@ -638,6 +676,9 @@ def upload():
         "minio_json_path": minio_json_path if minio_uploaded else None,
         "postgres_recorded": postgres_recorded,
         "telemetry_recorded": bool(telemetry_dict),
+        "thermal_status": ts_recommendation.get("thermal_status") if ts_recommendation else "UNKNOWN",
+        "predicted_temp_c": ts_recommendation.get("predicted_next_temp_c") if ts_recommendation else None,
+        "sleep_policy_reason": ts_recommendation.get("reason") if ts_recommendation else None,
     }
 
     logger.info(">>> [%s/%s] Response sent: status=%s, interval_ms=%d, deep_sleep_sec=%d", 
@@ -1136,27 +1177,54 @@ def get_camera_forecast(cam_id=None):
 
 @app.route("/api/settings", methods=["GET", "POST"])
 def settings():
-    loc_param = request.args.get("location") or request.args.get("camera_id") or ""
+    req_data = request.get_json(silent=True) or {}
+    loc_param = request.args.get("location") or request.args.get("camera_id") or req_data.get("camera_id") or req_data.get("location") or ""
     if loc_param:
         loc = resolve_location(loc_param, loc_param)
         if loc in LOCATIONS:
-            if "brightness" in request.args:
+            # Handle query params and json body
+            b_val = request.args.get("brightness") or req_data.get("brightness")
+            if b_val is not None:
                 try:
-                    b = float(request.args["brightness"])
-                    LOCATIONS[loc]["brightness"] = max(0.1, min(2.0, b))
+                    LOCATIONS[loc]["brightness"] = max(0.1, min(2.0, float(b_val)))
                 except ValueError:
                     pass
-            if "contrast" in request.args:
+
+            c_val = request.args.get("contrast") or req_data.get("contrast")
+            if c_val is not None:
                 try:
-                    c = float(request.args["contrast"])
-                    LOCATIONS[loc]["contrast"] = max(0.1, min(3.0, c))
+                    LOCATIONS[loc]["contrast"] = max(0.1, min(3.0, float(c_val)))
                 except ValueError:
                     pass
-            if "rotation" in request.args:
+
+            rot_val = request.args.get("rotation") or req_data.get("rotation")
+            if rot_val is not None:
                 try:
-                    LOCATIONS[loc]["rotation"] = int(request.args["rotation"])
+                    LOCATIONS[loc]["rotation"] = int(rot_val)
                 except ValueError:
                     pass
+
+            fs_val = request.args.get("framesize") or req_data.get("framesize")
+            if fs_val is not None:
+                try:
+                    LOCATIONS[loc]["framesize"] = int(fs_val)
+                except ValueError:
+                    pass
+
+            q_val = request.args.get("quality") or req_data.get("quality")
+            if q_val is not None:
+                try:
+                    LOCATIONS[loc]["quality"] = max(1, min(63, int(q_val)))
+                except ValueError:
+                    pass
+
+            # Persist to config.json
+            try:
+                CONFIG["locations"] = LOCATIONS
+                with open(CONFIG_PATH, "w", encoding="utf-8") as cf:
+                    json.dump(CONFIG, cf, indent=2, ensure_ascii=False)
+            except Exception as e:
+                logger.warning("Could not persist config.json: %s", e)
 
     return jsonify({
         loc_key: {
@@ -1165,6 +1233,8 @@ def settings():
             "brightness": LOCATIONS[loc_key].get("brightness", 1.0),
             "contrast": LOCATIONS[loc_key].get("contrast", 1.0),
             "rotation": LOCATIONS[loc_key].get("rotation", 0),
+            "framesize": LOCATIONS[loc_key].get("framesize", 13),
+            "quality": LOCATIONS[loc_key].get("quality", 10),
             "interval_sec": LOCATIONS[loc_key].get("interval_sec", 15),
         }
         for loc_key in LOCATIONS

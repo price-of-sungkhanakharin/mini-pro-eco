@@ -18,7 +18,7 @@ from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# SSL context for dotBlue API request
+# SSL context for outbound LINE API requests
 _ssl_ctx = ssl.create_default_context()
 _ssl_ctx.check_hostname = False
 _ssl_ctx.verify_mode = ssl.CERT_NONE
@@ -433,7 +433,7 @@ def format_quick_response(user_msg: str) -> Tuple[Optional[str], List[str], Opti
         return "\n".join(lines), ["cam2"], None
 
     # 7. Aggregated Overview Summary (สรุปภาพรวม / ทั้งหมด / สรุป / ภาพรวม) -> Send CAM1, CAM2, CAM3 images
-    if any(k in msg for k in ["สรุปภาพรวม", "สรุปทั้งหมด", "สรุป", "ภาพรวม", "ทั้งหมด", "สถานะ"]) or "overview" in msg_lower or "all" in msg_lower:
+    if any(k in msg for k in ["สรุปภาพรวม", "สรุปทั้งหมด", "สรุป", "ภาพรวม", "ทั้งหมด", "สถานะ", "มีที่จอดไหม", "ที่จอดว่างไหม", "จอดไหนดี", "แนะนำ", "ว่างไหม", "สวัสดี", "หวัดดี", "hi", "hello", "menu", "เมนู", "เริ่ม"]) or "overview" in msg_lower or "all" in msg_lower:
         total_cars_vac = len(c1_data["car_vac"]) + len(c2_data["car_vac"])
         total_cars_cap = c1_data["car_total"] + c2_data["car_total"]
         total_bikes_vac = len(c1_data["bike_vac"]) + len(c2_data["bike_vac"]) + len(c3_data["bike_vac"])
@@ -487,62 +487,25 @@ def verify_line_signature(body_str: str, signature: str, secret: str) -> bool:
         return False
 
 
+def format_default_fallback_response() -> Tuple[str, List[str], Optional[str]]:
+    """Return friendly button navigation prompt when user sends unrecognized text or greeting."""
+    rows = get_parking_records()
+    total_vac = sum(r.get("vacant_count", 0) for r in rows)
+    lines = [
+        "[น้องจ๊อด หาที่จอดรถ รายงานตัวครับพี่]",
+        f"ชัดเจนในเลนเรา! ตอนนี้ลานจอดมีที่ว่างรวม {total_vac} ช่อง",
+        "",
+        "แตะเลือกปุ่มลัดด้านล่างเพื่อเช็คสถานะและดูภาพสดแต่ละโซนได้ทันทีเลยครับพี่!",
+    ]
+    return "\n".join(lines), ["cam1", "cam2", "cam3"], None
+
+
 class LineBotService:
-    """Manages LINE Bot webhooks, message replies, real-time data pulling, and dotBlue LLM orchestration."""
+    """Manages LINE Bot webhooks, message replies with Quick Reply buttons, and real-time data pulling."""
 
     def __init__(self):
         self.channel_secret = settings.line_channel_secret
         self.access_token = settings.line_channel_access_token
-
-    def query_dotblue_advisor(self, user_question: str) -> str:
-        """Call dotBlue API (OpenAI Compatible) with openai/gpt-5.6-luna using live detection data."""
-        parking_context = get_current_parking_summary()
-
-        system_prompt = f"""คุณคือ "น้องจ๊อด" เด็กแว๊นสายซิ่งผู้ช่วยประจำลานจอดรถภาควิชาวิศวกรรมคอมพิวเตอร์ ม.อ. (CPE Parking)
-สโลแกนประจำตัว: "ชัดเจนในเลนเรา with น้องจ๊อดช่วยหาที่จอดรถ"
-
-บุคลิกภาพและน้ำเสียง:
-1. เป็นเด็กแว๊นสายซิ่ง กวนๆ เฟรนด์ลี่ เฮฮา ใช้สำนวนภาษาปากวัยรุ่นสายซิ่งแต่จริงใจ น่ารัก และสุภาพ (เช่น เรียกผู้ใช้ว่า "พี่", "ลูกพี่", ใช้คำว่า "บิดมาเลยพี่", "เทียบเลน", "เลนนี้โล่ง", "เต็มเอี๊ยด", "เสียบช่อง", "อย่าเพิ่งขับมาเสียบ", ลงท้ายด้วย "ครับพี่" หรือ "นะพี่")
-2. ห้ามใช้อิโมจิ (Emoji) ในคำตอบเด็ดขาด ให้ใช้ข้อความล้วนๆ สั้น กระชับ อ่านเข้าใจง่ายใน 2-3 บรรทัด
-3. ความถูกต้องของข้อมูลเป็นอันดับ 1: รายงานจำนวนช่องว่างตามโซนจริง ไม่ต้องระบุรหัสช่องย่อย (A01, B06) ให้บอกจำนวนว่าง/ความจุรวมของแต่ละลานชัดเจนและเข้าใจง่าย
-4. หากผู้ใช้ถามถึงโอกาสว่างเมื่อมาถึงในอนาคต (เช่น อีก 10-15 นาที): วิเคราะห์ความน่าจะเป็นอย่างมั่นใจ เช่น "หน้าภาค 2 โอกาสว่างสูง 80% บิดมาให้ไวเลยพี่!"
-5. ตอบกระชับ สั้น ไม่เวิ่นเว้อ เหมาะสำหรับการอ่านในแชต LINE
-
-{parking_context}"""
-
-        payload = {
-            "model": settings.dotblue_model or "openai/gpt-5.6-luna",
-            "stream": False,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_question},
-            ],
-            "temperature": 0.3,
-            "max_tokens": 350,
-        }
-
-        api_url = f"{settings.dotblue_base_url.rstrip('/')}/chat/completions"
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {settings.dotblue_api_key}",
-            "User-Agent": "CPE-Parking-LineBot/1.0",
-        }
-
-        try:
-            req = urllib.request.Request(
-                api_url,
-                data=json.dumps(payload).encode("utf-8"),
-                headers=headers,
-            )
-            with urllib.request.urlopen(req, context=_ssl_ctx, timeout=15) as resp:
-                resp_json = json.loads(resp.read().decode("utf-8"))
-                reply_text = resp_json["choices"][0]["message"]["content"]
-                return reply_text.strip()
-        except Exception as e:
-            logger.error("Failed to query dotBlue AI: %s", e)
-            rows = get_parking_records()
-            total_vac = sum(r.get("vacant_count", 0) for r in rows)
-            return f"ชัดเจนในเลนเรา! ตอนนี้ลานจอดมีที่ว่างรวม {total_vac} ช่อง บิดมาเทียบเลนหน้าภาคหรือข้างภาคคอมได้เลยครับพี่!"
 
     def handle_webhook_event(self, body: str, signature: str):
         """Process LINE webhook event payload, pull real data, and reply with multi-camera images."""
@@ -580,9 +543,8 @@ class LineBotService:
                 if fast_reply:
                     final_text = fast_reply
                 else:
-                    # 2. Conversational fallback: Query dotBlue AI with real-time parking data
-                    final_text = self.query_dotblue_advisor(user_msg)
-                    vehicle_filter = None
+                    # 2. Rule-based Button Guidance Fallback (No LLM)
+                    final_text, target_cams, vehicle_filter = format_default_fallback_response()
 
                 reply_messages = []
                 public_base = get_public_https_url()

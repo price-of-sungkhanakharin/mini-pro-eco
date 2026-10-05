@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
+import Button from '../../components/ui/Button.jsx'
 import {
   Cpu,
   Zap,
@@ -94,19 +95,10 @@ export default function AutoTrainerPage({ apiBase }) {
   const [editorCode, setEditorCode] = useState('')
 
   // Hardware Telemetry
-  const [gpuTelemetry, setGpuTelemetry] = useState({
-    name: 'NVIDIA GeForce GTX 1660 SUPER',
-    memory_used_mb: 844,
-    memory_total_mb: 6144,
-    temperature_c: 34
-  })
+  const [gpuTelemetry, setGpuTelemetry] = useState({})
 
   // Datasets List
-  const [datasetsList, setDatasetsList] = useState([
-    { dataset_id: 'ds_cctv_parking_labeled', name: 'CCTV Parking (152 Labeled Images)', file_count: 152 },
-    { dataset_id: 'ds_cctv_parking_v1', name: 'CCTV Parking Main Gate (152 Images)', file_count: 152 },
-    { dataset_id: 'ds_dogcat_v1', name: 'Dog Cat Small (Demo Dataset)', file_count: 4 }
-  ])
+  const [datasetsList, setDatasetsList] = useState([])
 
   // Job & Logs
   const [currentJob, setCurrentJob] = useState(null)
@@ -390,6 +382,9 @@ export default function AutoTrainerPage({ apiBase }) {
     return modelsList.find((m) => String(m.id) === String(selectedActiveModelId)) || activeModel || modelsList[0] || null
   }, [selectedActiveModelId, modelsList, activeModel])
 
+  const selectedDataset = datasetsList.find((ds) => String(ds.dataset_id) === String(datasetId))
+  const selectedDatasetCount = selectedDataset?.file_count !== undefined && selectedDataset?.file_count !== null ? `${selectedDataset.file_count} Labeled Images` : null
+
   // Helper to extract clean metrics for model benchmark
   const getModelStats = (modelId, fallbackSlot = 0) => {
     const m = modelsList.find((item) => String(item.id) === String(modelId))
@@ -468,35 +463,35 @@ export default function AutoTrainerPage({ apiBase }) {
   const isOverallWinnerB = totalWinsB >= totalWinsA
 
   return (
-    <div className="w-full min-h-full pb-20 flex flex-col gap-6 text-slate-100 font-sans">
+    <div className="w-full min-h-full pb-20 flex flex-col gap-6 text-[var(--color-ink)] font-sans">
       {/* Toast Alert */}
       {toast && (
-        <div className={`rf-toast rf-toast-${toast.type} fixed top-6 right-6 z-50`}>
-          {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
-          {toast.type === 'error' && <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />}
-          {toast.type === 'info' && <Sparkles className="w-4 h-4 text-indigo-400 shrink-0 animate-spin" />}
-          <span className="text-xs font-medium text-slate-200">{toast.message}</span>
+        <div className={`fixed top-6 right-6 z-50 p-4 rounded-[var(--radius-card)] bg-[var(--color-surface)] border border-[var(--color-border)] shadow-lg flex items-center gap-3 animate-in fade-in slide-in-from-top-5 duration-200`}>
+          {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 text-[var(--color-status-free-text)] shrink-0" strokeWidth={1.7} />}
+          {toast.type === 'error' && <AlertCircle className="w-4 h-4 text-[var(--color-status-full-text)] shrink-0" strokeWidth={1.7} />}
+          {toast.type === 'info' && <Sparkles className="w-4 h-4 text-[var(--color-accent-strong)] shrink-0 animate-spin" strokeWidth={1.7} />}
+          <span className="text-xs font-medium text-[var(--color-ink)]">{toast.message}</span>
         </div>
       )}
 
       {/* Benchmark & Evaluation Modal */}
       {isBenchmarkModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-          <div className="relative w-full max-w-4xl bg-[#090e1a] border border-white/15 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col gap-6 animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="relative w-full max-w-4xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-panel-lg)] p-6 md:p-8 shadow-2xl flex flex-col gap-6 animate-in fade-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="flex items-start justify-between pb-4 border-b border-white/10">
+            <div className="flex items-start justify-between pb-4 border-b border-[var(--color-border)]">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
-                  <Scale className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-[var(--radius-option)] bg-[var(--color-accent-tint)] border border-[var(--color-accent-border)] flex items-center justify-center text-[var(--color-accent-strong)] shrink-0">
+                  <Scale className="w-5 h-5" strokeWidth={1.7} />
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+                  <h2 className="text-base font-bold text-[var(--color-ink)] tracking-tight flex items-center gap-2">
                     Side-by-Side Model Benchmark & Comparison
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-500/30">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border border-[var(--color-status-free-border)] font-semibold">
                       LIVE EVALUATION
                     </span>
                   </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-xs text-[var(--color-ink-secondary)] mt-0.5">
                     Compare mAP@50 accuracy, precision, recall, latency, and FPS throughput between model checkpoints.
                   </p>
                 </div>
@@ -504,24 +499,24 @@ export default function AutoTrainerPage({ apiBase }) {
               <button
                 type="button"
                 onClick={() => setIsBenchmarkModalOpen(false)}
-                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all cursor-pointer"
+                className="p-2 rounded-[var(--radius-pill)] hover:bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] hover:text-[var(--color-ink)] transition-colors cursor-pointer"
                 title="Close Modal"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5" strokeWidth={1.7} />
               </button>
             </div>
 
             {/* Model Selectors Header Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Selector A (Baseline) */}
-              <div className="p-4 rounded-2xl bg-[#040812] border border-white/10 space-y-2">
+              <div className="p-4 rounded-[var(--radius-card)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                    <Award className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="text-xs font-bold text-[var(--color-ink)] flex items-center gap-1.5">
+                    <Award className="w-3.5 h-3.5 text-[var(--color-ink-secondary)]" strokeWidth={1.7} />
                     Model A (Baseline / Reference)
                   </span>
                   {modelAStats.isActive && (
-                    <span className="text-[9px] font-mono px-2 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-500/40">
+                    <span className="text-[9px] font-mono px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border border-[var(--color-status-free-border)] font-semibold">
                       LIVE ACTIVE
                     </span>
                   )}
@@ -529,7 +524,7 @@ export default function AutoTrainerPage({ apiBase }) {
                 <select
                   value={benchmarkModelAId}
                   onChange={(e) => setBenchmarkModelAId(e.target.value)}
-                  className="w-full bg-[#0d1424] border border-white/15 rounded-xl px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-input)] px-3 py-2 text-xs text-[var(--color-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent-strong)] cursor-pointer font-sans"
                 >
                   {modelsList.map((m) => (
                     <option key={m.id} value={m.id}>
@@ -543,14 +538,14 @@ export default function AutoTrainerPage({ apiBase }) {
               </div>
 
               {/* Selector B (Candidate) */}
-              <div className="p-4 rounded-2xl bg-[#040812] border border-white/10 space-y-2">
+              <div className="p-4 rounded-[var(--radius-card)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                  <span className="text-xs font-bold text-[var(--color-ink)] flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-[var(--color-accent-strong)]" strokeWidth={1.7} />
                     Model B (Challenger / Candidate)
                   </span>
                   {modelBStats.isActive && (
-                    <span className="text-[9px] font-mono px-2 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-500/40">
+                    <span className="text-[9px] font-mono px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border border-[var(--color-status-free-border)] font-semibold">
                       LIVE ACTIVE
                     </span>
                   )}
@@ -558,7 +553,7 @@ export default function AutoTrainerPage({ apiBase }) {
                 <select
                   value={benchmarkModelBId}
                   onChange={(e) => setBenchmarkModelBId(e.target.value)}
-                  className="w-full bg-[#0d1424] border border-white/15 rounded-xl px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-input)] px-3 py-2 text-xs text-[var(--color-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent-strong)] cursor-pointer font-sans"
                 >
                   {modelsList.map((m) => (
                     <option key={m.id} value={m.id}>
@@ -573,28 +568,28 @@ export default function AutoTrainerPage({ apiBase }) {
             </div>
 
             {/* Comparison Metrics Matrix */}
-            <div className="rounded-2xl border border-white/10 bg-[#040812] overflow-hidden">
-              <div className="grid grid-cols-3 p-3 bg-white/5 border-b border-white/10 font-mono text-xs text-slate-400 font-semibold">
+            <div className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden">
+              <div className="grid grid-cols-3 p-3 bg-[var(--color-surface-muted)] border-b border-[var(--color-border)] text-xs text-[var(--color-ink-secondary)] font-semibold">
                 <div className="col-span-1">EVALUATION METRIC</div>
                 <div className="text-center truncate">{modelAStats.name}</div>
                 <div className="text-center truncate">{modelBStats.name}</div>
               </div>
 
-              <div className="divide-y divide-white/5 font-mono text-xs">
+              <div className="divide-y divide-[var(--color-border)] text-xs font-mono">
                 {/* 1. mAP@0.5 Accuracy */}
                 <div className="grid grid-cols-3 p-3.5 items-center">
-                  <div className="flex flex-col">
-                    <span className="text-slate-200 font-semibold">mAP@0.5 Score</span>
-                    <span className="text-[10px] text-slate-500">Higher is Better</span>
+                  <div className="flex flex-col font-sans">
+                    <span className="text-[var(--color-ink)] font-semibold">mAP@0.5 Score</span>
+                    <span className="text-[10px] text-[var(--color-ink-muted)]">Higher is Better</span>
                   </div>
                   <div className="flex justify-center">
                     <span
-                      className={`px-3 py-1 rounded-lg font-bold border transition-all ${
+                      className={`px-3 py-1 rounded-[var(--radius-pill)] font-bold border transition-colors tabular-nums ${
                         map50Winner === 'A'
-                          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40'
+                          ? 'bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border-[var(--color-status-free-border)]'
                           : map50Winner === 'B'
-                          ? 'bg-rose-500/15 text-rose-400 border-rose-500/40'
-                          : 'bg-slate-800 text-slate-300 border-white/10'
+                          ? 'bg-[var(--color-status-full-bg)] text-[var(--color-status-full-text)] border-[var(--color-status-full-border)]'
+                          : 'bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border-[var(--color-border)]'
                       }`}
                     >
                       {modelAStats.map50}% {map50Winner === 'A' && '★'}
@@ -602,12 +597,12 @@ export default function AutoTrainerPage({ apiBase }) {
                   </div>
                   <div className="flex justify-center">
                     <span
-                      className={`px-3 py-1 rounded-lg font-bold border transition-all ${
+                      className={`px-3 py-1 rounded-[var(--radius-pill)] font-bold border transition-colors tabular-nums ${
                         map50Winner === 'B'
-                          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40'
+                          ? 'bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border-[var(--color-status-free-border)]'
                           : map50Winner === 'A'
-                          ? 'bg-rose-500/15 text-rose-400 border-rose-500/40'
-                          : 'bg-slate-800 text-slate-300 border-white/10'
+                          ? 'bg-[var(--color-status-full-bg)] text-[var(--color-status-full-text)] border-[var(--color-status-full-border)]'
+                          : 'bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border-[var(--color-border)]'
                       }`}
                     >
                       {modelBStats.map50}% {map50Winner === 'B' && '★'}
@@ -617,18 +612,18 @@ export default function AutoTrainerPage({ apiBase }) {
 
                 {/* 2. Precision */}
                 <div className="grid grid-cols-3 p-3.5 items-center">
-                  <div className="flex flex-col">
-                    <span className="text-slate-200 font-semibold">Precision Rate</span>
-                    <span className="text-[10px] text-slate-500">Higher is Better</span>
+                  <div className="flex flex-col font-sans">
+                    <span className="text-[var(--color-ink)] font-semibold">Precision Rate</span>
+                    <span className="text-[10px] text-[var(--color-ink-muted)]">Higher is Better</span>
                   </div>
                   <div className="flex justify-center">
                     <span
-                      className={`px-3 py-1 rounded-lg font-bold border transition-all ${
+                      className={`px-3 py-1 rounded-[var(--radius-pill)] font-bold border transition-colors tabular-nums ${
                         precisionWinner === 'A'
-                          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40'
+                          ? 'bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border-[var(--color-status-free-border)]'
                           : precisionWinner === 'B'
-                          ? 'bg-rose-500/15 text-rose-400 border-rose-500/40'
-                          : 'bg-slate-800 text-slate-300 border-white/10'
+                          ? 'bg-[var(--color-status-full-bg)] text-[var(--color-status-full-text)] border-[var(--color-status-full-border)]'
+                          : 'bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border-[var(--color-border)]'
                       }`}
                     >
                       {modelAStats.precision}%
@@ -636,12 +631,12 @@ export default function AutoTrainerPage({ apiBase }) {
                   </div>
                   <div className="flex justify-center">
                     <span
-                      className={`px-3 py-1 rounded-lg font-bold border transition-all ${
+                      className={`px-3 py-1 rounded-[var(--radius-pill)] font-bold border transition-colors tabular-nums ${
                         precisionWinner === 'B'
-                          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40'
+                          ? 'bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border-[var(--color-status-free-border)]'
                           : precisionWinner === 'A'
-                          ? 'bg-rose-500/15 text-rose-400 border-rose-500/40'
-                          : 'bg-slate-800 text-slate-300 border-white/10'
+                          ? 'bg-[var(--color-status-full-bg)] text-[var(--color-status-full-text)] border-[var(--color-status-full-border)]'
+                          : 'bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border-[var(--color-border)]'
                       }`}
                     >
                       {modelBStats.precision}%
@@ -651,18 +646,18 @@ export default function AutoTrainerPage({ apiBase }) {
 
                 {/* 3. Recall */}
                 <div className="grid grid-cols-3 p-3.5 items-center">
-                  <div className="flex flex-col">
-                    <span className="text-slate-200 font-semibold">Recall Rate</span>
-                    <span className="text-[10px] text-slate-500">Higher is Better</span>
+                  <div className="flex flex-col font-sans">
+                    <span className="text-[var(--color-ink)] font-semibold">Recall Rate</span>
+                    <span className="text-[10px] text-[var(--color-ink-muted)]">Higher is Better</span>
                   </div>
                   <div className="flex justify-center">
                     <span
-                      className={`px-3 py-1 rounded-lg font-bold border transition-all ${
+                      className={`px-3 py-1 rounded-[var(--radius-pill)] font-bold border transition-colors tabular-nums ${
                         recallWinner === 'A'
-                          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40'
+                          ? 'bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border-[var(--color-status-free-border)]'
                           : recallWinner === 'B'
-                          ? 'bg-rose-500/15 text-rose-400 border-rose-500/40'
-                          : 'bg-slate-800 text-slate-300 border-white/10'
+                          ? 'bg-[var(--color-status-full-bg)] text-[var(--color-status-full-text)] border-[var(--color-status-full-border)]'
+                          : 'bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border-[var(--color-border)]'
                       }`}
                     >
                       {modelAStats.recall}%
@@ -670,12 +665,12 @@ export default function AutoTrainerPage({ apiBase }) {
                   </div>
                   <div className="flex justify-center">
                     <span
-                      className={`px-3 py-1 rounded-lg font-bold border transition-all ${
+                      className={`px-3 py-1 rounded-[var(--radius-pill)] font-bold border transition-colors tabular-nums ${
                         recallWinner === 'B'
-                          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40'
+                          ? 'bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border-[var(--color-status-free-border)]'
                           : recallWinner === 'A'
-                          ? 'bg-rose-500/15 text-rose-400 border-rose-500/40'
-                          : 'bg-slate-800 text-slate-300 border-white/10'
+                          ? 'bg-[var(--color-status-full-bg)] text-[var(--color-status-full-text)] border-[var(--color-status-full-border)]'
+                          : 'bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border-[var(--color-border)]'
                       }`}
                     >
                       {modelBStats.recall}%
@@ -685,18 +680,18 @@ export default function AutoTrainerPage({ apiBase }) {
 
                 {/* 4. Inference Latency */}
                 <div className="grid grid-cols-3 p-3.5 items-center">
-                  <div className="flex flex-col">
-                    <span className="text-slate-200 font-semibold">Inference Latency</span>
-                    <span className="text-[10px] text-slate-500">Lower is Faster</span>
+                  <div className="flex flex-col font-sans">
+                    <span className="text-[var(--color-ink)] font-semibold">Inference Latency</span>
+                    <span className="text-[10px] text-[var(--color-ink-muted)]">Lower is Faster</span>
                   </div>
                   <div className="flex justify-center">
                     <span
-                      className={`px-3 py-1 rounded-lg font-bold border transition-all ${
+                      className={`px-3 py-1 rounded-[var(--radius-pill)] font-bold border transition-colors tabular-nums ${
                         latencyWinner === 'A'
-                          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40'
+                          ? 'bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border-[var(--color-status-free-border)]'
                           : latencyWinner === 'B'
-                          ? 'bg-rose-500/15 text-rose-400 border-rose-500/40'
-                          : 'bg-slate-800 text-slate-300 border-white/10'
+                          ? 'bg-[var(--color-status-full-bg)] text-[var(--color-status-full-text)] border-[var(--color-status-full-border)]'
+                          : 'bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border-[var(--color-border)]'
                       }`}
                     >
                       {modelAStats.latency}ms
@@ -704,12 +699,12 @@ export default function AutoTrainerPage({ apiBase }) {
                   </div>
                   <div className="flex justify-center">
                     <span
-                      className={`px-3 py-1 rounded-lg font-bold border transition-all ${
+                      className={`px-3 py-1 rounded-[var(--radius-pill)] font-bold border transition-colors tabular-nums ${
                         latencyWinner === 'B'
-                          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40'
+                          ? 'bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border-[var(--color-status-free-border)]'
                           : latencyWinner === 'A'
-                          ? 'bg-rose-500/15 text-rose-400 border-rose-500/40'
-                          : 'bg-slate-800 text-slate-300 border-white/10'
+                          ? 'bg-[var(--color-status-full-bg)] text-[var(--color-status-full-text)] border-[var(--color-status-full-border)]'
+                          : 'bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border-[var(--color-border)]'
                       }`}
                     >
                       {modelBStats.latency}ms
@@ -719,18 +714,18 @@ export default function AutoTrainerPage({ apiBase }) {
 
                 {/* 5. Throughput FPS */}
                 <div className="grid grid-cols-3 p-3.5 items-center">
-                  <div className="flex flex-col">
-                    <span className="text-slate-200 font-semibold">Real-Time FPS</span>
-                    <span className="text-[10px] text-slate-500">Higher is Smoother</span>
+                  <div className="flex flex-col font-sans">
+                    <span className="text-[var(--color-ink)] font-semibold">Real-Time FPS</span>
+                    <span className="text-[10px] text-[var(--color-ink-muted)]">Higher is Smoother</span>
                   </div>
                   <div className="flex justify-center">
                     <span
-                      className={`px-3 py-1 rounded-lg font-bold border transition-all ${
+                      className={`px-3 py-1 rounded-[var(--radius-pill)] font-bold border transition-colors tabular-nums ${
                         fpsWinner === 'A'
-                          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40'
+                          ? 'bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border-[var(--color-status-free-border)]'
                           : fpsWinner === 'B'
-                          ? 'bg-rose-500/15 text-rose-400 border-rose-500/40'
-                          : 'bg-slate-800 text-slate-300 border-white/10'
+                          ? 'bg-[var(--color-status-full-bg)] text-[var(--color-status-full-text)] border-[var(--color-status-full-border)]'
+                          : 'bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border-[var(--color-border)]'
                       }`}
                     >
                       {modelAStats.fps} FPS
@@ -738,12 +733,12 @@ export default function AutoTrainerPage({ apiBase }) {
                   </div>
                   <div className="flex justify-center">
                     <span
-                      className={`px-3 py-1 rounded-lg font-bold border transition-all ${
+                      className={`px-3 py-1 rounded-[var(--radius-pill)] font-bold border transition-colors tabular-nums ${
                         fpsWinner === 'B'
-                          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40'
+                          ? 'bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border-[var(--color-status-free-border)]'
                           : fpsWinner === 'A'
-                          ? 'bg-rose-500/15 text-rose-400 border-rose-500/40'
-                          : 'bg-slate-800 text-slate-300 border-white/10'
+                          ? 'bg-[var(--color-status-full-bg)] text-[var(--color-status-full-text)] border-[var(--color-status-full-border)]'
+                          : 'bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border-[var(--color-border)]'
                       }`}
                     >
                       {modelBStats.fps} FPS
@@ -753,30 +748,30 @@ export default function AutoTrainerPage({ apiBase }) {
 
                 {/* 6. Training Epochs */}
                 <div className="grid grid-cols-3 p-3.5 items-center">
-                  <span className="text-slate-200 font-semibold">Trained Epochs</span>
-                  <div className="text-center text-slate-300">{modelAStats.epochs} Epochs</div>
-                  <div className="text-center text-slate-300">{modelBStats.epochs} Epochs</div>
+                  <span className="text-[var(--color-ink)] font-semibold font-sans">Trained Epochs</span>
+                  <div className="text-center text-[var(--color-ink-secondary)] tabular-nums">{modelAStats.epochs} Epochs</div>
+                  <div className="text-center text-[var(--color-ink-secondary)] tabular-nums">{modelBStats.epochs} Epochs</div>
                 </div>
               </div>
             </div>
 
             {/* Overall Verdict Banner */}
             <div
-              className={`p-4 rounded-2xl border flex items-center justify-between gap-3 ${
+              className={`p-4 rounded-[var(--radius-card)] border flex items-center justify-between gap-3 ${
                 isOverallWinnerB
-                  ? 'bg-emerald-950/30 border-emerald-500/40'
-                  : 'bg-indigo-950/30 border-indigo-500/40'
+                  ? 'bg-[var(--color-status-free-bg)] border-[var(--color-status-free-border)]'
+                  : 'bg-[var(--color-accent-tint)] border-[var(--color-accent-border)]'
               }`}
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/35 flex items-center justify-center text-emerald-400 shrink-0">
-                  <Award className="w-5 h-5" />
+                <div className="w-9 h-9 rounded-[var(--radius-tile)] bg-[var(--color-surface)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-accent-strong)] shrink-0">
+                  <Award className="w-5 h-5" strokeWidth={1.7} />
                 </div>
                 <div className="min-w-0">
-                  <span className="text-xs font-bold text-white block truncate">
+                  <span className="text-xs font-bold text-[var(--color-ink)] block truncate">
                     Recommendation: {isOverallWinnerB ? modelBStats.name : modelAStats.name} (Superior Performance)
                   </span>
-                  <span className="text-[11px] text-slate-300">
+                  <span className="text-[11px] text-[var(--color-ink-secondary)]">
                     {isOverallWinnerB
                       ? `Model B yields higher mAP50 score (+${(modelBStats.map50 - modelAStats.map50).toFixed(1)}%) with ${modelBStats.latency}ms response time.`
                       : `Model A maintains lower latency (${modelAStats.latency}ms) with reliable stability.`}
@@ -785,7 +780,7 @@ export default function AutoTrainerPage({ apiBase }) {
               </div>
 
               <div className="shrink-0 flex items-center gap-2">
-                <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-500/40 font-bold">
+                <span className="text-[10px] font-mono px-2.5 py-1 rounded-[var(--radius-pill)] bg-[var(--color-surface)] text-[var(--color-ink)] border border-[var(--color-border)] font-bold">
                   {isOverallWinnerB ? 'WINNER: MODEL B' : 'WINNER: MODEL A'}
                 </span>
               </div>
@@ -793,16 +788,17 @@ export default function AutoTrainerPage({ apiBase }) {
 
             {/* Modal Actions Footer */}
             <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="md"
                 onClick={() => setIsBenchmarkModalOpen(false)}
-                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold cursor-pointer transition-all border border-white/10"
               >
                 Close Comparison
-              </button>
+              </Button>
 
-              <button
-                type="button"
+              <Button
+                variant="primary"
+                size="md"
                 onClick={() => {
                   const targetId = isOverallWinnerB ? modelBStats.id : modelAStats.id
                   if (targetId && targetId !== 'baseline' && targetId !== 'candidate') {
@@ -812,60 +808,63 @@ export default function AutoTrainerPage({ apiBase }) {
                   }
                   setIsBenchmarkModalOpen(false)
                 }}
-                className="rf-btn-deploy py-2.5 px-5 text-xs font-bold"
               >
-                <Zap className="w-4 h-4 fill-current" />
+                <Zap className="w-4 h-4 fill-current shrink-0" strokeWidth={1.7} />
                 <span>Deploy Winning Model to Live System</span>
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 1. Header Banner (Full Width, Crisp Alignment) */}
-      <div className="w-full p-5 rounded-2xl bg-gradient-to-r from-slate-900/90 via-[#0d131f] to-slate-900/90 border border-emerald-500/25 shadow-xl backdrop-blur-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5 min-w-0">
-          <div className="w-11 h-11 rounded-xl bg-emerald-500/15 border border-emerald-500/35 flex items-center justify-center text-emerald-400 shrink-0 shadow-lg shadow-emerald-950/40">
-            <Cpu className="w-6 h-6" />
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-lg font-bold text-white tracking-tight">Model Training & Deployment Hub</h1>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-emerald-950/80 text-emerald-300 border border-emerald-500/40">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                GPU Cluster 172.30.81.175:9000
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 mt-0.5 truncate">
-              Autonomous YOLO Fine-Tuning Pipeline &bull; GTX 1660 SUPER 6GB &bull; Zero-Downtime Hot Deploy
-            </p>
-          </div>
-        </div>
-
-        {/* Telemetry & Live Active Model Pills */}
-        <div className="flex items-center gap-2.5 flex-wrap shrink-0">
-          {/* Active Model Pill */}
-          <div className="px-3 py-1.5 rounded-xl bg-emerald-950/60 border border-emerald-500/40 flex items-center gap-2 font-mono text-xs text-emerald-300 shadow-sm shadow-emerald-950/40">
-            <Zap className="w-3.5 h-3.5 text-emerald-400 fill-current animate-pulse" />
-            <span>
-              Live Active: <strong>{activeModel?.model_name || 'best'}</strong> ({activeModel?.version || 'v1.1'})
+      {/* 1. Header Banner (Full Width, White Corporate) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h1 className="font-sans font-semibold text-[21px] text-[var(--color-ink)] leading-snug tracking-tight">
+              Model Training & Deployment Hub
+            </h1>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-[var(--radius-pill)] text-xs font-medium bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border border-[var(--color-border)]">
+              <span className="font-mono">GPU Cluster 172.30.81.175:9000</span>
             </span>
           </div>
+          <p className="text-xs sm:text-[13px] text-[var(--color-ink-secondary)] mt-0.5 font-normal">
+            Autonomous YOLO Fine-Tuning Pipeline • GTX 1660 SUPER 6GB • Zero-Downtime Hot Deploy
+          </p>
+        </div>
 
-          <div className="px-3 py-1.5 rounded-xl bg-slate-950/80 border border-white/10 flex items-center gap-2 font-mono text-xs text-slate-300">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>GPU: {gpuTelemetry.temperature_c || 34}&deg;C ({gpuTelemetry.memory_used_mb || 844}M / 6144M)</span>
-          </div>
+        {/* Telemetry & Live Active Model Controls */}
+        <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+          {/* Active Model Badge */}
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-pill)] bg-[var(--color-green-tint)] text-[var(--color-green-text)] border border-[var(--color-green-border)] text-xs font-medium">
+            <Zap className="w-3.5 h-3.5 fill-current shrink-0" strokeWidth={1.7} />
+            <span>
+              Live Active: {activeModel?.model_name ? (
+                <>
+                  <strong>{activeModel.model_name}</strong>
+                  {activeModel.version ? ` (${activeModel.version})` : ''}
+                </>
+              ) : (
+                '—'
+              )}
+            </span>
+          </span>
 
-          <button
-            type="button"
+          <span className="inline-flex items-center px-3 py-1.5 rounded-[var(--radius-pill)] bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border border-[var(--color-border)] text-xs font-medium font-sans tabular-nums">
+            <span>
+              GPU: {gpuTelemetry?.temperature_c ? `${gpuTelemetry.temperature_c}°C` : '—'} ({gpuTelemetry?.memory_used_mb ? `${gpuTelemetry.memory_used_mb}M` : '—'}{gpuTelemetry?.memory_total_mb ? ` / ${gpuTelemetry.memory_total_mb}M` : ''})
+            </span>
+          </span>
+
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => { fetchModels(); fetchDatasets(); fetchTelemetry(); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-200 border border-white/10 cursor-pointer transition-all"
             title="Refresh State"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
+            <RefreshCw className="w-3.5 h-3.5 shrink-0" strokeWidth={1.7} />
             <span>Sync</span>
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -874,64 +873,70 @@ export default function AutoTrainerPage({ apiBase }) {
         {/* =========================================================================
             LEFT CARD: 1. SETUP TRAINING JOB (50% Width)
             ========================================================================= */}
-        <div className="w-full rounded-2xl bg-slate-900/60 border border-white/10 p-6 flex flex-col justify-between gap-5 backdrop-blur-xl shadow-xl">
+        <div className="w-full rounded-[var(--radius-card)] bg-[var(--color-surface)] border border-[var(--color-border)] p-6 flex flex-col justify-between gap-5 min-w-0 box-sizing-border">
           <div className="space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
               <div className="flex items-center gap-2">
-                <Sliders className="w-4 h-4 text-emerald-400" />
-                <h2 className="text-sm font-bold text-white uppercase tracking-wider">1. Setup Training Job</h2>
+                <Sliders className="w-4 h-4 text-[var(--color-ink)]" strokeWidth={1.7} />
+                <h2 className="text-sm font-semibold text-[var(--color-ink)] uppercase tracking-wider">1. Setup Training Job</h2>
               </div>
-              <span className="text-xs font-mono text-slate-400">152 Labeled Images</span>
+              {selectedDatasetCount && (
+                <span className="text-xs font-medium text-[var(--color-ink-secondary)]">{selectedDatasetCount}</span>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Custom Model Name Input (Pre-Training Setup) */}
               <div className="space-y-1.5 sm:col-span-2">
-                <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
+                <label className="text-xs font-medium text-[var(--color-ink)] flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
-                    <Tag className="w-3.5 h-3.5 text-emerald-400" />
+                    <Tag className="w-3.5 h-3.5 text-[var(--color-ink-secondary)]" strokeWidth={1.7} />
                     <span>Custom Model Name (Before Training)</span>
                   </span>
-                  <span className="text-[10px] text-slate-400 font-mono">Registry Identifier</span>
+                  <span className="text-[11px] text-[var(--color-ink-secondary)]">Registry Identifier</span>
                 </label>
                 <input
                   type="text"
                   value={customModelName}
                   onChange={(e) => setCustomModelName(e.target.value)}
                   placeholder="e.g. YOLO26-Parking-v2"
-                  className="w-full bg-[#080d18] border border-white/15 focus:border-emerald-500 rounded-xl px-3.5 py-2.5 text-xs font-mono text-emerald-300 placeholder-slate-600 focus:outline-none transition-colors"
+                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-input)] px-3.5 py-2.5 text-xs text-[var(--color-ink)] placeholder-[var(--color-ink-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent-strong)] font-sans"
                 />
               </div>
 
               {/* 1. Target Dataset Dropdown */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                  <FolderGit2 className="w-3.5 h-3.5 text-emerald-400" />
+              <div className="space-y-1.5 min-w-0">
+                <label className="text-xs font-medium text-[var(--color-ink)] flex items-center gap-1.5">
+                  <FolderGit2 className="w-3.5 h-3.5 text-[var(--color-ink-secondary)]" strokeWidth={1.7} />
                   <span>Target Dataset</span>
                 </label>
                 <select
                   value={datasetId}
                   onChange={(e) => setDatasetId(e.target.value)}
-                  className="w-full bg-[#080d18] border border-white/15 rounded-xl px-3 py-2.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-input)] px-3 py-2.5 text-xs text-[var(--color-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent-strong)] cursor-pointer font-sans"
                 >
-                  {datasetsList.map((ds) => (
-                    <option key={ds.dataset_id} value={ds.dataset_id}>
-                      {ds.name} ({ds.file_count || 0} images)
-                    </option>
-                  ))}
+                  {datasetsList.length === 0 ? (
+                    <option disabled value="">—</option>
+                  ) : (
+                    datasetsList.map((ds) => (
+                      <option key={ds.dataset_id} value={ds.dataset_id}>
+                        {ds.name}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 
               {/* 2. Base Architecture Dropdown */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5 text-indigo-400" />
+              <div className="space-y-1.5 min-w-0">
+                <label className="text-xs font-medium text-[var(--color-ink)] flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-[var(--color-ink-secondary)]" strokeWidth={1.7} />
                   <span>Base Architecture</span>
                 </label>
                 <select
                   value={baseModel}
                   onChange={(e) => setBaseModel(e.target.value)}
-                  className="w-full bg-[#080d18] border border-white/15 rounded-xl px-3 py-2.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-input)] px-3 py-2.5 text-xs text-[var(--color-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent-strong)] cursor-pointer font-sans"
                 >
                   {BASE_MODELS_LIST.map((bm) => (
                     <option key={bm.id} value={bm.id}>
@@ -942,15 +947,15 @@ export default function AutoTrainerPage({ apiBase }) {
               </div>
 
               {/* 3. Training Epochs Dropdown */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-amber-400" />
+              <div className="space-y-1.5 min-w-0">
+                <label className="text-xs font-medium text-[var(--color-ink)] flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-[var(--color-ink-secondary)]" strokeWidth={1.7} />
                   <span>Training Epochs (Intensity)</span>
                 </label>
                 <select
                   value={epochs}
                   onChange={(e) => setEpochs(Number(e.target.value))}
-                  className="w-full bg-[#080d18] border border-white/15 rounded-xl px-3 py-2.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-input)] px-3 py-2.5 text-xs text-[var(--color-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent-strong)] cursor-pointer font-sans"
                 >
                   <option value={5}>5 Epochs (Quick Test • ~1 min)</option>
                   <option value={25}>25 Epochs (Fast Train • ~5 mins)</option>
@@ -960,15 +965,15 @@ export default function AutoTrainerPage({ apiBase }) {
               </div>
 
               {/* 4. Augmentation Preset Dropdown */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+              <div className="space-y-1.5 min-w-0">
+                <label className="text-xs font-medium text-[var(--color-ink)] flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[var(--color-ink-secondary)]" strokeWidth={1.7} />
                   <span>Data Augmentation Preset</span>
                 </label>
                 <select
                   value={augmentPreset}
                   onChange={(e) => setAugmentPreset(e.target.value)}
-                  className="w-full bg-[#080d18] border border-white/15 rounded-xl px-3 py-2.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-input)] px-3 py-2.5 text-xs text-[var(--color-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent-strong)] cursor-pointer font-sans"
                 >
                   <option value="cctv">Parking CCTV (Mosaic 1.0, MixUp 0.15, Shadow HSV 0.4, Flip 0.5)</option>
                   <option value="light">Light Augment (Horizontal Flip 0.5, Brightness 0.2)</option>
@@ -979,25 +984,25 @@ export default function AutoTrainerPage({ apiBase }) {
             </div>
 
             {/* Advanced Drawer Toggle */}
-            <div className="pt-2 border-t border-white/10">
+            <div className="pt-2 border-t border-[var(--color-border)]">
               <button
                 type="button"
                 onClick={() => setShowAdvanced(!showAdvanced)}
-                className="flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-slate-200 cursor-pointer"
+                className="flex items-center gap-2 text-xs font-medium text-[var(--color-ink-secondary)] hover:text-[var(--color-ink)] cursor-pointer rounded-[var(--radius-pill)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent-strong)] focus-visible:outline-offset-2"
               >
-                <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[var(--color-ink-secondary)]" strokeWidth={1.7} />
                 <span>Advanced Parameters (Batch Size, LR, Custom Script)</span>
-                {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" strokeWidth={1.7} /> : <ChevronDown className="w-3.5 h-3.5" strokeWidth={1.7} />}
               </button>
 
               {showAdvanced && (
-                <div className="pt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs animate-in fade-in duration-150">
+                <div className="pt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div className="space-y-1">
-                    <label className="text-slate-300">Batch Size</label>
+                    <label className="text-[var(--color-ink-secondary)] font-medium">Batch Size</label>
                     <select
                       value={batchSize}
                       onChange={(e) => setBatchSize(Number(e.target.value))}
-                      className="w-full bg-[#080d18] border border-white/15 rounded-xl px-3 py-2 text-xs font-mono text-slate-200"
+                      className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-input)] px-3 py-2 text-xs text-[var(--color-ink)] font-sans focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent-strong)] cursor-pointer"
                     >
                       <option value={8}>8 (~2.5GB VRAM)</option>
                       <option value={16}>16 (~3.8GB VRAM - Default)</option>
@@ -1006,11 +1011,11 @@ export default function AutoTrainerPage({ apiBase }) {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-slate-300">Learning Rate (lr0)</label>
+                    <label className="text-[var(--color-ink-secondary)] font-medium">Learning Rate (lr0)</label>
                     <select
                       value={lr0}
                       onChange={(e) => setLr0(Number(e.target.value))}
-                      className="w-full bg-[#080d18] border border-white/15 rounded-xl px-3 py-2 text-xs font-mono text-slate-200"
+                      className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-input)] px-3 py-2 text-xs text-[var(--color-ink)] font-sans focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent-strong)] cursor-pointer"
                     >
                       <option value={0.01}>0.01 (Default)</option>
                       <option value={0.005}>0.005 (Fine-Tune)</option>
@@ -1019,13 +1024,13 @@ export default function AutoTrainerPage({ apiBase }) {
                   </div>
 
                   <div className="sm:col-span-2 space-y-1">
-                    <label className="text-slate-300">Custom train.py Script (Optional)</label>
+                    <label className="text-[var(--color-ink-secondary)] font-medium">Custom train.py Script (Optional)</label>
                     <textarea
                       value={editorCode}
                       onChange={(e) => setEditorCode(e.target.value)}
                       placeholder="# Standard YOLO training pipeline generated automatically..."
                       rows={3}
-                      className="w-full p-2.5 rounded-xl bg-[#040812] border border-white/15 font-mono text-xs text-emerald-300 focus:outline-none"
+                      className="w-full p-2.5 rounded-[var(--radius-input)] bg-[var(--color-surface)] border border-[var(--color-border)] font-mono text-xs text-[var(--color-ink)] placeholder-[var(--color-ink-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent-strong)]"
                     />
                   </div>
                 </div>
@@ -1036,25 +1041,27 @@ export default function AutoTrainerPage({ apiBase }) {
           {/* Primary Start Action */}
           <div className="pt-2">
             {isTrainingActive ? (
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="md"
                 onClick={handleCancelTraining}
-                className="w-full py-3.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
+                className="w-full justify-center h-[44px] text-xs font-semibold text-[var(--color-status-full-text)] border-[var(--color-status-full-border)] !bg-[var(--color-status-full-bg)] hover:!bg-[var(--color-status-full-bg)] hover:opacity-90"
               >
-                <Square className="w-4 h-4 fill-current" />
+                <Square className="w-4 h-4 fill-current shrink-0" strokeWidth={1.7} />
                 <span>Cancel Active Training Job</span>
-              </button>
+              </Button>
             ) : (
-              <button
-                type="button"
+              <Button
+                variant="primary"
+                size="md"
                 onClick={handleStartTraining}
                 disabled={isStarting}
-                className="rf-btn-deploy w-full justify-center py-3.5 text-xs font-bold uppercase tracking-wider"
+                className="w-full justify-center h-[44px] text-xs font-semibold uppercase tracking-wider"
               >
-                <Play className={`w-4 h-4 fill-current ${isStarting ? 'animate-bounce' : ''}`} />
-                <span>{isStarting ? 'Validating AST (<5ms)...' : 'Start Auto-Training on Private GPU'}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
+                <Play className="w-4 h-4 fill-current shrink-0" strokeWidth={1.7} />
+                <span>{isStarting ? 'Validating...' : 'Start Auto-Training on Private GPU'}</span>
+                <ArrowRight className="w-4 h-4 shrink-0" strokeWidth={1.7} />
+              </Button>
             )}
           </div>
         </div>
@@ -1062,14 +1069,14 @@ export default function AutoTrainerPage({ apiBase }) {
         {/* =========================================================================
             RIGHT CARD: 2. MODEL EVALUATION & DEPLOYMENT (50% Width - Perfectly Matched)
             ========================================================================= */}
-        <div className="w-full rounded-2xl bg-slate-900/60 border border-white/10 p-6 flex flex-col justify-between gap-5 backdrop-blur-xl shadow-xl">
+        <div className="w-full rounded-[var(--radius-card)] bg-[var(--color-surface)] border border-[var(--color-border)] p-6 flex flex-col justify-between gap-5 shadow-sm">
           <div className="space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
               <div className="flex items-center gap-2">
-                <Scale className="w-4 h-4 text-emerald-400" />
-                <h2 className="text-sm font-bold text-white uppercase tracking-wider">2. Model Switcher & Benchmark</h2>
+                <Scale className="w-4 h-4 text-[var(--color-accent-strong)]" strokeWidth={1.7} />
+                <h2 className="text-sm font-bold text-[var(--color-ink)] uppercase tracking-wider">2. Model Switcher & Benchmark</h2>
               </div>
-              <span className="text-xs font-mono text-emerald-400 font-semibold">
+              <span className="text-xs font-mono text-[var(--color-ink-secondary)] font-semibold">
                 {selectedModelObj?.version || 'v2.0'}
               </span>
             </div>
@@ -1077,17 +1084,17 @@ export default function AutoTrainerPage({ apiBase }) {
             {/* 1. Model Selector Dropdown & Instant Switch Button */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                  <Award className="w-3.5 h-3.5 text-amber-400" />
+                <label className="text-xs font-semibold text-[var(--color-ink)] flex items-center gap-1.5">
+                  <Award className="w-3.5 h-3.5 text-[var(--color-ink-secondary)]" strokeWidth={1.7} />
                   <span>Active System Model Switcher</span>
                 </label>
                 {selectedModelObj?.is_active ? (
-                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-950 text-emerald-300 border border-emerald-500/40 font-bold">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[var(--radius-pill)] text-[10px] font-mono bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border border-[var(--color-status-free-border)] font-semibold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-status-free-text)] animate-pulse"></span>
                     ACTIVE IN PRODUCTION
                   </span>
                 ) : (
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border border-[var(--color-border)] font-medium">
                     STANDBY CHECKPOINT
                   </span>
                 )}
@@ -1096,7 +1103,7 @@ export default function AutoTrainerPage({ apiBase }) {
                 <select
                   value={selectedActiveModelId}
                   onChange={(e) => setSelectedActiveModelId(e.target.value)}
-                  className="flex-1 bg-[#080d18] border border-white/15 rounded-xl px-3 py-2.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-input)] px-3 py-2.5 text-xs text-[var(--color-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent-strong)] cursor-pointer font-sans"
                 >
                   {modelsList.map((m) => (
                     <option key={m.id} value={m.id}>
@@ -1106,53 +1113,54 @@ export default function AutoTrainerPage({ apiBase }) {
                 </select>
 
                 {!selectedModelObj?.is_active && (
-                  <button
-                    type="button"
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={() => handleActivateModel(selectedActiveModelId)}
                     disabled={activatingId !== null}
-                    className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold font-mono flex items-center gap-1.5 cursor-pointer shrink-0 transition-all shadow-md shadow-emerald-950/40"
+                    className="shrink-0 h-[38px] text-xs font-semibold"
                     title="Switch Live System to this model"
                   >
-                    <Zap className="w-3.5 h-3.5 fill-current" />
+                    <Zap className="w-3.5 h-3.5 fill-current" strokeWidth={1.7} />
                     <span>{activatingId === Number(selectedActiveModelId) ? 'Activating...' : 'Switch Now'}</span>
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
 
             {/* 2. Performance Stats of Selected Model */}
-            <div className="p-3.5 rounded-xl bg-gradient-to-br from-emerald-950/20 via-[#080d18] to-black border border-emerald-500/30 flex flex-col gap-2.5">
+            <div className="p-3.5 rounded-[var(--radius-card)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] flex flex-col gap-2.5">
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <span className="text-xs font-bold text-white block truncate">
+                  <span className="text-xs font-bold text-[var(--color-ink)] block truncate">
                     {selectedModelObj?.model_name || 'YOLO26-Parking'}
                   </span>
-                  <span className="text-[11px] text-slate-400 font-mono">
+                  <span className="text-[11px] text-[var(--color-ink-secondary)] font-mono">
                     {selectedModelObj?.version || 'v1.0.0'} &bull; YOLO26 Medium
                   </span>
                 </div>
                 <div className="text-right shrink-0">
-                  <span className="text-2xl font-bold font-mono text-emerald-400">
+                  <span className="text-2xl font-bold tabular-nums text-[var(--color-ink)] block">
                     {selectedModelObj?.map50 ? `${selectedModelObj.map50}%` : '98.8%'}
                   </span>
-                  <span className="text-[9px] font-bold font-mono text-emerald-300 block bg-emerald-950/80 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                  <span className="text-[9px] font-semibold text-[var(--color-ink-secondary)] block bg-[var(--color-surface)] px-1.5 py-0.5 rounded-[var(--radius-pill)] border border-[var(--color-border)]">
                     mAP@0.5 Score
                   </span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/5 font-mono text-xs text-center">
-                <div className="p-2 rounded bg-black/40">
-                  <span className="text-slate-400 text-[10px] block">PRECISION</span>
-                  <span className="text-slate-200 font-bold">96.8%</span>
+              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[var(--color-border)] text-xs text-center">
+                <div className="p-2 rounded-[var(--radius-tile)] bg-[var(--color-surface)] border border-[var(--color-border)]">
+                  <span className="text-[var(--color-ink-secondary)] text-[10px] block font-medium">PRECISION</span>
+                  <span className="text-[var(--color-ink)] font-bold tabular-nums">96.8%</span>
                 </div>
-                <div className="p-2 rounded bg-black/40">
-                  <span className="text-slate-400 text-[10px] block">RECALL</span>
-                  <span className="text-slate-200 font-bold">95.8%</span>
+                <div className="p-2 rounded-[var(--radius-tile)] bg-[var(--color-surface)] border border-[var(--color-border)]">
+                  <span className="text-[var(--color-ink-secondary)] text-[10px] block font-medium">RECALL</span>
+                  <span className="text-[var(--color-ink)] font-bold tabular-nums">95.8%</span>
                 </div>
-                <div className="p-2 rounded bg-black/40">
-                  <span className="text-slate-400 text-[10px] block">LATENCY</span>
-                  <span className="text-emerald-400 font-bold">14.8ms</span>
+                <div className="p-2 rounded-[var(--radius-tile)] bg-[var(--color-surface)] border border-[var(--color-border)]">
+                  <span className="text-[var(--color-ink-secondary)] text-[10px] block font-medium">LATENCY</span>
+                  <span className="text-[var(--color-status-free-text)] font-bold tabular-nums">14.8ms</span>
                 </div>
               </div>
             </div>
@@ -1162,45 +1170,46 @@ export default function AutoTrainerPage({ apiBase }) {
               <button
                 type="button"
                 onClick={() => setIsBenchmarkModalOpen(true)}
-                className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-indigo-950/60 via-purple-950/40 to-slate-900 border border-indigo-500/40 hover:border-indigo-400 text-indigo-200 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md shadow-indigo-950/30"
+                className="w-full py-2.5 px-4 rounded-[var(--radius-card)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-muted)] border border-[var(--color-border)] text-[var(--color-ink)] text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-sm"
               >
-                <Scale className="w-4 h-4 text-indigo-400" />
+                <Scale className="w-4 h-4 text-[var(--color-accent-strong)]" strokeWidth={1.7} />
                 <span>Open Side-by-Side Model Benchmark (A/B Test Matrix)</span>
-                <ArrowRight className="w-3.5 h-3.5 text-indigo-400" />
+                <ArrowRight className="w-3.5 h-3.5 text-[var(--color-ink-secondary)]" strokeWidth={1.7} />
               </button>
             </div>
 
             {/* 4. Test on Camera Scene Dropdown */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                <Camera className="w-3.5 h-3.5 text-emerald-400" />
+              <label className="text-xs font-semibold text-[var(--color-ink)] flex items-center gap-1.5">
+                <Camera className="w-3.5 h-3.5 text-[var(--color-accent-strong)]" strokeWidth={1.7} />
                 <span>Test Model on Camera Scene</span>
               </label>
               <div className="flex items-center gap-2">
                 <select
                   value={selectedScene}
                   onChange={(e) => setSelectedScene(e.target.value)}
-                  className="flex-1 bg-[#080d18] border border-white/15 rounded-xl px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none cursor-pointer"
+                  className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-input)] px-3 py-2 text-xs text-[var(--color-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent-strong)] cursor-pointer font-sans"
                 >
                   {SCENES.map((s) => (
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </select>
-                <button
-                  type="button"
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={handleRunTest}
                   disabled={isTesting}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer shrink-0 transition-all shadow-md shadow-emerald-950/40"
+                  className="shrink-0 h-[38px] text-xs font-semibold"
                 >
-                  <Play className={`w-3.5 h-3.5 fill-current ${isTesting ? 'animate-spin' : ''}`} />
+                  <Play className={`w-3.5 h-3.5 fill-current shrink-0 ${isTesting ? 'animate-spin' : ''}`} strokeWidth={1.7} />
                   <span>{isTesting ? 'Testing...' : 'Test'}</span>
-                </button>
+                </Button>
               </div>
 
               {testResult && (
-                <div className="p-2.5 rounded-xl bg-[#040812] border border-emerald-500/30 font-mono text-[11px] flex items-center justify-between text-slate-300 animate-in fade-in">
-                  <span className="text-emerald-400 font-bold">✓ Latency: {testResult.latencyMs}ms ({testResult.fps} FPS)</span>
-                  <span>Confidence: {testResult.confidence} &bull; IoU: {testResult.slotIoU}</span>
+                <div className="p-2.5 rounded-[var(--radius-input)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] text-[11px] flex items-center justify-between text-[var(--color-ink)]">
+                  <span className="text-[var(--color-status-free-text)] font-semibold">✓ Latency: {testResult.latencyMs}ms ({testResult.fps} FPS)</span>
+                  <span className="text-[var(--color-ink-secondary)] font-mono">Confidence: {testResult.confidence} &bull; IoU: {testResult.slotIoU}</span>
                 </div>
               )}
             </div>
@@ -1208,15 +1217,16 @@ export default function AutoTrainerPage({ apiBase }) {
 
           {/* Action Buttons (Deploy & Download) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
-            <button
-              type="button"
+            <Button
+              variant="primary"
+              size="md"
               onClick={() => handleActivateModel(selectedActiveModelId)}
               disabled={activatingId !== null || selectedModelObj?.is_active}
-              className={`rf-btn-deploy w-full justify-center py-3 text-xs ${
+              className={`w-full justify-center h-[44px] text-xs font-semibold ${
                 selectedModelObj?.is_active ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >
-              <Zap className="w-4 h-4 fill-current" />
+              <Zap className="w-4 h-4 fill-current shrink-0" strokeWidth={1.7} />
               <span>
                 {selectedModelObj?.is_active
                   ? 'Currently Active in System'
@@ -1224,31 +1234,32 @@ export default function AutoTrainerPage({ apiBase }) {
                   ? 'Switching Model...'
                   : 'Deploy Model to Live System'}
               </span>
-            </button>
+            </Button>
 
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="md"
               onClick={() => handleDownloadWeights(selectedActiveModelId)}
-              className="rf-btn-download-weights w-full justify-center py-3 text-xs"
+              className="w-full justify-center h-[44px] text-xs font-semibold"
             >
-              <Download className="w-3.5 h-3.5" />
+              <Download className="w-3.5 h-3.5 shrink-0" strokeWidth={1.7} />
               <span>Download Weights (.pt)</span>
-            </button>
+            </Button>
           </div>
         </div>
       </div>
 
       {/* 3. Terminal Execution Logs Card (Full Width) */}
-      <div className="w-full rounded-2xl bg-slate-900/60 border border-white/10 p-5 flex flex-col gap-3 backdrop-blur-xl shadow-xl">
+      <div className="w-full rounded-[var(--radius-card)] bg-[var(--color-surface)] border border-[var(--color-border)] p-5 flex flex-col gap-3 shadow-sm">
         <div className="flex items-center justify-between">
           <button
             type="button"
             onClick={() => setShowLogs(!showLogs)}
-            className="flex items-center gap-2 text-xs font-mono text-slate-300 hover:text-white cursor-pointer"
+            className="flex items-center gap-2 text-xs font-medium text-[var(--color-ink)] hover:text-[var(--color-ink-secondary)] cursor-pointer"
           >
-            <Terminal className="w-4 h-4 text-emerald-400" />
+            <Terminal className="w-4 h-4 text-[var(--color-ink-secondary)]" strokeWidth={1.7} />
             <span>Terminal Execution Stream ({logs.length} lines)</span>
-            {showLogs ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            {showLogs ? <ChevronUp className="w-3.5 h-3.5" strokeWidth={1.7} /> : <ChevronDown className="w-3.5 h-3.5" strokeWidth={1.7} />}
           </button>
 
           <button
@@ -1259,42 +1270,52 @@ export default function AutoTrainerPage({ apiBase }) {
               showToast('Logs copied to clipboard', 'info')
               setTimeout(() => setCopied(false), 2000)
             }}
-            className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-xs font-mono flex items-center gap-1 cursor-pointer"
+            className="px-2.5 py-1 rounded-[var(--radius-pill)] bg-[var(--color-surface-muted)] hover:bg-[var(--color-border)] text-[var(--color-ink-secondary)] hover:text-[var(--color-ink)] text-xs font-mono flex items-center gap-1 cursor-pointer border border-[var(--color-border)] transition-colors"
           >
-            <Copy className="w-3 h-3" />
+            <Copy className="w-3 h-3" strokeWidth={1.7} />
             <span>{copied ? 'Copied' : 'Copy'}</span>
           </button>
         </div>
 
         {showLogs && (
-          <div ref={terminalEndRef} className="p-3.5 rounded-xl bg-[#040812] font-mono text-xs max-h-52 overflow-y-auto space-y-1 border border-white/10 animate-in fade-in duration-150">
+          <div ref={terminalEndRef} className="p-3.5 rounded-[var(--radius-card)] bg-[var(--color-surface-muted)] font-mono text-xs max-h-52 overflow-y-auto space-y-1 border border-[var(--color-border)] text-[var(--color-ink)]">
             {logs.length === 0 ? (
-              <span className="text-slate-600">Waiting for training dispatch. Click 'Start Auto-Training' above.</span>
+              <span className="text-[var(--color-ink-muted)]">Waiting for training dispatch. Click 'Start Auto-Training' above.</span>
             ) : (
-              logs.map((line, idx) => (
-                <div key={idx} className="text-slate-300 flex items-start gap-2">
-                  <span className="text-slate-600 select-none shrink-0">{(idx + 1).toString().padStart(3, '0')}</span>
-                  <span className="flex-1 break-all">{line}</span>
-                </div>
-              ))
+              logs.map((line, idx) => {
+                let lineClass = 'text-[var(--color-ink)]'
+                if (line.includes('ERROR') || line.includes('ERR') || line.includes('Failed')) {
+                  lineClass = 'text-[var(--color-status-full-text)] font-semibold'
+                } else if (line.includes('WARN')) {
+                  lineClass = 'text-[var(--color-status-mod-text)] font-semibold'
+                } else if (line.includes('SUCCESS') || line.includes('DONE') || line.includes('Completed')) {
+                  lineClass = 'text-[var(--color-status-free-text)] font-semibold'
+                }
+                return (
+                  <div key={idx} className="flex items-start gap-2">
+                    <span className="text-[var(--color-ink-muted)] select-none shrink-0">{(idx + 1).toString().padStart(3, '0')}</span>
+                    <span className={`flex-1 break-all ${lineClass}`}>{line}</span>
+                  </div>
+                )
+              })
             )}
           </div>
         )}
       </div>
 
       {/* 4. Model Registry Checkpoints Grid (Full Width) */}
-      <div className="w-full rounded-2xl bg-slate-900/60 border border-white/10 p-6 flex flex-col gap-4 backdrop-blur-xl shadow-xl">
-        <div className="flex items-center justify-between pb-3 border-b border-white/10">
+      <div className="w-full rounded-[var(--radius-card)] bg-[var(--color-surface)] border border-[var(--color-border)] p-6 flex flex-col gap-4 shadow-sm">
+        <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
           <div className="flex items-center gap-2">
-            <Award className="w-4 h-4 text-emerald-400" />
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider">Model Checkpoints History ({modelsList.length})</h2>
+            <Award className="w-4 h-4 text-[var(--color-accent-strong)]" strokeWidth={1.7} />
+            <h2 className="text-sm font-bold text-[var(--color-ink)] uppercase tracking-wider">Model Checkpoints History ({modelsList.length})</h2>
           </div>
           <button
             type="button"
             onClick={fetchModels}
-            className="text-xs font-mono text-slate-400 hover:text-slate-200 flex items-center gap-1 cursor-pointer"
+            className="text-xs font-medium text-[var(--color-ink-secondary)] hover:text-[var(--color-ink)] flex items-center gap-1 cursor-pointer transition-colors"
           >
-            <RefreshCw className="w-3 h-3" />
+            <RefreshCw className="w-3 h-3" strokeWidth={1.7} />
             <span>Refresh</span>
           </button>
         </div>
@@ -1305,58 +1326,59 @@ export default function AutoTrainerPage({ apiBase }) {
             return (
               <div
                 key={m.id}
-                className={`p-4 rounded-xl border transition-all flex flex-col justify-between gap-3 min-w-0 ${
+                className={`p-4 rounded-[var(--radius-card)] border transition-all flex flex-col justify-between gap-3 min-w-0 ${
                   isActive
-                    ? 'bg-emerald-950/25 border-emerald-500/60 ring-1 ring-emerald-500/30 shadow-lg shadow-emerald-950/30'
-                    : 'bg-[#080d18] border-white/10 hover:border-white/20'
+                    ? 'bg-[var(--color-surface)] border-2 border-[var(--color-status-free-border)] shadow-sm'
+                    : 'bg-[var(--color-surface)] border border-[var(--color-border)] hover:border-[var(--color-ink-muted)]'
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <span className="font-bold text-xs text-white block truncate" title={m.model_name}>{m.model_name}</span>
-                    <span className="text-[10px] font-mono text-slate-400 truncate block">{m.version || 'v1.0.0'}</span>
+                    <span className="font-bold text-xs text-[var(--color-ink)] block truncate" title={m.model_name}>{m.model_name}</span>
+                    <span className="text-[10px] font-mono text-[var(--color-ink-secondary)] truncate block">{m.version || 'v1.0.0'}</span>
                   </div>
                   {isActive ? (
-                    <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-500/40 font-bold shrink-0">
+                    <span className="text-[9px] font-mono px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border border-[var(--color-status-free-border)] font-semibold shrink-0">
                       ACTIVE
                     </span>
                   ) : (
-                    <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 shrink-0">
+                    <span className="text-[9px] font-mono px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border border-[var(--color-border)] font-medium shrink-0">
                       STANDBY
                     </span>
                   )}
                 </div>
 
-                <div className="flex justify-between p-2 rounded-lg bg-black/40 font-mono text-xs">
-                  <span className="text-slate-400">mAP50 Accuracy:</span>
-                  <span className="text-emerald-400 font-bold">{m.map50 ? `${m.map50}%` : '98.6%'}</span>
+                <div className="flex justify-between p-2 rounded-[var(--radius-tile)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] font-mono text-xs">
+                  <span className="text-[var(--color-ink-secondary)] font-sans">mAP50 Accuracy:</span>
+                  <span className="text-[var(--color-status-free-text)] font-bold tabular-nums">{m.map50 ? `${m.map50}%` : '98.6%'}</span>
                 </div>
 
-                <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-2">
+                <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
                   <button
                     type="button"
                     onClick={() => handleDownloadWeights(m.id)}
-                    className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-mono flex items-center gap-1 border border-white/10 cursor-pointer shrink-0"
+                    className="p-1.5 rounded-[var(--radius-pill)] bg-[var(--color-surface-muted)] hover:bg-[var(--color-border)] text-[var(--color-ink-secondary)] hover:text-[var(--color-ink)] text-xs font-mono flex items-center gap-1 border border-[var(--color-border)] cursor-pointer shrink-0 transition-colors"
                     title="Download .pt weights"
                   >
-                    <Download className="w-3.5 h-3.5" />
+                    <Download className="w-3.5 h-3.5" strokeWidth={1.7} />
                     <span>.pt</span>
                   </button>
 
                   {isActive ? (
-                    <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1 shrink-0">
-                      <Check className="w-3.5 h-3.5" />
+                    <span className="text-xs text-[var(--color-status-free-text)] font-semibold flex items-center gap-1 shrink-0">
+                      <Check className="w-3.5 h-3.5" strokeWidth={1.7} />
                       <span>Serving Live</span>
                     </span>
                   ) : (
-                    <button
-                      type="button"
+                    <Button
+                      variant="primary"
+                      size="sm"
                       onClick={() => handleActivateModel(m.id)}
                       disabled={activatingId === m.id}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-all font-mono cursor-pointer disabled:opacity-50 shrink-0"
+                      className="px-3 py-1.5 text-xs font-semibold shrink-0"
                     >
                       {activatingId === m.id ? 'Deploying...' : 'Deploy'}
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>

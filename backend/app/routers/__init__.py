@@ -1,6 +1,7 @@
 """Routers package initialization."""
 
 from . import (
+    analytics_router,
     auth,
     datasets,
     gpu_trainer_router,
@@ -13,10 +14,12 @@ from . import (
     models,
     parking_router,
     roboflow_router,
+    settings_router,
     train,
 )
 
 __all__ = [
+    "analytics_router",
     "auth",
     "datasets",
     "gpu_trainer_router",
@@ -29,6 +32,7 @@ __all__ = [
     "models",
     "parking_router",
     "roboflow_router",
+    "settings_router",
     "train",
 ]
 

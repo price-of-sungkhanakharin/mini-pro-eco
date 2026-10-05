@@ -1,0 +1,88 @@
+/* ==========================================================================
+   DESIGN TOKENS — Source of Truth: Figma CSS Export (QCLAY Design Architecture)
+   White Corporate Professional Theme
+   ========================================================================== */
+
+:root {
+  /* Surfaces */
+  --color-bg: #F7F8FA;
+  --color-surface: #FFFFFF;
+  --color-surface-muted: #F3F4F6;
+
+  /* Borders */
+  --color-border: #E5E7EB;
+
+  /* Text */
+  --color-ink: #111827;
+  --color-ink-secondary: #4B5563;
+  --color-ink-muted: #6B7280;
+  --color-ink-inverse: #FFFFFF;
+
+  /* Green (Brand Success) */
+  --color-green-tint: #ECFDF5;
+  --color-green-text: #166534;
+  --color-green-border: #BBF7D0;
+  --color-green-deep: #14532D;
+  --color-green-bright: #22C55E;
+
+  /* NEW Accent (Blue) */
+  --color-accent-strong: #1D4ED8;
+  --color-accent-tint: #EFF6FF;
+  --color-accent-text: #1E40AF;
+  --color-accent-border: #BFDBFE;
+  --color-accent-hover: #1E40AF;
+
+  /* Soft Category Tints (Neutral-Professional) */
+  --color-mint: #ECFDF5;
+  --color-lavender: #F5F3FF;
+  --color-butter: #FFFBEB;
+  --color-gold: #D97706;
+  --color-sage: #4D7C0F;
+  --color-teal: #0F766E;
+
+  /* Status Colors */
+  --color-status-free-text: #166534;
+  --color-status-free-bg: #ECFDF5;
+  --color-status-free-border: #BBF7D0;
+  --color-status-mod-text: #92400E;
+  --color-status-mod-bg: #FFFBEB;
+  --color-status-mod-border: #FDE68A;
+  --color-status-full-text: #991B1B;
+  --color-status-full-bg: #FEF2F2;
+  --color-status-full-border: #FECACA;
+  --color-status-off-text: #4B5563;
+  --color-status-off-bg: #F3F4F6;
+
+  /* Overlay */
+  --color-overlay: rgba(17, 24, 39, 0.4);
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Radii */
+  --radius-full: 9999px;
+  --radius-pill: 8px;
+  --radius-panel-lg: 16px;
+  --radius-card: 12px;
+  --radius-tile: 10px;
+  --radius-option: 8px;
+  --radius-input: 8px;
+
+  /* Effects (Flat: no shadow, no glow, no blur) */
+  --shadow-tile: none;
+  --shadow-subtle: none;
+  --shadow-card: none;
+
+  /* ------------------------------------------------------------------------
+     Backward Compatibility Aliases (Preserve Existing Token Names)
+     ------------------------------------------------------------------------ */
+  --color-chip: var(--color-surface-muted);
+  --color-text-2: var(--color-ink-secondary);
+  --color-muted: var(--color-ink-muted);
+  --color-accent: var(--color-accent-strong);
+  --color-accent-dark: var(--color-accent-text);
+  --color-sand: var(--color-butter);
+  --color-lilac: var(--color-lavender);
+  --radius-panel: var(--radius-panel-lg);
+}

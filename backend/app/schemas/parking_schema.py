@@ -68,8 +68,23 @@ class ParkingTemplateResponse(BaseModel):
     slots: List[Any] = []
     frame_width: int = 1600
     frame_height: int = 1200
+    framesize: int = 13
+    quality: int = 10
     is_active: bool = True
     updated_at: Optional[datetime] = None
+
+
+class CameraSettingsSchema(BaseModel):
+    """Schema for camera image, quality, and framesize settings."""
+
+    camera_id: str
+    name: Optional[str] = None
+    brightness: float = 1.0
+    contrast: float = 1.0
+    rotation: int = 0
+    framesize: int = 13
+    quality: int = 10
+    interval_sec: int = 15
 
 
 class ParkStatusResponse(BaseModel):

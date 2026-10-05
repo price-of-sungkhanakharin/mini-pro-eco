@@ -251,11 +251,11 @@ export default function IngestionLogsPage({ onNavigate }) {
 
   return (
     <div className="ingestion-logs-container">
-      {/* Header Banner - High Tech Executive Style */}
+      {/* Header Banner - Editorial Light Style */}
       <div className="logs-header-banner">
         <div className="flex items-center gap-3.5">
           <div className="logs-icon-box">
-            <Database className="w-6 h-6 text-emerald-400" />
+            <Database className="w-6 h-6 text-[var(--color-ink)]" strokeWidth={1.7} />
           </div>
           <div>
             <div className="flex items-center gap-3 flex-wrap">
@@ -263,7 +263,6 @@ export default function IngestionLogsPage({ onNavigate }) {
                 ESP32 Ingestion & Telemetry Logs
               </h2>
               <span className="logs-lake-badge">
-                <span className="logs-ping-beacon"></span>
                 <span className="logs-dot-beacon"></span>
                 <span>{isLiveConnected ? 'Live MinIO Object Lake' : 'Fallback Mode'}</span>
               </span>
@@ -281,7 +280,7 @@ export default function IngestionLogsPage({ onNavigate }) {
             className={`btn-logs-toggle-live ${liveAutoRefresh ? 'active' : ''}`}
             title="เปิด/ปิดการดึงข้อมูลสดอัตโนมัติทุก 4 วิ"
           >
-            <Radio className={`w-3.5 h-3.5 ${liveAutoRefresh ? 'animate-pulse text-emerald-400' : ''}`} />
+            <Radio className={`w-3.5 h-3.5 ${liveAutoRefresh ? 'animate-pulse text-[var(--color-green-text)]' : 'text-[var(--color-ink-muted)]'}`} strokeWidth={1.7} />
             <span>{liveAutoRefresh ? 'Live Polling (4s)' : 'Manual Mode'}</span>
           </button>
 
@@ -292,95 +291,95 @@ export default function IngestionLogsPage({ onNavigate }) {
             className="btn-logs-action"
             title="รีเฟรชข้อมูลล่าสุด"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-cyan-400' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[var(--color-ink)]' : 'text-[var(--color-ink-muted)]'}`} strokeWidth={1.7} />
             <span>รีเฟรช</span>
           </button>
 
           <button
             type="button"
             onClick={handleExportCsv}
-            className="btn-logs-action btn-logs-export"
+            className="btn-logs-export"
             title="ส่งออกตารางเป็นไฟล์ CSV"
           >
-            <Download className="w-3.5 h-3.5" />
+            <Download className="w-3.5 h-3.5" strokeWidth={1.7} />
             <span>Export CSV</span>
           </button>
         </div>
       </div>
 
-      {/* Summary KPI Tiles - Small Gray Headers & Giant Vivid Values */}
+      {/* Summary KPI Tiles */}
       <div className="logs-kpi-grid">
         {/* Tile 1: Total Snapshots */}
-        <div className="logs-kpi-card tile-glow-emerald">
+        <div className="logs-kpi-card">
           <div className="tile-label-row">
             <span className="tile-label">TOTAL CAPTURED SNAPSHOTS</span>
-            <Camera className="w-4 h-4 text-emerald-400" />
+            <Camera className="w-4 h-4 text-[var(--color-ink-secondary)]" strokeWidth={1.7} />
           </div>
           <div className="tile-value-row">
-            <span className="tile-value-giant text-white">
+            <span className="tile-value-giant">
               {serverStats?.total_records ? serverStats.total_records.toLocaleString() : logs.length.toLocaleString()}
             </span>
-            <span className="tile-unit-symbol text-emerald-400">ภาพ</span>
+            <span className="tile-unit-symbol">ภาพ</span>
           </div>
           <div className="tile-footer-status">
-            <span className="text-[11px] text-emerald-300/80 font-mono">
+            <span className="text-[12px] text-[var(--color-ink-secondary)]">
               ● ความถี่ส่งภาพทุก 5 - 15 วินาที
             </span>
           </div>
         </div>
 
         {/* Tile 2: Avg Chip Temp */}
-        <div className="logs-kpi-card tile-glow-amber">
+        <div className="logs-kpi-card">
           <div className="tile-label-row">
             <span className="tile-label">AVG CHIP TEMPERATURE</span>
-            <Thermometer className="w-4 h-4 text-amber-400" />
+            <Thermometer className="w-4 h-4 text-[var(--color-ink-secondary)]" strokeWidth={1.7} />
           </div>
           <div className="tile-value-row">
-            <span className="tile-value-giant text-amber-400">
+            <span className="tile-value-giant">
               {serverStats?.avg_temp ?? stats.avgTemp}
             </span>
-            <span className="tile-unit-symbol text-amber-300">°C</span>
+            <span className="tile-unit-symbol">°C</span>
           </div>
           <div className="tile-footer-status">
-            <span className="tile-badge bg-amber-500/15 text-amber-300 border border-amber-500/30">
+            <span className="tile-badge">
               {stats.highTempCount > 0 ? `${stats.highTempCount} เฟรม ≥ 80.5°` : 'Safe Range'}
             </span>
           </div>
         </div>
 
         {/* Tile 3: Avg Free Heap */}
-        <div className="logs-kpi-card tile-glow-cyan">
+        <div className="logs-kpi-card">
           <div className="tile-label-row">
             <span className="tile-label">AVG FREE HEAP MEMORY</span>
-            <Cpu className="w-4 h-4 text-cyan-400" />
+            <Cpu className="w-4 h-4 text-[var(--color-ink-secondary)]" strokeWidth={1.7} />
           </div>
           <div className="tile-value-row">
-            <span className="tile-value-giant text-cyan-400">
+            <span className="tile-value-giant">
               {serverStats?.avg_heap ?? stats.avgHeap}
             </span>
-            <span className="tile-unit-symbol text-cyan-300">KB</span>
+            <span className="tile-unit-symbol">KB</span>
           </div>
           <div className="tile-footer-status">
-            <span className="text-[11px] text-slate-400 font-mono">
-              PSRAM: <strong className="text-cyan-300">3.4 MB</strong> ว่าง
+            <span className="text-[12px] text-[var(--color-ink-secondary)]">
+              PSRAM: <strong className="text-[var(--color-ink)] font-semibold">3.4 MB</strong> ว่าง
             </span>
           </div>
         </div>
 
         {/* Tile 4: MinIO S3 Lake */}
-        <div className="logs-kpi-card tile-glow-purple">
+        <div className="logs-kpi-card">
           <div className="tile-label-row">
             <span className="tile-label">MINIO S3 OBJECT LAKE</span>
-            <HardDrive className="w-4 h-4 text-purple-400" />
+            <HardDrive className="w-4 h-4 text-[var(--color-ink-secondary)]" strokeWidth={1.7} />
           </div>
           <div className="tile-value-row">
-            <span className="tile-value-giant text-purple-300 truncate" title={serverStats?.minio_bucket || 'raw-datasets'}>
+            <span className="tile-value-giant truncate text-[22px]" title={serverStats?.minio_bucket || 'raw-datasets'}>
               {serverStats?.minio_bucket || 'raw-datasets'}
             </span>
           </div>
           <div className="tile-footer-status">
-            <span className="text-[11px] text-emerald-400 font-mono flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="text-[12px] text-[var(--color-green-text)] flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5 text-[var(--color-green-text)]" strokeWidth={1.7} />
               S3 Active (Port 9000)
             </span>
           </div>
@@ -391,7 +390,7 @@ export default function IngestionLogsPage({ onNavigate }) {
       <div className="logs-filter-bar">
         {/* Search Input */}
         <div className="logs-search-wrapper">
-          <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
+          <Search className="w-4 h-4 text-[var(--color-ink-secondary)] flex-shrink-0" strokeWidth={1.7} />
           <input
             type="text"
             className="logs-search-input"
@@ -403,17 +402,17 @@ export default function IngestionLogsPage({ onNavigate }) {
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="text-slate-400 hover:text-white"
+              className="text-[var(--color-ink-secondary)] hover:text-[var(--color-ink)]"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-3.5 h-3.5" strokeWidth={1.7} />
             </button>
           )}
         </div>
 
         {/* Camera Selector Pills */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mr-1 flex items-center gap-1">
-            <Camera className="w-3.5 h-3.5 text-emerald-400" />
+          <span className="text-[11px] font-semibold text-[var(--color-ink-secondary)] uppercase tracking-wider mr-1 flex items-center gap-1">
+            <Camera className="w-3.5 h-3.5 text-[var(--color-ink-secondary)]" strokeWidth={1.7} />
             กล้อง:
           </span>
           <button
@@ -448,8 +447,8 @@ export default function IngestionLogsPage({ onNavigate }) {
 
         {/* Date Selector */}
         <div className="flex items-center gap-1.5">
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-            <Calendar className="w-3.5 h-3.5 text-cyan-400" />
+          <span className="text-[11px] font-semibold text-[var(--color-ink-secondary)] uppercase tracking-wider flex items-center gap-1">
+            <Calendar className="w-3.5 h-3.5 text-[var(--color-ink-secondary)]" strokeWidth={1.7} />
             วันที่:
           </span>
           <select
@@ -468,8 +467,8 @@ export default function IngestionLogsPage({ onNavigate }) {
 
         {/* Temperature Filter */}
         <div className="flex items-center gap-1.5">
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-            <Thermometer className="w-3.5 h-3.5 text-amber-400" />
+          <span className="text-[11px] font-semibold text-[var(--color-ink-secondary)] uppercase tracking-wider flex items-center gap-1">
+            <Thermometer className="w-3.5 h-3.5 text-[var(--color-ink-secondary)]" strokeWidth={1.7} />
             อุณหภูมิ:
           </span>
           <select
@@ -490,20 +489,20 @@ export default function IngestionLogsPage({ onNavigate }) {
           className="btn-logs-sort-toggle"
           title="สลับการเรียงลำดับเวลา"
         >
-          <ArrowUpDown className="w-3.5 h-3.5 text-purple-400" />
+          <ArrowUpDown className="w-3.5 h-3.5 text-[var(--color-ink)]" strokeWidth={1.7} />
           <span>{sortOrder === 'desc' ? 'ล่าสุดก่อน' : 'เก่าสุดก่อน'}</span>
         </button>
       </div>
 
       {/* Result Count Status Bar */}
-      <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+      <div className="flex items-center justify-between text-xs text-[var(--color-ink-secondary)] px-1">
         <span className="flex items-center gap-1.5">
           <span>แสดง</span>
-          <strong className="text-white font-mono">{filteredLogs.length.toLocaleString()}</strong>
+          <strong className="text-[var(--color-ink)] font-semibold">{filteredLogs.length.toLocaleString()}</strong>
           <span>รายการ</span>
-          {searchQuery && <span className="text-emerald-400">(ตรงกับ &quot;{searchQuery}&quot;)</span>}
+          {searchQuery && <span className="text-[var(--color-green-text)] font-medium">(ตรงกับ &quot;{searchQuery}&quot;)</span>}
         </span>
-        <span className="text-[11px] text-slate-500 hidden sm:inline font-mono">
+        <span className="text-[11px] text-[var(--color-ink-secondary)] hidden sm:inline">
           *คลิกที่รูปเพื่อขยายภาพเต็ม หรือคลิก &quot;JSON&quot; เพื่อดูโครงสร้างข้อมูล Sidecar ดิบ
         </span>
       </div>
@@ -525,10 +524,10 @@ export default function IngestionLogsPage({ onNavigate }) {
           <tbody>
             {paginatedLogs.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-16 text-slate-400">
+                <td colSpan={7} className="text-center py-16 text-[var(--color-ink-secondary)]">
                   <div className="flex flex-col items-center justify-center gap-2.5">
-                    <Search className="w-10 h-10 text-slate-600 animate-pulse" />
-                    <span className="text-sm font-semibold text-slate-300">ไม่พบบันทึก Log ตามเงื่อนไขที่เลือก</span>
+                    <Search className="w-10 h-10 text-[var(--color-ink-secondary)] animate-pulse" strokeWidth={1.7} />
+                    <span className="text-sm font-semibold text-[var(--color-ink)]">ไม่พบบันทึก Log ตามเงื่อนไขที่เลือก</span>
                     <button
                       type="button"
                       onClick={() => {
@@ -538,7 +537,7 @@ export default function IngestionLogsPage({ onNavigate }) {
                         setTempFilter('all')
                         setCurrentPage(1)
                       }}
-                      className="text-xs text-emerald-400 underline hover:text-emerald-300 mt-1 font-medium"
+                      className="text-xs text-[var(--color-green-text)] underline hover:text-[var(--color-ink)] mt-1 font-medium cursor-pointer"
                     >
                       ล้างตัวกรองทั้งหมด
                     </button>
@@ -568,18 +567,18 @@ export default function IngestionLogsPage({ onNavigate }) {
                           }}
                         />
                         <div className="logs-thumb-overlay">
-                          <Eye className="w-4 h-4 text-white" />
+                          <Eye className="w-4 h-4 text-[var(--color-ink-inverse)]" strokeWidth={1.7} />
                         </div>
                       </div>
                     </td>
 
                     {/* Timestamp */}
                     <td>
-                      <div className="flex items-center gap-1.5 font-mono text-xs text-white font-medium">
-                        <Clock className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                      <div className="flex items-center gap-1.5 font-mono text-xs text-[var(--color-ink)] font-medium">
+                        <Clock className="w-3.5 h-3.5 text-[var(--color-ink-secondary)] flex-shrink-0" strokeWidth={1.7} />
                         <span>{log.local_time}</span>
                       </div>
-                      <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
+                      <span className="text-[11px] text-[var(--color-ink-secondary)] font-mono block mt-0.5">
                         ID: #{log.id}
                       </span>
                     </td>
@@ -591,10 +590,10 @@ export default function IngestionLogsPage({ onNavigate }) {
                           {log.camera_id?.toUpperCase() || 'CAM-01'}
                         </span>
                         <div>
-                          <div className="text-xs font-semibold text-slate-200">
+                          <div className="text-xs font-semibold text-[var(--color-ink)]">
                             {log.location_name}
                           </div>
-                          <span className="text-[10px] text-cyan-400 font-mono">
+                          <span className="text-[11px] text-[var(--color-ink-secondary)] font-mono">
                             {log.client_ip}
                           </span>
                         </div>
@@ -608,12 +607,12 @@ export default function IngestionLogsPage({ onNavigate }) {
                           isHighTemp ? 'temp-high' : 'temp-normal'
                         }`}
                       >
-                        <Thermometer className="w-3.5 h-3.5" />
+                        <Thermometer className="w-3.5 h-3.5" strokeWidth={1.7} />
                         <span className="font-mono font-bold">
                           {log.chip_temp_c ? `${parseFloat(log.chip_temp_c).toFixed(1)}°C` : '80.0°C'}
                         </span>
                         {isHighTemp && (
-                          <AlertTriangle className="w-3 h-3 text-rose-400 ml-0.5" />
+                          <AlertTriangle className="w-3 h-3 text-[var(--color-status-full-text)] ml-0.5" strokeWidth={1.7} />
                         )}
                       </div>
                     </td>
@@ -621,14 +620,14 @@ export default function IngestionLogsPage({ onNavigate }) {
                     {/* ESP32 Telemetry */}
                     <td>
                       <div className="telemetry-info-grid">
-                        <div className="flex items-center gap-1.5 text-[11px] text-cyan-300 font-mono">
-                          <Cpu className="w-3 h-3 text-cyan-400 flex-shrink-0" />
+                        <div className="flex items-center gap-1.5 text-[11px] text-[var(--color-ink)] font-mono">
+                          <Cpu className="w-3 h-3 text-[var(--color-ink-muted)] flex-shrink-0" strokeWidth={1.7} />
                           <span>
                             Heap: {log.free_heap ? Math.round(log.free_heap / 1024) : 156} KB
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5 text-[11px] text-indigo-300 font-mono">
-                          <Wifi className="w-3 h-3 text-indigo-400 flex-shrink-0" />
+                        <div className="flex items-center gap-1.5 text-[11px] text-[var(--color-ink-secondary)] font-mono">
+                          <Wifi className="w-3 h-3 text-[var(--color-ink-muted)] flex-shrink-0" strokeWidth={1.7} />
                           <span>
                             WiFi: {log.wifi_rssi_dbm || -82} dBm
                           </span>
@@ -638,11 +637,11 @@ export default function IngestionLogsPage({ onNavigate }) {
 
                     {/* File and Size */}
                     <td>
-                      <div className="text-xs font-mono text-slate-200 font-medium truncate max-w-[240px]" title={log.filename}>
+                      <div className="text-xs font-mono text-[var(--color-ink)] font-medium truncate max-w-[240px]" title={log.filename}>
                         {log.filename}
                       </div>
-                      <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5 font-mono">
-                        <span className="text-indigo-400 truncate max-w-[170px]" title={log.minio_url}>
+                      <div className="flex items-center gap-2 text-[11px] text-[var(--color-ink-secondary)] mt-0.5 font-mono">
+                        <span className="text-[var(--color-ink-secondary)] truncate max-w-[170px]" title={log.minio_url}>
                           {log.minio_url ? log.minio_url.replace('s3://raw-datasets/', '') : 'raw-datasets'}
                         </span>
                         <span>•</span>
@@ -659,7 +658,7 @@ export default function IngestionLogsPage({ onNavigate }) {
                           className="btn-logs-row-action btn-logs-row-photo"
                           title="ดูภาพ Snapshot เต็ม"
                         >
-                          <Eye className="w-3.5 h-3.5" />
+                          <Eye className="w-3.5 h-3.5" strokeWidth={1.7} />
                           <span>ดูภาพ</span>
                         </button>
 
@@ -669,7 +668,7 @@ export default function IngestionLogsPage({ onNavigate }) {
                           className="btn-logs-row-action btn-logs-row-json"
                           title="ดูไฟล์ JSON Sidecar ของภาพนี้"
                         >
-                          <FileCode className="w-3.5 h-3.5" />
+                          <FileCode className="w-3.5 h-3.5" strokeWidth={1.7} />
                           <span>JSON</span>
                         </button>
                       </div>
@@ -684,8 +683,8 @@ export default function IngestionLogsPage({ onNavigate }) {
         {/* Pagination Footer */}
         {filteredLogs.length > pageSize && (
           <div className="logs-pagination-bar">
-            <div className="text-xs text-slate-400">
-              หน้า <strong className="text-white font-mono">{currentPage}</strong> จากทั้งหมด <strong className="text-white font-mono">{totalPages}</strong> หน้า
+            <div className="text-xs text-[var(--color-ink-secondary)]">
+              หน้า <strong className="text-[var(--color-ink)] font-semibold">{currentPage}</strong> จากทั้งหมด <strong className="text-[var(--color-ink)] font-semibold">{totalPages}</strong> หน้า
             </div>
 
             <div className="flex items-center gap-1">
@@ -696,7 +695,7 @@ export default function IngestionLogsPage({ onNavigate }) {
                 className="logs-page-btn"
                 title="หน้าก่อนหน้า"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-4 h-4" strokeWidth={1.7} />
               </button>
 
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -724,7 +723,7 @@ export default function IngestionLogsPage({ onNavigate }) {
                 className="logs-page-btn"
                 title="หน้าถัดไป"
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-4 h-4" strokeWidth={1.7} />
               </button>
             </div>
           </div>
@@ -740,17 +739,17 @@ export default function IngestionLogsPage({ onNavigate }) {
           >
             <div className="modal-photo-header">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
-                  <Camera className="w-4 h-4 text-emerald-400" />
+                <div className="w-8 h-8 rounded-lg bg-[var(--color-surface-muted)] border border-[var(--color-border)] flex items-center justify-center">
+                  <Camera className="w-4 h-4 text-[var(--color-ink)]" strokeWidth={1.7} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-[var(--color-ink)] flex items-center gap-2">
                     <span>{activePhoto.filename}</span>
                     <span className="logs-badge-cam-id">
                       {activePhoto.camera_id?.toUpperCase()}
                     </span>
                   </h3>
-                  <span className="text-xs text-slate-400 font-mono">
+                  <span className="text-xs text-[var(--color-ink-secondary)] font-mono">
                     บันทึกเมื่อ: {activePhoto.local_time} • {activePhoto.location_name}
                   </span>
                 </div>
@@ -760,7 +759,7 @@ export default function IngestionLogsPage({ onNavigate }) {
                 className="btn-modal-close"
                 onClick={() => setActivePhoto(null)}
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5" strokeWidth={1.7} />
               </button>
             </div>
 
@@ -775,49 +774,49 @@ export default function IngestionLogsPage({ onNavigate }) {
 
               {/* Side Metadata Panel */}
               <div className="modal-photo-side">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-2">
-                  <Cpu className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="text-[11px] font-bold text-[var(--color-ink-muted)] uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                  <Cpu className="w-3.5 h-3.5 text-[var(--color-ink)]" strokeWidth={1.7} />
                   ESP32 Telemetry Snapshot
                 </span>
 
                 <div className="space-y-2 text-xs">
-                  <div className="bg-slate-900/80 p-2.5 rounded-lg border border-white/5">
+                  <div className="bg-[var(--color-surface-muted)] p-2.5 rounded-lg border border-[var(--color-border)]">
                     <span className="tile-label block mb-1">CLIENT IP & CAMERA</span>
-                    <span className="font-mono font-bold text-cyan-300">
+                    <span className="font-mono font-bold text-[var(--color-ink)]">
                       {activePhoto.client_ip} ({activePhoto.camera_id})
                     </span>
                   </div>
 
-                  <div className="bg-slate-900/80 p-2.5 rounded-lg border border-white/5">
+                  <div className="bg-[var(--color-surface-muted)] p-2.5 rounded-lg border border-[var(--color-border)]">
                     <span className="tile-label block mb-1">CHIP TEMPERATURE</span>
-                    <span className="font-mono font-bold text-amber-400 text-base">
+                    <span className="font-mono font-bold text-[var(--color-ink)] text-base">
                       {activePhoto.chip_temp_c ? `${activePhoto.chip_temp_c}°C` : '80.0°C'}
                     </span>
                   </div>
 
-                  <div className="bg-slate-900/80 p-2.5 rounded-lg border border-white/5">
+                  <div className="bg-[var(--color-surface-muted)] p-2.5 rounded-lg border border-[var(--color-border)]">
                     <span className="tile-label block mb-1">FREE HEAP / PSRAM</span>
-                    <span className="font-mono font-bold text-cyan-300 block">
+                    <span className="font-mono font-bold text-[var(--color-ink)] block">
                       Heap: {activePhoto.free_heap ? Math.round(activePhoto.free_heap / 1024) : 156} KB
                     </span>
-                    <span className="font-mono text-[11px] text-slate-400 block mt-0.5">
+                    <span className="font-mono text-[11px] text-[var(--color-ink-secondary)] block mt-0.5">
                       PSRAM: {(activePhoto.free_psram / (1024 * 1024)).toFixed(1)} MB
                     </span>
                   </div>
 
-                  <div className="bg-slate-900/80 p-2.5 rounded-lg border border-white/5">
+                  <div className="bg-[var(--color-surface-muted)] p-2.5 rounded-lg border border-[var(--color-border)]">
                     <span className="tile-label block mb-1">WI-FI RSSI & UPTIME</span>
-                    <span className="font-mono font-bold text-emerald-400 block">
+                    <span className="font-mono font-bold text-[var(--color-ink)] block">
                       {activePhoto.wifi_rssi_dbm || -82} dBm
                     </span>
-                    <span className="font-mono text-[11px] text-purple-300 block mt-0.5">
+                    <span className="font-mono text-[11px] text-[var(--color-ink-secondary)] block mt-0.5">
                       Uptime: {activePhoto.uptime_sec}s
                     </span>
                   </div>
 
-                  <div className="bg-slate-900/80 p-2.5 rounded-lg border border-white/5">
+                  <div className="bg-[var(--color-surface-muted)] p-2.5 rounded-lg border border-[var(--color-border)]">
                     <span className="tile-label block mb-1">MINIO S3 STORAGE KEY</span>
-                    <span className="font-mono text-[11px] text-indigo-300 break-all">
+                    <span className="font-mono text-[11px] text-[var(--color-ink)] break-all">
                       {activePhoto.minio_url || `s3://raw-datasets/${activePhoto.filename}`}
                     </span>
                   </div>
@@ -831,9 +830,9 @@ export default function IngestionLogsPage({ onNavigate }) {
                       setActivePhoto(null)
                       handleInspectJson(item)
                     }}
-                    className="w-full btn-logs-action btn-logs-export justify-center"
+                    className="w-full btn-logs-export justify-center"
                   >
-                    <FileCode className="w-4 h-4" />
+                    <FileCode className="w-4 h-4" strokeWidth={1.7} />
                     <span>ดู JSON Sidecar เมตาดาต้า</span>
                   </button>
                 </div>
@@ -852,17 +851,17 @@ export default function IngestionLogsPage({ onNavigate }) {
           >
             <div className="modal-photo-header">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center">
-                  <FileCode className="w-4 h-4 text-indigo-400" />
+                <div className="w-8 h-8 rounded-lg bg-[var(--color-surface-muted)] border border-[var(--color-border)] flex items-center justify-center">
+                  <FileCode className="w-4 h-4 text-[var(--color-ink)]" strokeWidth={1.7} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-[var(--color-ink)] flex items-center gap-2">
                     <span>{inspectJson.log?.filename?.replace('.jpg', '.json')}</span>
                     <span className="logs-badge-cam-id">
                       JSON SIDECAR
                     </span>
                   </h3>
-                  <span className="text-xs text-slate-400 font-mono">
+                  <span className="text-xs text-[var(--color-ink-secondary)] font-mono">
                     Raw IoT Ingestion Metadata Payload (ESP32 Sensor Dump)
                   </span>
                 </div>
@@ -872,14 +871,14 @@ export default function IngestionLogsPage({ onNavigate }) {
                 className="btn-modal-close"
                 onClick={() => setInspectJson(null)}
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5" strokeWidth={1.7} />
               </button>
             </div>
 
             <div className="modal-json-body">
               {jsonLoading ? (
-                <div className="flex items-center justify-center py-16 text-slate-400 gap-2">
-                  <RefreshCw className="w-5 h-5 animate-spin text-emerald-400" />
+                <div className="flex items-center justify-center py-16 text-[var(--color-ink-muted)] gap-2">
+                  <RefreshCw className="w-5 h-5 animate-spin text-[var(--color-ink)]" strokeWidth={1.7} />
                   <span>กำลังดึง JSON Sidecar จาก Server/MinIO...</span>
                 </div>
               ) : (
@@ -890,7 +889,7 @@ export default function IngestionLogsPage({ onNavigate }) {
             </div>
 
             <div className="modal-photo-footer">
-              <span className="text-xs text-slate-400 font-mono">
+              <span className="text-xs text-[var(--color-ink-secondary)] font-mono">
                 Location: MinIO Lake bucket <code>raw-datasets</code>
               </span>
               <button

@@ -1,0 +1,202 @@
+/* ==========================================================================
+   MOTION & TRANSITIONS — Subtle Corporate Design Tokens
+   No glow, no ping, no bounce, no shadow, no blur
+   ========================================================================== */
+
+:root {
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 240ms;
+  --dur-base: 360ms;
+  --dur-slow: 600ms;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in-down {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse-opacity {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes nav-indicator {
+  from {
+    width: 0;
+    opacity: 0;
+  }
+  to {
+    width: 22px;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Page Transition */
+  .anim-page {
+    animation: fade-up var(--dur-base) var(--ease-out) both;
+  }
+
+  /* Stagger Grid Animations */
+  .anim-stagger > * {
+    animation: fade-up var(--dur-base) var(--ease-out) both;
+    animation-delay: calc(var(--i, 0) * 70ms);
+  }
+
+  .anim-stagger > *:nth-child(1) { --i: 0; }
+  .anim-stagger > *:nth-child(2) { --i: 1; }
+  .anim-stagger > *:nth-child(3) { --i: 2; }
+  .anim-stagger > *:nth-child(4) { --i: 3; }
+  .anim-stagger > *:nth-child(5) { --i: 4; }
+  .anim-stagger > *:nth-child(6) { --i: 5; }
+  .anim-stagger > *:nth-child(7) { --i: 6; }
+  .anim-stagger > *:nth-child(8) { --i: 7; }
+
+  /* Dashboard and Page Grids Staggering */
+  .dashboard-kpi-grid > *,
+  .dashboard-camera-grid > *,
+  .dashboard-ai-grid > *,
+  .dashboard-breakdown-grid > *,
+  .eco-grid > *,
+  .logs-kpi-grid > * {
+    animation: fade-up var(--dur-base) var(--ease-out) both;
+  }
+
+  .dashboard-kpi-grid > *:nth-child(1),
+  .dashboard-camera-grid > *:nth-child(1),
+  .dashboard-ai-grid > *:nth-child(1),
+  .dashboard-breakdown-grid > *:nth-child(1),
+  .eco-grid > *:nth-child(1),
+  .logs-kpi-grid > *:nth-child(1) {
+    animation-delay: 0ms;
+  }
+
+  .dashboard-kpi-grid > *:nth-child(2),
+  .dashboard-camera-grid > *:nth-child(2),
+  .dashboard-ai-grid > *:nth-child(2),
+  .dashboard-breakdown-grid > *:nth-child(2),
+  .eco-grid > *:nth-child(2),
+  .logs-kpi-grid > *:nth-child(2) {
+    animation-delay: 70ms;
+  }
+
+  .dashboard-kpi-grid > *:nth-child(3),
+  .dashboard-camera-grid > *:nth-child(3),
+  .dashboard-ai-grid > *:nth-child(3),
+  .dashboard-breakdown-grid > *:nth-child(3),
+  .eco-grid > *:nth-child(3),
+  .logs-kpi-grid > *:nth-child(3) {
+    animation-delay: 140ms;
+  }
+
+  .dashboard-kpi-grid > *:nth-child(4),
+  .dashboard-camera-grid > *:nth-child(4),
+  .dashboard-ai-grid > *:nth-child(4),
+  .dashboard-breakdown-grid > *:nth-child(4),
+  .eco-grid > *:nth-child(4),
+  .logs-kpi-grid > *:nth-child(4) {
+    animation-delay: 210ms;
+  }
+
+  .dashboard-kpi-grid > *:nth-child(5),
+  .dashboard-camera-grid > *:nth-child(5),
+  .dashboard-ai-grid > *:nth-child(5),
+  .dashboard-breakdown-grid > *:nth-child(5),
+  .eco-grid > *:nth-child(5),
+  .logs-kpi-grid > *:nth-child(5) {
+    animation-delay: 280ms;
+  }
+
+  .dashboard-kpi-grid > *:nth-child(6),
+  .dashboard-camera-grid > *:nth-child(6),
+  .dashboard-ai-grid > *:nth-child(6),
+  .dashboard-breakdown-grid > *:nth-child(6),
+  .eco-grid > *:nth-child(6),
+  .logs-kpi-grid > *:nth-child(6) {
+    animation-delay: 350ms;
+  }
+
+  /* Hover Polish */
+  .dashboard-camera-card,
+  .dashboard-kpi-card,
+  .eco-card,
+  .logs-kpi-card,
+  .setup-content-card {
+    transition: border-color var(--dur-fast) var(--ease-out);
+  }
+
+  .dashboard-camera-card:hover,
+  .dashboard-kpi-card:hover,
+  .eco-card:hover,
+  .logs-kpi-card:hover,
+  .setup-content-card:hover {
+    border-color: var(--color-accent-border);
+  }
+
+  /* Drawer & Popovers */
+  .cpe-right-sidebar {
+    transition: transform var(--dur-base) var(--ease-out);
+  }
+
+  .navbar-stack-popover {
+    animation: fade-in-down var(--dur-fast) var(--ease-out) both;
+  }
+
+  .nav-link-indicator {
+    animation: nav-indicator 280ms var(--ease-out) both;
+  }
+
+  .live-dot-pulse {
+    animation: pulse-opacity 2.4s ease-in-out infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    animation: none !important;
+  }
+}

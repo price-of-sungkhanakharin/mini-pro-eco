@@ -386,11 +386,7 @@ function App() {
             handleNavigate('camera_detail', newCamId)
           }}
           onBack={() => {
-            if (typeof window !== 'undefined' && window.history.length > 1) {
-              window.history.back()
-            } else {
-              handleNavigate('dashboard')
-            }
+            handleNavigate('dashboard')
           }}
           onNavigate={handleNavigate}
         />

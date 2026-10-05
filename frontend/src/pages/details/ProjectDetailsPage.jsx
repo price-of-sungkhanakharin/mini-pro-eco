@@ -1,25 +1,130 @@
 import React from 'react'
 import {
-  BookOpen,
+  FileText,
   Cpu,
-  Database,
-  Layers,
-  Zap,
-  HardDrive,
-  ShieldCheck,
   Server,
-  ArrowRight,
-  Sparkles,
+  Wifi,
+  Activity,
+  Database,
+  RefreshCw,
+  Zap,
+  ShieldAlert,
+  HardDrive,
   Sliders,
   CheckCircle2,
   XCircle,
-  FileText,
-  Boxes,
   Code2,
-  ExternalLink,
-  ChevronRight
+  Boxes,
+  ArrowRight
 } from 'lucide-react'
 import { PillTag, PillButton } from '../../components/ui/FigmaCards'
+
+const StepCard = ({ number, title, desc, icon: Icon, isFinal = false }) => (
+  <div className="flex items-start gap-4 z-10 relative group">
+    {/* Step Number & Icon Badge */}
+    <div
+      className={`w-12 h-12 shrink-0 rounded-[14px] border flex items-center justify-center font-bold text-base transition-all shadow-xs ${
+        isFinal
+          ? 'bg-[#E7F4D8] border-[#36612D]/30 text-[#284E1A]'
+          : 'bg-[#FAF8EF] border-[#DEDED2] text-[#30312F]'
+      }`}
+    >
+      {Icon ? <Icon className="w-5 h-5" strokeWidth={2} /> : number}
+    </div>
+
+    {/* Card Content */}
+    <div
+      className={`p-4 lg:p-5 rounded-[18px] border flex-1 transition-all ${
+        isFinal
+          ? 'bg-[#E7F4D8]/20 border-[#BBF7D0]'
+          : 'bg-[#FAF8EF] border-[#DEDED2] hover:border-[#B8B8A8]'
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2 mb-1.5">
+        <h4 className="font-bold text-sm lg:text-base text-[#30312F] flex items-center gap-2">
+          <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded-[6px] bg-[#E5E5DF] text-[#686962]">
+            STEP {number}
+          </span>
+          {title}
+        </h4>
+        {isFinal && (
+          <span className="text-[11px] font-medium text-[#284E1A] bg-[#E7F4D8] px-2.5 py-0.5 rounded-full border border-[#BBF7D0]">
+            LOOP CYCLE
+          </span>
+        )}
+      </div>
+      <p className="text-xs lg:text-sm text-[#686962] leading-relaxed">{desc}</p>
+    </div>
+  </div>
+)
+
+const CameraFlowchart = () => (
+  <div className="bg-[#FFFDF7] border border-[#DEDED2] rounded-[24px] p-6 lg:p-8 shadow-xs">
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#DEDED2]">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-[12px] bg-[#FAF8EF] border border-[#DEDED2] text-[#284E1A] flex items-center justify-center">
+          <RefreshCw className="w-5 h-5 text-[#284E1A]" />
+        </div>
+        <div>
+          <h2 className="text-lg font-bold text-[#30312F]">
+            ESP32-CAM Deep Sleep & RTC Lifecycle Flowchart
+          </h2>
+          <p className="text-xs text-[#85847E]">
+            Flow การทำงานของ Edge Node เพื่อป้องกันความร้อนสะสมและรับคำสั่งแบบ Real-time (2-Way Control)
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <PillTag variant="active">HARDWARE EDGE LIFECYCLE</PillTag>
+      </div>
+    </div>
+
+    <div className="flex flex-col relative max-w-3xl mx-auto pl-2 py-2">
+      {/* Track Line */}
+      <div className="absolute left-[34px] top-[30px] bottom-[30px] w-[2px] bg-[#DEDED2] z-0 border-dashed border-l-2"></div>
+
+      <StepCard
+        number="1"
+        title="Wake Up & Read RTC Memory"
+        desc="กล้องตื่นจากโหมด Deep Sleep และดึงค่า Framesize / Quality ที่จดจำไว้จากรอบที่แล้วใน RTC Slow Memory มาใช้ (มี Sanity Check ดักค่าขยะตอนเปิดเครื่องครั้งแรก)"
+        icon={Zap}
+      />
+      <div className="h-5"></div>
+
+      <StepCard
+        number="2"
+        title="Connect Wi-Fi & Init Camera"
+        desc="พยายามเชื่อมต่อ 802.1x Enterprise ภายใน 20 วินาที หากเชื่อมต่อไม่สำเร็จ หรือเซ็ตกล้องไม่ผ่าน ระบบจะสั่งตัวเองให้กลับไปหลับทันที (Fail-safe ป้องกัน Bootloop)"
+        icon={Wifi}
+      />
+      <div className="h-5"></div>
+
+      <StepCard
+        number="3"
+        title="Capture & HTTP POST"
+        desc="ถ่ายภาพและยิง Request ไปที่เซิร์ฟเวอร์ พร้อมแนบข้อมูล Telemetry (อุณหภูมิ, Wi-Fi RSSI, Free RAM) ไปใน Header ของ HTTP"
+        icon={Server}
+      />
+      <div className="h-5"></div>
+
+      <StepCard
+        number="4"
+        title="Receive 2-Way Control JSON"
+        desc="เซิร์ฟเวอร์ตอบกลับเป็น JSON พร้อมแนบคำสั่งใหม่ เช่น {'deep_sleep_sec': 30, 'framesize': 9} กล้องจะดึงค่าเหล่านี้มาประมวลผลทันที"
+        icon={Database}
+      />
+      <div className="h-5"></div>
+
+      <StepCard
+        number="5"
+        title="Save State & Enter Deep Sleep"
+        desc="บันทึกค่า Framesize ใหม่ลง RTC Memory ปิดการทำงานของ CPU และ Wi-Fi เพื่อลดอุณหภูมิ และตั้งนาฬิกาปลุกตามจำนวนวินาทีที่เซิร์ฟเวอร์สั่ง (เช่น 30 วินาที) ก่อนวนกลับไป Step 1"
+        icon={Cpu}
+        isFinal={true}
+      />
+    </div>
+  </div>
+)
 
 export default function ProjectDetailsPage({ onNavigate }) {
   return (
@@ -43,31 +148,37 @@ export default function ProjectDetailsPage({ onNavigate }) {
         <span className="text-[#30312F] font-semibold">Technical Whitepaper</span>
       </div>
 
-      {/* Header */}
-      <div className="platform-intro flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-[#DEDED2]">
+      {/* Header Intro */}
+      <div className="platform-intro flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-[#DEDED2] w-full">
         <div>
           <div className="flex items-center gap-2 mb-2">
             <PillTag variant="active">VERSION 2.4</PillTag>
             <PillTag variant="neutral">CPE SMART PARKING AI</PillTag>
           </div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#30312F]">
-            เอกสารเชิงเทคนิค: สถาปัตยกรรมและหลักการออกแบบ
+            Project Architecture & Details
           </h1>
           <p className="text-sm text-[#85847E] mt-2 max-w-3xl leading-relaxed">
-            รายละเอียดทางวิศวกรรมคอมพิวเตอร์ การเลือกใช้โมเดลโครงข่ายประสาทเทียม การปรับปรุงประสิทธิภาพการประมวลผลบน Edge CPU และกลยุทธ์การตรวจจับสิ่งกีดขวางแบบไฮบริด
+            เอกสารเชิงเทคนิค: สถาปัตยกรรมระบบ การตัดสินใจเลือกโมเดล และผังการทำงานของฮาร์ดแวร์ Edge Node (Whitepaper)
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <PillButton variant="neutral" onClick={() => onNavigate?.('ecosystem')}>
             ดูแผนภาพสถาปัตยกรรม
           </PillButton>
-          <PillButton variant="active" onClick={() => onNavigate?.('dashboard')}>
+          <PillButton variant="primary" onClick={() => onNavigate?.('dashboard')}>
             กลับหน้า Dashboard
           </PillButton>
         </div>
       </div>
 
-      <div className="space-y-8">
+      {/* Flowchart Component */}
+      <div className="w-full">
+        <CameraFlowchart />
+      </div>
+
+      {/* Technical Detail Sections */}
+      <div className="space-y-6 w-full">
         {/* Section 1: System Architecture */}
         <section className="bg-[#FFFDF7] border border-[#DEDED2] rounded-[24px] p-6 lg:p-8 shadow-xs">
           <div className="flex items-center gap-3 mb-5 pb-4 border-b border-[#DEDED2]">
@@ -83,47 +194,37 @@ export default function ProjectDetailsPage({ onNavigate }) {
           </div>
 
           <p className="text-sm leading-relaxed text-[#30312F] mb-6">
-            ระบบบริหารจัดการที่จอดรถอัจฉริยะภาควิชาวิศวกรรมคอมพิวเตอร์ (CPE Smart Parking AI) ถูกออกแบบตามแนวคิด <strong>Distributed IoT Edge & Centralized Microservices</strong> เพื่อความยืดหยุ่นในการขยายตัว (Scalability) และความเสถียรสูงสุด (Fault Tolerance):
+            ระบบถูกออกแบบมาในลักษณะ <strong>Edge-to-Cloud Distributed Architecture</strong> โดยแบ่งหน้าที่ชัดเจน:
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-5 bg-[#FAF8EF] border border-[#DEDED2] rounded-[18px] flex flex-col gap-2 transition-all hover:border-[#B8B8A8]">
               <div className="font-bold text-[#30312F] text-sm flex items-center gap-2">
                 <Cpu className="w-4 h-4 text-[#284E1A]" />
-                <span>ESP32-CAM Nodes (Edge Tier)</span>
+                <span>Edge Tier (ESP32-CAM)</span>
               </div>
               <p className="text-xs text-[#85847E] leading-relaxed">
-                โหนดกล้องไร้สายกระจาย 3 จุดรอบอาคาร ใช้เซนเซอร์ OV2640 ทำงานร่วมกับ FreeRTOS Deep Sleep (~15s interval) ส่งภาพ 1600x1200 JPEG พร้อม Sidecar JSON Telemetry (RSSI, Temp, Free Heap) ผ่าน HTTP POST
+                ทำหน้าที่เป็น IoT Node ไร้สาย ถ่ายภาพและส่งข้อมูล Telemetry (อุณหภูมิ, RSSI, RAM) ผ่าน HTTP POST โดยใช้ Deep Sleep Cycle เพื่อป้องกัน Thermal Throttling
               </p>
             </div>
 
             <div className="p-5 bg-[#FAF8EF] border border-[#DEDED2] rounded-[18px] flex flex-col gap-2 transition-all hover:border-[#B8B8A8]">
               <div className="font-bold text-[#30312F] text-sm flex items-center gap-2">
                 <Zap className="w-4 h-4 text-[#284E1A]" />
-                <span>FastAPI API Gateway</span>
+                <span>Service Tier (FastAPI Gateway)</span>
               </div>
               <p className="text-xs text-[#85847E] leading-relaxed">
-                เกตเวย์หลักแบบ Asynchronous รองรับ REST API สำหรับ Web Dashboard, ระบบ Authentication JWT, Webhook สำหรับ LINE Chatbot และส่งต่อภาพเข้าสู่คิวการประมวลผล
+                เกตเวย์หลักแบบ Asynchronous รันโมเดล YOLO บน CPU แบบประหยัดโหลด รองรับ REST API สำหรับ Web Dashboard, LINE Webhook และ 2-Way Edge Control
               </p>
             </div>
 
             <div className="p-5 bg-[#FAF8EF] border border-[#DEDED2] rounded-[18px] flex flex-col gap-2 transition-all hover:border-[#B8B8A8]">
               <div className="font-bold text-[#30312F] text-sm flex items-center gap-2">
                 <HardDrive className="w-4 h-4 text-[#284E1A]" />
-                <span>MinIO Object Storage (S3-Compatible)</span>
+                <span>Storage Tier (MinIO + Postgres + Redis)</span>
               </div>
               <p className="text-xs text-[#85847E] leading-relaxed">
-                จัดเก็บ Dataset ภาพถ่ายต้นฉบับและผลการตรวจจับแบบ Partition รายวัน/รายชั่วโมง (<code className="bg-[#E7F4D8] text-[#284E1A] px-1.5 py-0.5 rounded text-[11px] font-mono">raw-datasets</code>) รองรับการดึงข้อมูลไปเทรนโมเดลต่อเนื่องบน Roboflow / Label Studio
-              </p>
-            </div>
-
-            <div className="p-5 bg-[#FAF8EF] border border-[#DEDED2] rounded-[18px] flex flex-col gap-2 transition-all hover:border-[#B8B8A8]">
-              <div className="font-bold text-[#30312F] text-sm flex items-center gap-2">
-                <Database className="w-4 h-4 text-[#284E1A]" />
-                <span>PostgreSQL 17 & Redis Cache</span>
-              </div>
-              <p className="text-xs text-[#85847E] leading-relaxed">
-                PostgreSQL จัดเก็บ Time-Series Detection Logs, Slot Polygon ROI และ Telemetry ข้อมูลระยะยาว ส่วน Redis รับผิดชอบ In-Memory Fast Cache สำหรับ Real-time Dashboard & Pub/Sub
+                จัดเก็บข้อมูลดิบและผลตรวจจับลง MinIO (S3-compatible) ใช้ PostgreSQL 17 จัดเก็บ Time-Series Detection Logs และใช้ Redis ในการทำ In-Memory Cache
               </p>
             </div>
           </div>
@@ -133,11 +234,11 @@ export default function ProjectDetailsPage({ onNavigate }) {
         <section className="bg-[#FFFDF7] border border-[#DEDED2] rounded-[24px] p-6 lg:p-8 shadow-xs">
           <div className="flex items-center gap-3 mb-5 pb-4 border-b border-[#DEDED2]">
             <div className="w-10 h-10 rounded-[12px] bg-[#FAF8EF] border border-[#DEDED2] text-[#30312F] flex items-center justify-center">
-              <Zap className="w-5 h-5" strokeWidth={1.8} />
+              <Activity className="w-5 h-5 text-[#284E1A]" strokeWidth={1.8} />
             </div>
             <div>
               <h2 className="text-lg font-bold text-[#30312F]">
-                2. การเลือกใช้โมเดล YOLO และการเปรียบเทียบประสิทธิภาพ
+                2. ทำไมถึงเลือกใช้ YOLO (Model Selection)
               </h2>
               <p className="text-xs text-[#85847E]">Single-stage Object Detection บน CPU Architecture</p>
             </div>
@@ -145,16 +246,12 @@ export default function ProjectDetailsPage({ onNavigate }) {
 
           <div className="space-y-4 text-sm text-[#30312F] leading-relaxed">
             <p>
-              <strong>ทำไมถึงเลือกใช้ YOLO (You Only Look Once)?</strong>
-              <br />
-              <span className="text-[#85847E]">
-                YOLO เป็นสถาปัตยกรรม Single-stage Object Detector ที่ทำการพยากรณ์ Bounding Box และ Class Probabilities ในการส่งผ่านโครงข่ายประสาทเทียมเพียงรอบเดียว (Single Forward Pass) แตกต่างจากตระกูล Two-stage (เช่น Faster R-CNN) ที่มีขั้นตอน Region Proposal แยกต่างหาก ทำให้ YOLO มีความเร็วสูงและใช้หน่วยประมวลผลน้อย เหมาะสำหรับการประมวลผล 24/7 บนเซิร์ฟเวอร์ CPU ของสถาบัน
-              </span>
+              งานของเราเน้นการวิเคราะห์ภาพจากลานจอดรถที่มีรถหนาแน่นและมีการซ้อนทับกัน (Occlusion) <strong>YOLO (You Only Look Once)</strong> ซึ่งเป็นโมเดลแบบ Single-stage Detector ตอบโจทย์ที่สุดเพราะสามารถหาตำแหน่ง (Bounding Box) และแยกคลาสได้ในการ Forward pass เพียงครั้งเดียว แตกต่างจาก Two-stage Detector ที่ช้ากว่ามาก
             </p>
 
             <div className="p-5 bg-[#FAF8EF] border border-[#DEDED2] rounded-[18px] my-4">
               <h3 className="font-bold text-xs uppercase text-[#85847E] tracking-wider mb-3">
-                ผลการทดสอบเชิงประจักษ์ (Empirical Benchmark on 50 Holdout Images)
+                ผลการเปรียบเทียบ YOLO26m vs YOLO26n บน CPU Server (Holdout Benchmark)
               </h3>
 
               <div className="overflow-x-auto">
@@ -171,12 +268,12 @@ export default function ProjectDetailsPage({ onNavigate }) {
                   </thead>
                   <tbody className="divide-y divide-[#DEDED2]">
                     <tr>
-                      <td className="py-3 px-3 font-bold text-[#30312F]">YOLO26m (Fine-Tuned)</td>
+                      <td className="py-3 px-3 font-bold text-[#30312F]">YOLO26m (Medium)</td>
                       <td className="py-3 px-3 font-bold text-[#284E1A]">98.5%</td>
                       <td className="py-3 px-3 text-[#30312F]">1,136.6 ms / frame</td>
                       <td className="py-3 px-3 text-[#30312F]">344.0 MB</td>
                       <td className="py-3 px-3 text-[#85847E]">41.97 MB (21.78M params)</td>
-                      <td className="py-3 px-3 text-[#85847E]">ความแม่นยำสูงสุดในสภาพแสงซับซ้อน</td>
+                      <td className="py-3 px-3 text-[#85847E]">ความแม่นยำสูงในสภาพแสงซับซ้อน</td>
                     </tr>
                     <tr className="bg-[#E7F4D8]/30">
                       <td className="py-3 px-3 font-bold text-[#284E1A]">YOLO26n (Nano Base)</td>
@@ -189,78 +286,31 @@ export default function ProjectDetailsPage({ onNavigate }) {
                   </tbody>
                 </table>
               </div>
-            </div>
 
-            <p className="text-xs text-[#85847E]">
-              * ข้อสังเกต: โมเดล <strong>YOLO26n</strong> ให้ประสิทธิภาพความเร็วสูงกว่า 3.47 เท่า โดยสูญเสียความแม่นยำ (mAP@50) เพียง 0.5% เมื่อเทียบกับรุ่น Medium ทำให้เป็นตัวเลือกที่ยอดเยี่ยมสำหรับการประมวลผลแบบ Real-time High Throughput
-            </p>
-          </div>
-        </section>
-
-        {/* Section 3: Alternative Models Evaluation */}
-        <section className="bg-[#FFFDF7] border border-[#DEDED2] rounded-[24px] p-6 lg:p-8 shadow-xs">
-          <div className="flex items-center gap-3 mb-5 pb-4 border-b border-[#DEDED2]">
-            <div className="w-10 h-10 rounded-[12px] bg-[#FAF8EF] border border-[#DEDED2] text-[#30312F] flex items-center justify-center">
-              <Boxes className="w-5 h-5" strokeWidth={1.8} />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-[#30312F]">
-                3. การประเมินและเปรียบเทียบกับโมเดลทางเลือก (Alternative Models)
-              </h2>
-              <p className="text-xs text-[#85847E]">เหตุผลทางวิศวกรรมที่ไม่เลือกใช้สถาปัตยกรรมอื่น</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-5 bg-[#FAF8EF] border border-[#DEDED2] rounded-[18px] flex flex-col gap-2">
-              <div className="flex items-center gap-2 text-[#991B1B] font-bold text-sm">
-                <XCircle className="w-4 h-4 flex-shrink-0" />
-                <span>SSD (Single Shot MultiBox)</span>
+              <div className="mt-4 p-3 bg-[#E7F4D8]/40 border border-[#BBF7D0] rounded-[10px] text-xs text-[#284E1A] font-medium">
+                💡 <strong>บทสรุปเชิงวิศวกรรม:</strong> เราเลือกใช้โมเดลระดับ Nano เพราะเร็วกว่า 3.47 เท่า และลดการกิน RAM ลงมหาศาล โดยที่ความแม่นยำ (mAP@50) ลดลงเพียง 0.5% เท่านั้น
               </div>
-              <p className="text-xs text-[#85847E] leading-relaxed">
-                แม้จะมีความเร็วสูง แต่ SSD มีข้อจำกัดอย่างมากในการตรวจจับวัตถุขนาดเล็กและวัตถุที่มีการบดบัง (Occlusion) สูง เช่น รถจักรยานยนต์ที่จอดเรียงซ้อนกันอย่างหนาแน่นบริเวณข้างภาควิชา
-              </p>
-            </div>
-
-            <div className="p-5 bg-[#FAF8EF] border border-[#DEDED2] rounded-[18px] flex flex-col gap-2">
-              <div className="flex items-center gap-2 text-[#991B1B] font-bold text-sm">
-                <XCircle className="w-4 h-4 flex-shrink-0" />
-                <span>RT-DETR (Transformer-Based)</span>
-              </div>
-              <p className="text-xs text-[#85847E] leading-relaxed">
-                โมเดลตระกูล Transformer ให้ความแม่นยำสูง แต่มี Overhead ทางการคำนวณของ Self-Attention Mechanism สูงมาก ต้องการ GPU โดยเฉพาะ ไม่สามารถรันบน CPU เซิร์ฟเวอร์ทั่วไปได้อย่างมีประสิทธิภาพ
-              </p>
-            </div>
-
-            <div className="p-5 bg-[#FAF8EF] border border-[#DEDED2] rounded-[18px] flex flex-col gap-2">
-              <div className="flex items-center gap-2 text-[#991B1B] font-bold text-sm">
-                <XCircle className="w-4 h-4 flex-shrink-0" />
-                <span>Background Subtraction (MOG2)</span>
-              </div>
-              <p className="text-xs text-[#85847E] leading-relaxed">
-                วิธีการลบพื้นหลังแบบดั้งเดิมล้มเหลวทันทีเมื่อยานพาหนะจอดนิ่งเป็นเวลานาน (วัตถุจะถูกกลืนกลายเป็นพื้นหลัง) และอ่อนไหวอย่างยิ่งต่อการเปลี่ยนแปลงของมุมแสงแดดและเงาต้นไม้ในเวลากลางวัน
-              </p>
             </div>
           </div>
         </section>
 
-        {/* Section 4: Input Size Optimization */}
+        {/* Section 3: Optimization */}
         <section className="bg-[#FFFDF7] border border-[#DEDED2] rounded-[24px] p-6 lg:p-8 shadow-xs">
           <div className="flex items-center gap-3 mb-5 pb-4 border-b border-[#DEDED2]">
             <div className="w-10 h-10 rounded-[12px] bg-[#FAF8EF] border border-[#DEDED2] text-[#30312F] flex items-center justify-center">
-              <Sliders className="w-5 h-5" strokeWidth={1.8} />
+              <ShieldAlert className="w-5 h-5 text-[#284E1A]" strokeWidth={1.8} />
             </div>
             <div>
               <h2 className="text-lg font-bold text-[#30312F]">
-                4. การปรับขนาดภาพนำเข้า (Input Resolution Optimization: 1600x1200 ➔ 640x640)
+                3. การประหยัดโหลด CPU (Input Size Optimization: 1600x1200 ➔ 640x640)
               </h2>
-              <p className="text-xs text-[#85847E]">ลดความซับซ้อนเชิงคำนวณกำลังสอง $\mathcal{O}(W \times H)$</p>
+              <p className="text-xs text-[#85847E]">ลดความซับซ้อนเชิงคำนวณกำลังสอง O(W x H)</p>
             </div>
           </div>
 
           <div className="space-y-4 text-sm text-[#30312F] leading-relaxed">
-            <p className="text-[#85847E]">
-              ในการคำนวณของ Convolutional Neural Network (CNN) ปริมาณการคำนวณเชิงคณิตศาสตร์ (FLOPs) และการจัดสรรหน่วยความจำแปรผันตามขนาดของภาพแบบ <strong>กำลังสอง (Quadratic Complexity: $\mathcal{O}(W \times H)$)</strong>:
+            <p className="text-[#686962]">
+              ภาพที่ส่งมาจากกล้องมีขนาดใหญ่ (เช่น 1600x1200 หรือ 800x600) การป้อนภาพขนาดใหญ่เข้าโมเดลโดยตรงจะทำให้เกิดการคำนวณ (FLOPs) มหาศาลแบบยกกำลังสอง:
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-3">
@@ -270,28 +320,28 @@ export default function ProjectDetailsPage({ onNavigate }) {
                 <div className="text-xs text-[#991B1B] mt-2 font-mono">CPU Inference Time: ~4,200 ms / frame</div>
               </div>
 
-              <div className="p-5 bg-[#E7F4D8]/40 border border-[#DEDED2] rounded-[18px]">
-                <div className="font-bold text-[#284E1A] text-sm mb-1">ภาพปรับสเกล (640 x 640 Squarified)</div>
+              <div className="p-5 bg-[#E7F4D8]/40 border border-[#BBF7D0] rounded-[18px]">
+                <div className="font-bold text-[#284E1A] text-sm mb-1">ภาพปรับสเกล (640 x 640 Sweet Spot)</div>
                 <div className="text-xs text-[#85847E]">พิกเซลทั้งหมด: <strong className="font-mono text-[#284E1A]">409,600 พิกเซล (ลดลง 78.7%)</strong></div>
                 <div className="text-xs text-[#284E1A] mt-2 font-mono font-bold">CPU Inference Time: ~327 - 1,136 ms / frame</div>
               </div>
             </div>
 
             <p className="text-xs text-[#85847E] leading-relaxed">
-              <strong className="text-[#30312F]">การแก้ปัญหา Coordinate Mismatch:</strong> เมื่อทำการปรับขนาดภาพเป็น 640x640 ก่อนส่งเข้า <code className="bg-[#FAF8EF] border border-[#DEDED2] px-1.5 py-0.5 rounded text-[11px] font-mono text-[#30312F]">model.predict()</code> ตัวระบบ <code className="bg-[#FAF8EF] border border-[#DEDED2] px-1.5 py-0.5 rounded text-[11px] font-mono text-[#30312F]">detect_worker.py</code> จะคำนวณอัตราส่วนมาตราส่วนย้อนกลับ (<code className="bg-[#FAF8EF] border border-[#DEDED2] px-1.5 py-0.5 rounded text-[11px] font-mono text-[#30312F]">scale_x = 1600/640</code>, <code className="bg-[#FAF8EF] border border-[#DEDED2] px-1.5 py-0.5 rounded text-[11px] font-mono text-[#30312F]">scale_y = 1200/640</code>) เพื่อแปลงพิกัด Bounding Box กลับสู่มิติภาพ 1600x1200 ดั้งเดิม ทำให้การทดสอบความสอดคล้องกับพิกัดช่องจอด (Polygon ROI Point-in-Polygon Test) มีความแม่นยำ 100% โดยไม่ต้องปรับแก้มิติพิกัดในฐานข้อมูล
+              เราทำการ <strong>Resize ภาพให้เหลือ 640x640 (imgsz=640)</strong> ก่อนโยนเข้า YOLO ซึ่งเป็นจุดสมดุลที่สุดในการรันบน CPU โดยใช้หลักการคูณ Scale (<code className="bg-[#FAF8EF] border border-[#DEDED2] px-1.5 py-0.5 rounded text-[11px] font-mono text-[#30312F]">scale_x = 1600/640</code>, <code className="bg-[#FAF8EF] border border-[#DEDED2] px-1.5 py-0.5 rounded text-[11px] font-mono text-[#30312F]">scale_y = 1200/640</code>) กลับไปที่พิกัด Bounding Box เพื่อให้สัดส่วนของ Polygon ลานจอดรถยังคงแม่นยำ 100% เหมือนเดิม
             </p>
           </div>
         </section>
 
-        {/* Section 5: Cone Detection Strategy */}
+        {/* Section 4: Cone Detection Strategy */}
         <section className="bg-[#FFFDF7] border border-[#DEDED2] rounded-[24px] p-6 lg:p-8 shadow-xs">
           <div className="flex items-center gap-3 mb-5 pb-4 border-b border-[#DEDED2]">
             <div className="w-10 h-10 rounded-[12px] bg-[#FAF8EF] border border-[#DEDED2] text-[#30312F] flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5" strokeWidth={1.8} />
+              <Code2 className="w-5 h-5 text-[#284E1A]" strokeWidth={1.8} />
             </div>
             <div>
               <h2 className="text-lg font-bold text-[#30312F]">
-                5. กลยุทธ์การตรวจจับกรวยจราจร (Hybrid HSV Color Masking)
+                4. กลยุทธ์การตรวจจับกรวยจราจร (Hybrid HSV Color Masking)
               </h2>
               <p className="text-xs text-[#85847E]">แก้ไขปัญหา False Vacant จากสิ่งกีดขวางที่ไม่มีในโมเดล</p>
             </div>

@@ -1,107 +1,107 @@
 import React from 'react'
 import { useDashboardData } from './useDashboardData'
-import ViewControlBar from './sections/ViewControlBar.jsx'
-import HeroCamera from './sections/HeroCamera.jsx'
-import SecondaryCamera from './sections/SecondaryCamera.jsx'
-import AiForecast from './sections/AiForecast.jsx'
-import EdgeTelemetry from './sections/EdgeTelemetry.jsx'
-import ZoneBreakdown from './sections/ZoneBreakdown.jsx'
-import LogTicker from './sections/LogTicker.jsx'
+import DashboardHeader from './sections/DashboardHeader.jsx'
+import DashboardKpis from './sections/DashboardKpis.jsx'
+import CameraMapCard from './sections/CameraMapCard.jsx'
+import DensityForecastCard from './sections/DensityForecastCard.jsx'
+import CameraHealthCard from './sections/CameraHealthCard.jsx'
+import ZoneAlertsCard from './sections/ZoneAlertsCard.jsx'
+import ModelPipelineCard from './sections/ModelPipelineCard.jsx'
 
 export default function DashboardPage({ onOpenModal, onNavigate }) {
   const {
-    selectedZone,
-    setSelectedZone,
     countdown,
     isRefreshing,
     handleManualRefresh,
-    showRoiOverlay,
-    setShowRoiOverlay,
     cam1,
     cam2,
     cam3,
     cam1Counts,
     cam2Counts,
     cam3Counts,
-    cam1Live,
     totalCarFree,
     totalCarTotal,
     totalBikeFree,
-    totalBikeTotal,
-    avgChance,
-    currentRecord
+    totalBikeTotal
   } = useDashboardData()
 
-  const onlineCount = [cam1?.isOnline, cam2?.isOnline, cam3?.isOnline].filter(Boolean).length
+  const cameras = [cam1, cam2, cam3]
+  const onlineCount = cameras.filter((c) => c?.isOnline).length
+  const totalCapacity = (totalCarTotal || 0) + (totalBikeTotal || 0)
+  const totalFree = (totalCarFree || 0) + (totalBikeFree || 0)
+  const occupiedCount = Math.max(0, totalCapacity - totalFree)
+  const occupancyPct = totalCapacity > 0 ? Math.round((occupiedCount / totalCapacity) * 100) : 68
+
+  // Calculate alerts (nearly full, full, or offline)
+  const offlineCount = Math.max(0, cameras.length - onlineCount)
+  let activeAlerts = offlineCount
+  if (cam1Counts?.car?.free <= 1) activeAlerts++
+  if (cam2Counts?.car?.free <= 1) activeAlerts++
+  if (cam3Counts?.bike?.free <= 3) activeAlerts++
 
   return (
-    <div className="platform-workspace">
-      {/* S0: ViewControlBar + 4-KPI Strip */}
-      <ViewControlBar
-        selectedZone={selectedZone}
-        onSelectZone={setSelectedZone}
+    <div className="flex flex-col items-start px-4 sm:px-6 lg:px-10 py-6 gap-6 w-full max-w-[1440px] mx-auto box-border">
+      {/* 1. Header with Demo Badge & Actions */}
+      <DashboardHeader
+        onlineCount={onlineCount}
         countdown={countdown}
         isRefreshing={isRefreshing}
         onRefresh={handleManualRefresh}
-        totalCarFree={totalCarFree}
-        totalCarTotal={totalCarTotal}
-        totalBikeFree={totalBikeFree}
-        totalBikeTotal={totalBikeTotal}
-        avgChance={avgChance}
-        onlineCount={onlineCount}
       />
 
-      {/* S1: 3-Camera Grid (CAM-01, CAM-02, CAM-03 in 3 equal columns >=1280px) */}
-      <div className="dashboard-camera-grid">
-        <HeroCamera
-          cam1={cam1}
-          showRoiOverlay={showRoiOverlay}
-          onToggleRoi={() => setShowRoiOverlay((prev) => !prev)}
-          onOpenModal={onOpenModal}
-          onNavigate={onNavigate}
-        />
+      {/* 2. 4-KPI Row */}
+      <DashboardKpis
+        onlineCount={onlineCount}
+        totalCameras={cameras.length}
+        occupancyPct={occupancyPct}
+        occupiedCount={occupiedCount}
+        totalCapacity={totalCapacity}
+        hourlyDetections={1284}
+        precisionPct={98}
+        alertCount={activeAlerts}
+        alertText={
+          offlineCount > 0
+            ? `${offlineCount} กล้องเสี่ยงดับ`
+            : occupancyPct >= 75
+              ? 'โซนความหนาแน่นสูง'
+              : 'สถานะปกติทุกจุด'
+        }
+      />
 
-        <SecondaryCamera
-          camera={cam2}
-          onOpenModal={onOpenModal}
-          onNavigate={onNavigate}
-        />
+      {/* 3. Main Row (Left: ~860px / flex-1, Right: ~380px) */}
+      <div className="flex flex-col xl:flex-row items-start gap-6 w-full">
+        {/* Left Column */}
+        <div className="flex flex-col gap-6 flex-1 min-w-0 w-full">
+          {/* Camera Map & Grid Card */}
+          <CameraMapCard
+            cameras={cameras}
+            onOpenModal={onOpenModal}
+            onNavigate={onNavigate}
+          />
 
-        <SecondaryCamera
-          camera={cam3}
-          onOpenModal={onOpenModal}
-          onNavigate={onNavigate}
-        />
-      </div>
+          {/* Bottom Row under Camera Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full">
+            <div className="lg:col-span-7">
+              <DensityForecastCard />
+            </div>
+            <div className="lg:col-span-5">
+              <CameraHealthCard cameras={cameras} />
+            </div>
+          </div>
+        </div>
 
-      {/* S2: AiForecast + EdgeTelemetry (2 equal columns >=1024px, align-items: start) */}
-      <div className="dashboard-ai-grid">
-        <AiForecast
-          selectedZone={selectedZone}
-          avgChance={avgChance}
-          totalCarFree={totalCarFree}
-          totalCarTotal={totalCarTotal}
-          totalBikeFree={totalBikeFree}
-          totalBikeTotal={totalBikeTotal}
-        />
+        {/* Right Column */}
+        <div className="flex flex-col gap-6 w-full xl:w-[380px] shrink-0">
+          {/* Card 1: Risk & Zone Alerts */}
+          <ZoneAlertsCard
+            cam1Counts={cam1Counts}
+            cam2Counts={cam2Counts}
+            cam3Counts={cam3Counts}
+          />
 
-        <EdgeTelemetry
-          currentRecord={currentRecord}
-        />
-      </div>
-
-      {/* S3: ZoneBreakdown + LogTicker (2 equal columns >=1024px) */}
-      <div className="dashboard-breakdown-grid">
-        <ZoneBreakdown
-          cam1Counts={cam1Counts}
-          cam2Counts={cam2Counts}
-          cam3Counts={cam3Counts}
-        />
-
-        <LogTicker
-          currentRecord={currentRecord}
-          cam1Live={cam1Live}
-        />
+          {/* Card 2: Model & Time-Series Info */}
+          <ModelPipelineCard onNavigate={onNavigate} />
+        </div>
       </div>
     </div>
   )

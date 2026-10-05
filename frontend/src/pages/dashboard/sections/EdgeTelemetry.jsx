@@ -7,6 +7,7 @@ import {
   Clock
 } from 'lucide-react'
 import { formatUptime } from '../../../utils/dumpData'
+import { PillTag } from '../../../components/ui/FigmaCards'
 
 export default function EdgeTelemetry({ currentRecord }) {
   // Threshold calculations:
@@ -48,80 +49,86 @@ export default function EdgeTelemetry({ currentRecord }) {
   const ipVal = currentRecord?.client_ip || '—'
 
   return (
-    <div className="p-5 rounded-[var(--radius-card)] bg-[var(--color-surface)] border border-[var(--color-border)] flex flex-col justify-between gap-4 min-w-0 box-sizing-border">
+    <div className="p-6 lg:p-7 rounded-[24px] bg-[#FFFDF7] border border-[#DEDED2] shadow-xs flex flex-col justify-between gap-5 min-w-0 box-sizing-border">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Cpu className="w-4 h-4 text-[var(--color-green-text)]" strokeWidth={1.7} />
-          <h3 className="font-semibold text-sm text-[var(--color-ink)]">ESP32 Edge Telemetry</h3>
+      <div className="flex items-center justify-between pb-3 border-b border-[#DEDED2]">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-[10px] bg-[#E7F4D8] text-[#284E1A] flex items-center justify-center">
+            <Cpu className="w-4 h-4" strokeWidth={1.8} />
+          </div>
+          <div>
+            <h3 className="font-semibold text-sm text-[#30312F]">ESP32 Edge Telemetry</h3>
+            <p className="text-[11px] text-[#85847E]">เซนเซอร์ฮาร์ดแวร์ประจำกล้องหลัก</p>
+          </div>
         </div>
-        <span className="px-2.5 py-0.5 rounded-[var(--radius-pill)] text-[10px] font-semibold bg-[var(--color-green-tint)] text-[var(--color-green-text)] border border-[var(--color-green-border)]">
+        <PillTag variant={currentRecord ? 'active' : 'neutral'}>
           {currentRecord ? 'Live Node' : 'No Data'}
-        </span>
+        </PillTag>
       </div>
 
       {/* 2x2 Telemetry Tiles */}
       <div className="grid grid-cols-2 gap-3">
         {/* Chip Temp */}
-        <div className="p-3 rounded-[var(--radius-option)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] flex flex-col justify-between gap-1">
-          <div className="flex items-center justify-between text-[11px] font-medium text-[var(--color-ink-secondary)] uppercase tracking-wider">
+        <div className="p-3.5 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col justify-between gap-1.5">
+          <div className="flex items-center justify-between text-[11px] font-semibold text-[#85847E] uppercase tracking-wider">
             <span>Chip Temp</span>
-            <Thermometer className="w-3.5 h-3.5 text-[var(--color-ink-secondary)]" strokeWidth={1.7} />
+            <Thermometer className="w-3.5 h-3.5 text-[#85847E]" strokeWidth={1.7} />
           </div>
-          <div className="font-sans text-xl font-semibold text-[var(--color-ink)] tabular-nums">
+          <div className="font-mono text-xl font-bold text-[#30312F] tabular-nums">
             {tempVal}
           </div>
-          <span className="text-[10px] text-[var(--color-ink-secondary)] font-medium">
+          <span className="text-[11px] text-[#85847E] font-medium">
             {tempStatus}
           </span>
         </div>
 
         {/* WiFi RSSI */}
-        <div className="p-3 rounded-[var(--radius-option)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] flex flex-col justify-between gap-1">
-          <div className="flex items-center justify-between text-[11px] font-medium text-[var(--color-ink-secondary)] uppercase tracking-wider">
+        <div className="p-3.5 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col justify-between gap-1.5">
+          <div className="flex items-center justify-between text-[11px] font-semibold text-[#85847E] uppercase tracking-wider">
             <span>WiFi Signal</span>
-            <Wifi className="w-3.5 h-3.5 text-[var(--color-ink-secondary)]" strokeWidth={1.7} />
+            <Wifi className="w-3.5 h-3.5 text-[#85847E]" strokeWidth={1.7} />
           </div>
-          <div className="font-sans text-xl font-semibold text-[var(--color-ink)] tabular-nums">
+          <div className="font-mono text-xl font-bold text-[#30312F] tabular-nums">
             {rssiVal}
           </div>
-          <span className="text-[10px] text-[var(--color-ink-secondary)] font-medium">
+          <span className="text-[11px] text-[#85847E] font-medium">
             {rssiStatus}
           </span>
         </div>
 
         {/* Free Heap */}
-        <div className="p-3 rounded-[var(--radius-option)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] flex flex-col justify-between gap-1">
-          <div className="flex items-center justify-between text-[11px] font-medium text-[var(--color-ink-secondary)] uppercase tracking-wider">
+        <div className="p-3.5 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col justify-between gap-1.5">
+          <div className="flex items-center justify-between text-[11px] font-semibold text-[#85847E] uppercase tracking-wider">
             <span>Free Heap</span>
-            <HardDrive className="w-3.5 h-3.5 text-[var(--color-ink-secondary)]" strokeWidth={1.7} />
+            <HardDrive className="w-3.5 h-3.5 text-[#85847E]" strokeWidth={1.7} />
           </div>
-          <div className="font-sans text-xl font-semibold text-[var(--color-ink)] tabular-nums">
+          <div className="font-mono text-xl font-bold text-[#30312F] tabular-nums">
             {heapVal}
           </div>
-          <span className="text-[10px] text-[var(--color-ink-secondary)] font-sans tabular-nums">
+          <span className="text-[11px] text-[#85847E] font-mono tabular-nums">
             {psramVal}
           </span>
         </div>
 
         {/* Uptime */}
-        <div className="p-3 rounded-[var(--radius-option)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] flex flex-col justify-between gap-1">
-          <div className="flex items-center justify-between text-[11px] font-medium text-[var(--color-ink-secondary)] uppercase tracking-wider">
+        <div className="p-3.5 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col justify-between gap-1.5">
+          <div className="flex items-center justify-between text-[11px] font-semibold text-[#85847E] uppercase tracking-wider">
             <span>Uptime</span>
-            <Clock className="w-3.5 h-3.5 text-[var(--color-ink-secondary)]" strokeWidth={1.7} />
+            <Clock className="w-3.5 h-3.5 text-[#85847E]" strokeWidth={1.7} />
           </div>
-          <div className="font-sans text-sm font-semibold text-[var(--color-ink)] tabular-nums truncate">
+          <div className="font-mono text-sm font-bold text-[#30312F] tabular-nums truncate">
             {uptimeVal}
           </div>
-          <span className="text-[10px] text-[var(--color-ink-secondary)] font-sans tabular-nums">
+          <span className="text-[11px] text-[#85847E] font-mono tabular-nums">
             {aecVal}
           </span>
         </div>
       </div>
 
       {/* Footer Info Row */}
-      <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between text-xs text-[var(--color-ink-secondary)]">
-        <span>IP: <strong className="font-mono text-[var(--color-ink)]">{ipVal}</strong></span>
+      <div className="pt-3 border-t border-[#DEDED2] flex items-center justify-between text-xs text-[#85847E]">
+        <span>ESP32 IP: <strong className="font-mono text-[#30312F]">{ipVal}</strong></span>
+        <span className="text-[11px] text-[#85847E]">Auto sync ทุก snapshot</span>
       </div>
     </div>
   )

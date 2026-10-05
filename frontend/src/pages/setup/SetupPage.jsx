@@ -14,6 +14,7 @@ import {
 import ParkingSetup from './components_setup/ParkingSetup.jsx'
 import RoboflowStudio from '../trainer/components_trainer/RoboflowStudio.jsx'
 import AutoTrainerStudio from '../trainer/AutoTrainerPage.jsx'
+import { PillTag, PillButton } from '../../components/ui/FigmaCards'
 
 const FRAMESIZE_OPTIONS = [
   { value: 13, label: '13: UXGA (1600x1200) - Default' },
@@ -105,7 +106,7 @@ export default function SetupPage({
     fetchSettings()
   }, [apiBase])
 
-  const [lineConfig, setLineConfig] = useState({
+  const [lineConfig] = useState({
     channelSecret: '••••••••••••••••••••••••••••••••',
     channelAccessToken: '••••••••••••••••••••••••••••••••••••••••••••••••••••••••',
     webhookUrl: 'https://api.cpe.eng.psu.ac.th/api/v1/line/webhook'
@@ -156,344 +157,192 @@ export default function SetupPage({
   }
 
   return (
-    <div className="setup-view-container">
-      {/* Top Banner */}
-      <div className="setup-header-banner">
-        <div className="flex items-center gap-3.5 flex-wrap">
-          <div className="setup-icon-box">
-            <Settings className="w-6 h-6" strokeWidth={1.8} />
-          </div>
-          <div>
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h2 className="setup-title-main">System & Camera Setup</h2>
-              <span className="status-tag active">Ready for Configuration</span>
-            </div>
-            <p className="setup-subtitle-text">
-              หน้าควบคุมการตั้งค่าระบบและฮาร์ดแวร์กล้อง ESP32-CAM (Dynamic Framesize, Quality, Interval & Zone ROI)
-            </p>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={handleSave}
-          className="btn-save-setup"
-        >
-          <Save className="w-4 h-4" strokeWidth={1.8} />
-          <span>Save Changes</span>
-        </button>
+    <div className="platform-workspace">
+      {/* 1. Breadcrumb */}
+      <div className="platform-breadcrumb">
+        <span>Platform</span>
+        <span>/</span>
+        <span className="text-[#30312F] font-medium">System & Edge Hardware Setup</span>
       </div>
 
+      {/* 2. Platform Intro Header */}
+      <div className="platform-intro">
+        <div className="platform-overview">
+          <div className="platform-metadata">
+            <PillTag variant="neutral">ESP32 Ingestion Hub</PillTag>
+            <PillTag variant="neutral">ROI Zone Geometry</PillTag>
+            <PillTag variant="active">Setup Ready</PillTag>
+          </div>
+
+          <h1 className="platform-title">
+            System & Edge Hardware Setup
+          </h1>
+
+          <p className="platform-description">
+            แผงควบคุมการตั้งค่าระบบและฮาร์ดแวร์กล้อง ESP32-CAM (Dynamic Framesize, Quality, Interval) ตลอดจนการกำหนดพิกัดช่องจอด Polygon ROI และ Webhook
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3 flex-wrap">
+          <PillButton
+            variant="primary"
+            icon={Save}
+            onClick={handleSave}
+            className="h-12"
+          >
+            บันทึกการตั้งค่า
+          </PillButton>
+        </div>
+      </div>
+
+      {/* Save Notification */}
       {saved && (
-        <div className="alert-setup-saved">
-          <CheckCircle2 className="w-4 h-4 text-[var(--color-green-text)]" strokeWidth={1.8} />
-          <span>{saveStatus || 'บันทึกการตั้งค่าระบบเรียบร้อยแล้ว'}</span>
+        <div className="w-full p-4 bg-[#E7F4D8] border border-[#BBF7D0] rounded-[20px] text-[#36612D] flex items-center gap-3 animate-fadeIn">
+          <CheckCircle2 className="w-4 h-4 text-[#36612D]" strokeWidth={2} />
+          <span className="text-xs font-medium">{saveStatus || 'บันทึกการตั้งค่าระบบเรียบร้อยแล้ว'}</span>
         </div>
       )}
 
-      {/* Setup Sub-Navigation Tabs */}
-      <div className="setup-tabs-bar">
-        <button
-          type="button"
-          className={`setup-tab-btn ${activeTab === 'cameras' ? 'active' : ''}`}
-          onClick={() => setActiveTab('cameras')}
-        >
-          <Smartphone className="w-4 h-4" strokeWidth={1.8} />
-          <span>3x Phone / ESP32 Cameras Config</span>
-        </button>
-
-        <button
-          type="button"
-          className={`setup-tab-btn ${activeTab === 'slots' ? 'active' : ''}`}
-          onClick={() => setActiveTab('slots')}
-        >
-          <MapPin className="w-4 h-4" strokeWidth={1.8} />
-          <span>Parking Zone ROI Setup</span>
-        </button>
-
-        <button
-          type="button"
-          className={`setup-tab-btn ${activeTab === 'line' ? 'active' : ''}`}
-          onClick={() => setActiveTab('line')}
-        >
-          <MessageSquare className="w-4 h-4" strokeWidth={1.8} />
-          <span>LINE Chatbot Webhook</span>
-        </button>
-
-        <button
-          type="button"
-          className={`setup-tab-btn ${activeTab === 'storage' ? 'active' : ''}`}
-          onClick={() => setActiveTab('storage')}
-        >
-          <HardDrive className="w-4 h-4" strokeWidth={1.8} />
-          <span>MinIO & DB Connection</span>
-        </button>
-
-        <button
-          type="button"
-          className={`setup-tab-btn ${activeTab === 'trainer' ? 'active' : ''}`}
-          onClick={() => setActiveTab('trainer')}
-        >
-          <Cpu className="w-4 h-4" strokeWidth={1.8} />
-          <span>Auto-Trainer & Model Hub</span>
-        </button>
-
-        <button
-          type="button"
-          className={`setup-tab-btn ${activeTab === 'roboflow' ? 'active' : ''}`}
-          onClick={() => setActiveTab('roboflow')}
-        >
-          <Layers className="w-4 h-4" strokeWidth={1.8} />
-          <span>Roboflow Project</span>
-        </button>
+      {/* 3. Setup Sub-Navigation Tabs Bar */}
+      <div className="flex items-center gap-2 overflow-x-auto w-full p-1.5 bg-[#FAF8EF] border border-[#DEDED2] rounded-full">
+        {[
+          { id: 'cameras', label: '3x Phone / ESP32 Cameras', icon: Smartphone },
+          { id: 'slots', label: 'Parking Zone ROI Setup', icon: MapPin },
+          { id: 'line', label: 'LINE Chatbot Webhook', icon: MessageSquare },
+          { id: 'storage', label: 'MinIO & DB Connection', icon: HardDrive },
+          { id: 'trainer', label: 'Auto-Trainer & Model Hub', icon: Cpu },
+          { id: 'roboflow', label: 'Roboflow Project', icon: Layers }
+        ].map((tab) => {
+          const Icon = tab.icon
+          const active = activeTab === tab.id
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+                active
+                  ? 'bg-[#30312F] text-white shadow-xs'
+                  : 'text-[#686962] hover:text-[#30312F]'
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              <span>{tab.label}</span>
+            </button>
+          )
+        })}
       </div>
 
-      {/* Tab Content */}
-      <div className="setup-content-card">
+      {/* 4. Tab Content Bento Surface */}
+      <div className="w-full bg-[#FFFDF7] border border-[#DEDED2] rounded-[24px] p-6 lg:p-8 shadow-xs flex flex-col gap-6">
         {activeTab === 'cameras' && (
-          <div className="setup-section">
-            <h3 className="section-title-sm">
-              <Smartphone className="w-4 h-4 text-[var(--color-green-text)]" strokeWidth={1.8} />
-              <span>การตั้งค่าจุดกล้อง 3 ตัว (Edge Ingestion, Frame Size & Quality Control)</span>
-            </h3>
-            <p className="section-desc">
-              กำหนดค่า IP Address, ความถี่ Interval, Camera Frame Size (ESP32 ID) และ JPEG Quality ของกล้องแต่ละจุด
-            </p>
+          <div className="flex flex-col gap-6">
+            <div>
+              <h3 className="font-sans font-semibold text-[19px] text-[#30312F] m-0 flex items-center gap-2">
+                <Smartphone className="w-5 h-5 text-[#36612D]" strokeWidth={2} />
+                <span>การตั้งค่าจุดกล้อง 3 ตัว (Edge Ingestion, Frame Size & Quality Control)</span>
+              </h3>
+              <p className="font-sans text-xs text-[#85847E] mt-1 m-0">
+                กำหนดค่า IP Address, ความถี่ Interval, Camera Frame Size (ESP32 ID) และ JPEG Quality ของกล้องแต่ละจุด
+              </p>
+            </div>
 
-            <div className="camera-config-grid">
-              {/* Camera 1 */}
-              <div className="cam-setup-card">
-                <div className="cam-setup-card-header">
-                  <span className="cam-setup-code">CAM-01</span>
-                  <span className="status-tag active">Active Node</span>
-                </div>
-                <div className="form-group-setup">
-                  <label>ชื่อจุดติดตั้ง:</label>
-                  <input
-                    type="text"
-                    value={camConfig.cam1.name}
-                    onChange={(e) => handleCamChange('cam1', 'name', e.target.value)}
-                  />
-                </div>
-                <div className="form-row-2">
-                  <div className="form-group-setup">
-                    <label>IP สมาร์ทโฟน/ESP32:</label>
-                    <input
-                      type="text"
-                      value={camConfig.cam1.ip}
-                      className="font-mono"
-                      onChange={(e) => handleCamChange('cam1', 'ip', e.target.value)}
-                    />
-                  </div>
-                  <div className="form-group-setup">
-                    <label>Interval (วินาที):</label>
-                    <input
-                      type="number"
-                      value={camConfig.cam1.interval}
-                      className="font-mono"
-                      onChange={(e) => handleCamChange('cam1', 'interval', Number(e.target.value))}
-                    />
-                  </div>
-                </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {['cam1', 'cam2', 'cam3'].map((camKey) => {
+                const cam = camConfig[camKey]
+                const code = camKey.toUpperCase().replace('CAM', 'CAM-0')
 
-                <div className="form-row-2">
-                  <div className="form-group-setup">
-                    <label>Camera Frame Size (ESP32 ID):</label>
-                    <select
-                      value={camConfig.cam1.framesize}
-                      className="font-mono text-sm"
-                      onChange={(e) => handleCamChange('cam1', 'framesize', Number(e.target.value))}
+                return (
+                  <div
+                    key={camKey}
+                    className="p-5 rounded-[20px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col justify-between gap-4"
+                  >
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center justify-between pb-3 border-b border-[#DEDED2]">
+                        <span className="font-mono font-bold text-sm text-[#30312F]">{code}</span>
+                        <PillTag variant="active">Active Node</PillTag>
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-[#686962]">ชื่อจุดติดตั้ง:</label>
+                        <input
+                          type="text"
+                          value={cam.name}
+                          onChange={(e) => handleCamChange(camKey, 'name', e.target.value)}
+                          className="bg-[#FFFDF7] border border-[#DEDED2] rounded-xl px-3 py-2 text-xs text-[#30312F] focus:outline-none focus:border-[#30312F]"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-medium text-[#686962]">IP Address:</label>
+                          <input
+                            type="text"
+                            value={cam.ip}
+                            className="font-mono bg-[#FFFDF7] border border-[#DEDED2] rounded-xl px-3 py-2 text-xs text-[#30312F] focus:outline-none focus:border-[#30312F]"
+                            onChange={(e) => handleCamChange(camKey, 'ip', e.target.value)}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-medium text-[#686962]">Interval (วินาที):</label>
+                          <input
+                            type="number"
+                            value={cam.interval}
+                            className="font-mono bg-[#FFFDF7] border border-[#DEDED2] rounded-xl px-3 py-2 text-xs text-[#30312F] focus:outline-none focus:border-[#30312F]"
+                            onChange={(e) => handleCamChange(camKey, 'interval', Number(e.target.value))}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-medium text-[#686962]">Frame Size:</label>
+                          <select
+                            value={cam.framesize}
+                            className="font-mono bg-[#FFFDF7] border border-[#DEDED2] rounded-xl px-2.5 py-2 text-xs text-[#30312F] focus:outline-none focus:border-[#30312F] cursor-pointer"
+                            onChange={(e) => handleCamChange(camKey, 'framesize', Number(e.target.value))}
+                          >
+                            {FRAMESIZE_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-medium text-[#686962]">JPEG Quality (1-63):</label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="63"
+                            value={cam.quality}
+                            className="font-mono bg-[#FFFDF7] border border-[#DEDED2] rounded-xl px-3 py-2 text-xs text-[#30312F] focus:outline-none focus:border-[#30312F]"
+                            onChange={(e) => handleCamChange(camKey, 'quality', Number(e.target.value))}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedSlotCam(camKey)
+                        setActiveTab('slots')
+                      }}
+                      className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-full bg-[#30312F] hover:bg-[#1E1F1D] text-white text-xs font-medium transition-colors cursor-pointer mt-2"
                     >
-                      {FRAMESIZE_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
+                      <MapPin className="w-3.5 h-3.5" />
+                      <span>วาดพิกัดโซนจอด ROI ({code})</span>
+                    </button>
                   </div>
-                  <div className="form-group-setup">
-                    <label>JPEG Quality (1-63):</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="63"
-                      value={camConfig.cam1.quality}
-                      className="font-mono"
-                      onChange={(e) => handleCamChange('cam1', 'quality', Number(e.target.value))}
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedSlotCam('cam1')
-                    setActiveTab('slots')
-                  }}
-                  className="btn-setup-draw-roi"
-                >
-                  <MapPin className="w-3.5 h-3.5" strokeWidth={1.8} />
-                  <span>วาดพิกัดโซนจอด ROI (CAM-01)</span>
-                </button>
-              </div>
-
-              {/* Camera 2 */}
-              <div className="cam-setup-card">
-                <div className="cam-setup-card-header">
-                  <span className="cam-setup-code">CAM-02</span>
-                  <span className="status-tag active">Active Node</span>
-                </div>
-                <div className="form-group-setup">
-                  <label>ชื่อจุดติดตั้ง:</label>
-                  <input
-                    type="text"
-                    value={camConfig.cam2.name}
-                    onChange={(e) => handleCamChange('cam2', 'name', e.target.value)}
-                  />
-                </div>
-                <div className="form-row-2">
-                  <div className="form-group-setup">
-                    <label>IP สมาร์ทโฟน/ESP32:</label>
-                    <input
-                      type="text"
-                      value={camConfig.cam2.ip}
-                      className="font-mono"
-                      onChange={(e) => handleCamChange('cam2', 'ip', e.target.value)}
-                    />
-                  </div>
-                  <div className="form-group-setup">
-                    <label>Interval (วินาที):</label>
-                    <input
-                      type="number"
-                      value={camConfig.cam2.interval}
-                      className="font-mono"
-                      onChange={(e) => handleCamChange('cam2', 'interval', Number(e.target.value))}
-                    />
-                  </div>
-                </div>
-
-                <div className="form-row-2">
-                  <div className="form-group-setup">
-                    <label>Camera Frame Size (ESP32 ID):</label>
-                    <select
-                      value={camConfig.cam2.framesize}
-                      className="font-mono text-sm"
-                      onChange={(e) => handleCamChange('cam2', 'framesize', Number(e.target.value))}
-                    >
-                      {FRAMESIZE_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group-setup">
-                    <label>JPEG Quality (1-63):</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="63"
-                      value={camConfig.cam2.quality}
-                      className="font-mono"
-                      onChange={(e) => handleCamChange('cam2', 'quality', Number(e.target.value))}
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedSlotCam('cam2')
-                    setActiveTab('slots')
-                  }}
-                  className="btn-setup-draw-roi"
-                >
-                  <MapPin className="w-3.5 h-3.5" strokeWidth={1.8} />
-                  <span>วาดพิกัดโซนจอด ROI (CAM-02)</span>
-                </button>
-              </div>
-
-              {/* Camera 3 */}
-              <div className="cam-setup-card">
-                <div className="cam-setup-card-header">
-                  <span className="cam-setup-code">CAM-03</span>
-                  <span className="status-tag active">Active Node</span>
-                </div>
-                <div className="form-group-setup">
-                  <label>ชื่อจุดติดตั้ง:</label>
-                  <input
-                    type="text"
-                    value={camConfig.cam3.name}
-                    onChange={(e) => handleCamChange('cam3', 'name', e.target.value)}
-                  />
-                </div>
-                <div className="form-row-2">
-                  <div className="form-group-setup">
-                    <label>IP สมาร์ทโฟน/ESP32:</label>
-                    <input
-                      type="text"
-                      value={camConfig.cam3.ip}
-                      className="font-mono"
-                      onChange={(e) => handleCamChange('cam3', 'ip', e.target.value)}
-                    />
-                  </div>
-                  <div className="form-group-setup">
-                    <label>Interval (วินาที):</label>
-                    <input
-                      type="number"
-                      value={camConfig.cam3.interval}
-                      className="font-mono"
-                      onChange={(e) => handleCamChange('cam3', 'interval', Number(e.target.value))}
-                    />
-                  </div>
-                </div>
-
-                <div className="form-row-2">
-                  <div className="form-group-setup">
-                    <label>Camera Frame Size (ESP32 ID):</label>
-                    <select
-                      value={camConfig.cam3.framesize}
-                      className="font-mono text-sm"
-                      onChange={(e) => handleCamChange('cam3', 'framesize', Number(e.target.value))}
-                    >
-                      {FRAMESIZE_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group-setup">
-                    <label>JPEG Quality (1-63):</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="63"
-                      value={camConfig.cam3.quality}
-                      className="font-mono"
-                      onChange={(e) => handleCamChange('cam3', 'quality', Number(e.target.value))}
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedSlotCam('cam3')
-                    setActiveTab('slots')
-                  }}
-                  className="btn-setup-draw-roi"
-                >
-                  <MapPin className="w-3.5 h-3.5" strokeWidth={1.8} />
-                  <span>วาดพิกัดโซนจอด ROI (CAM-03)</span>
-                </button>
-              </div>
+                )
+              })}
             </div>
           </div>
         )}
 
         {activeTab === 'slots' && (
-          <div className="setup-section p-0">
+          <div className="w-full">
             <ParkingSetup
               embedded={true}
               onNavigate={onNavigate}
@@ -504,67 +353,90 @@ export default function SetupPage({
         )}
 
         {activeTab === 'line' && (
-          <div className="setup-section">
-            <h3 className="section-title-sm">
-              <MessageSquare className="w-4 h-4 text-[var(--color-ink-secondary)]" strokeWidth={1.8} />
-              <span>การเชื่อมต่อ LINE Messaging API & Webhook</span>
-            </h3>
-            <p className="section-desc">
-              ตั้งค่า Token และ Webhook URL สำหรับบอทตอบคำถามผู้ใช้งานนอกมหาวิทยาลัย
-            </p>
-            <div className="form-group-setup mb-3">
-              <label>FastAPI LINE Webhook URL (สำหรับนำไปใส่ใน LINE Developers Console):</label>
-              <input type="text" readOnly value={lineConfig.webhookUrl} className="font-mono" />
+          <div className="flex flex-col gap-5 max-w-2xl">
+            <div>
+              <h3 className="font-sans font-semibold text-[19px] text-[#30312F] m-0 flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-[#30312F]" />
+                <span>การเชื่อมต่อ LINE Messaging API & Webhook</span>
+              </h3>
+              <p className="font-sans text-xs text-[#85847E] mt-1 m-0">
+                ตั้งค่า Token และ Webhook URL สำหรับบอทตอบคำถามผู้ใช้งานนอกมหาวิทยาลัย
+              </p>
             </div>
-            <div className="form-group-setup mb-3">
-              <label>Channel Access Token:</label>
-              <input type="text" defaultValue={lineConfig.channelAccessToken} className="font-mono" />
-            </div>
-            <div className="form-group-setup mb-3">
-              <label>Channel Secret:</label>
-              <input type="text" defaultValue={lineConfig.channelSecret} className="font-mono" />
+
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-[#686962]">FastAPI LINE Webhook URL (นำไปใส่ใน LINE Developers Console):</label>
+                <input
+                  type="text"
+                  readOnly
+                  value={lineConfig.webhookUrl}
+                  className="font-mono bg-[#FAF8EF] border border-[#DEDED2] rounded-xl px-3.5 py-2.5 text-xs text-[#30312F]"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-[#686962]">Channel Access Token:</label>
+                <input
+                  type="text"
+                  defaultValue={lineConfig.channelAccessToken}
+                  className="font-mono bg-[#FAF8EF] border border-[#DEDED2] rounded-xl px-3.5 py-2.5 text-xs text-[#30312F]"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-[#686962]">Channel Secret:</label>
+                <input
+                  type="text"
+                  defaultValue={lineConfig.channelSecret}
+                  className="font-mono bg-[#FAF8EF] border border-[#DEDED2] rounded-xl px-3.5 py-2.5 text-xs text-[#30312F]"
+                />
+              </div>
             </div>
           </div>
         )}
 
         {activeTab === 'storage' && (
-          <div className="setup-section">
-            <h3 className="section-title-sm">
-              <HardDrive className="w-4 h-4 text-[var(--color-ink-secondary)]" strokeWidth={1.8} />
-              <span>MinIO Storage & PostgreSQL Database Configuration</span>
-            </h3>
-            <p className="section-desc">
-              โครงสร้างที่ใช้จัดเก็บไฟล์ภาพดิบและผลการทำนายใน AI Ecosystem
-            </p>
-            <div className="info-box-setup">
-              <div className="flex justify-between py-1.5 border-b border-[var(--color-border)] text-sm">
-                <span className="text-[var(--color-ink-secondary)]">MinIO Endpoint:</span>
-                <span className="font-mono text-[var(--color-green-text)] font-medium">localhost:9000 (Console: 9001)</span>
+          <div className="flex flex-col gap-5 max-w-2xl">
+            <div>
+              <h3 className="font-sans font-semibold text-[19px] text-[#30312F] m-0 flex items-center gap-2">
+                <HardDrive className="w-5 h-5 text-[#30312F]" />
+                <span>MinIO Storage & PostgreSQL Database Configuration</span>
+              </h3>
+              <p className="font-sans text-xs text-[#85847E] mt-1 m-0">
+                โครงสร้างที่ใช้จัดเก็บไฟล์ภาพดิบและผลการทำนายใน AI Ecosystem
+              </p>
+            </div>
+
+            <div className="p-6 rounded-[20px] bg-[#FAF8EF] border border-[#DEDED2] divide-y divide-[#DEDED2]">
+              <div className="flex justify-between py-2.5 text-xs">
+                <span className="text-[#85847E]">MinIO Endpoint:</span>
+                <span className="font-mono text-[#36612D] font-medium">localhost:9000 (Console: 9001)</span>
               </div>
-              <div className="flex justify-between py-1.5 border-b border-[var(--color-border)] text-sm">
-                <span className="text-[var(--color-ink-secondary)]">Raw Images Bucket:</span>
-                <span className="font-mono text-[var(--color-ink)] font-medium">parking-raw</span>
+              <div className="flex justify-between py-2.5 text-xs">
+                <span className="text-[#85847E]">Raw Images Bucket:</span>
+                <span className="font-mono text-[#30312F] font-medium">raw-datasets</span>
               </div>
-              <div className="flex justify-between py-1.5 border-b border-[var(--color-border)] text-sm">
-                <span className="text-[var(--color-ink-secondary)]">PostgreSQL Host:</span>
-                <span className="font-mono text-[var(--color-ink)] font-medium">localhost:5432 (ai_ecosystem)</span>
+              <div className="flex justify-between py-2.5 text-xs">
+                <span className="text-[#85847E]">PostgreSQL Host:</span>
+                <span className="font-mono text-[#30312F] font-medium">localhost:5432 (ai_ecosystem)</span>
               </div>
-              <div className="flex justify-between py-1.5 text-sm">
-                <span className="text-[var(--color-ink-secondary)]">Redis Broker:</span>
-                <span className="font-mono text-[var(--color-ink)] font-medium">localhost:6379</span>
+              <div className="flex justify-between py-2.5 text-xs">
+                <span className="text-[#85847E]">Redis Broker:</span>
+                <span className="font-mono text-[#30312F] font-medium">localhost:6379</span>
               </div>
             </div>
           </div>
         )}
 
         {activeTab === 'trainer' && (
-          <div className="setup-section p-0">
+          <div className="w-full">
             <AutoTrainerStudio apiBase={apiBase} />
           </div>
         )}
 
         {activeTab === 'roboflow' && (
-          <div className="setup-section p-0">
+          <div className="w-full">
             <RoboflowStudio apiBase={apiBase} />
           </div>
         )}

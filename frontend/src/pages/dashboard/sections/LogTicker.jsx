@@ -1,9 +1,10 @@
 import React from 'react'
 import {
   Camera,
-  Cpu
+  Cpu,
+  Activity
 } from 'lucide-react'
-import LiveDot from '../../../components/ui/LiveDot.jsx'
+import { PillTag } from '../../../components/ui/FigmaCards'
 
 export default function LogTicker({ currentRecord }) {
   const hasRecord = Boolean(currentRecord)
@@ -46,14 +47,21 @@ export default function LogTicker({ currentRecord }) {
     : []
 
   return (
-    <div className="p-5 rounded-[var(--radius-card)] bg-[var(--color-surface)] border border-[var(--color-border)] flex flex-col justify-between gap-4 min-w-0 box-sizing-border">
+    <div className="p-6 lg:p-7 rounded-[24px] bg-[#FFFDF7] border border-[#DEDED2] shadow-xs flex flex-col justify-between gap-5 min-w-0 box-sizing-border">
       {/* Heading */}
-      <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
-        <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-base text-[var(--color-ink)]">Real-time Ingestion Logs</h3>
-          <LiveDot color={hasRecord ? 'green' : 'amber'} />
+      <div className="flex items-center justify-between pb-3 border-b border-[#DEDED2]">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-[10px] bg-[#FAF8EF] border border-[#DEDED2] text-[#30312F] flex items-center justify-center">
+            <Activity className="w-4 h-4" strokeWidth={1.8} />
+          </div>
+          <div>
+            <h3 className="font-semibold text-sm text-[#30312F]">Real-time Ingestion Logs</h3>
+            <p className="text-[11px] text-[#85847E]">เหตุการณ์ล่าสุดจาก Edge Pipeline</p>
+          </div>
         </div>
-        <span className="text-xs text-[var(--color-ink-secondary)]">ESP32 Telemetry</span>
+        <PillTag variant={hasRecord ? 'active' : 'neutral'}>
+          {hasRecord ? 'LIVE FEED' : 'WAITING'}
+        </PillTag>
       </div>
 
       {/* Scrollable Event Feed / Empty State */}
@@ -64,23 +72,23 @@ export default function LogTicker({ currentRecord }) {
             return (
               <div
                 key={item.id}
-                className="p-3 rounded-[var(--radius-option)] bg-[var(--color-surface)] border border-[var(--color-border)] flex items-start gap-3 transition-colors hover:bg-[var(--color-surface-muted)]"
+                className="p-3.5 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] flex items-start gap-3 transition-colors hover:border-[#B8B8A8]"
               >
-                {/* 40px Icon Box in Chip Surface */}
-                <div className="w-10 h-10 rounded-[var(--radius-option)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] flex items-center justify-center shrink-0 text-[var(--color-ink)]">
-                  <Icon className="w-4 h-4 text-[var(--color-ink)]" strokeWidth={1.7} />
+                {/* Icon Box */}
+                <div className="w-9 h-9 rounded-[12px] bg-[#FFFDF7] border border-[#DEDED2] flex items-center justify-center shrink-0 text-[#30312F]">
+                  <Icon className="w-4 h-4" strokeWidth={1.7} />
                 </div>
 
                 <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium text-[var(--color-ink)] truncate leading-tight">
+                    <span className="text-sm font-semibold text-[#30312F] truncate leading-tight">
                       {item.title}
                     </span>
-                    <span className="text-xs font-mono text-[var(--color-ink-secondary)] shrink-0 tabular-nums">
+                    <span className="text-xs font-mono text-[#85847E] shrink-0 tabular-nums">
                       {item.time}
                     </span>
                   </div>
-                  <p className="text-xs text-[var(--color-ink-secondary)] leading-snug truncate">
+                  <p className="text-xs text-[#85847E] leading-snug truncate">
                     {item.detail}
                   </p>
                 </div>
@@ -88,7 +96,7 @@ export default function LogTicker({ currentRecord }) {
             )
           })
         ) : (
-          <div className="p-6 rounded-[var(--radius-option)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] text-center text-xs text-[var(--color-ink-secondary)] font-medium">
+          <div className="p-6 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] text-center text-xs text-[#85847E] font-medium">
             ยังไม่มีข้อมูลบันทึก Ingestion
           </div>
         )}

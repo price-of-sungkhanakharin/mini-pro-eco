@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import Button from '../../components/ui/Button.jsx'
+import Modal from '../../components/ui/Modal.jsx'
+import { PillTag, PillButton } from '../../components/ui/FigmaCards'
 import {
   Cpu,
   Zap,
@@ -463,342 +465,99 @@ export default function AutoTrainerPage({ apiBase }) {
   const isOverallWinnerB = totalWinsB >= totalWinsA
 
   return (
-    <div className="w-full min-h-full pb-20 flex flex-col gap-6 text-[var(--color-ink)] font-sans">
+    <div className="platform-workspace">
       {/* Toast Alert */}
       {toast && (
-        <div className={`fixed top-6 right-6 z-50 p-4 rounded-[var(--radius-card)] bg-[var(--color-surface)] border border-[var(--color-border)] shadow-lg flex items-center gap-3 animate-in fade-in slide-in-from-top-5 duration-200`}>
-          {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 text-[var(--color-status-free-text)] shrink-0" strokeWidth={1.7} />}
-          {toast.type === 'error' && <AlertCircle className="w-4 h-4 text-[var(--color-status-full-text)] shrink-0" strokeWidth={1.7} />}
-          {toast.type === 'info' && <Sparkles className="w-4 h-4 text-[var(--color-accent-strong)] shrink-0 animate-spin" strokeWidth={1.7} />}
-          <span className="text-xs font-medium text-[var(--color-ink)]">{toast.message}</span>
+        <div className="fixed top-6 right-6 z-[999999] p-4 rounded-[20px] bg-[#FFFDF7] border border-[#DEDED2] shadow-2xl flex items-center gap-3 animate-fadeIn">
+          {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 text-[#36612D] shrink-0" strokeWidth={2} />}
+          {toast.type === 'error' && <AlertCircle className="w-4 h-4 text-[#991B1B] shrink-0" strokeWidth={2} />}
+          {toast.type === 'info' && <Sparkles className="w-4 h-4 text-[#30312F] shrink-0 animate-spin" strokeWidth={2} />}
+          <span className="text-xs font-medium text-[#30312F]">{toast.message}</span>
         </div>
       )}
 
-      {/* Benchmark & Evaluation Modal */}
-      {isBenchmarkModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="relative w-full max-w-4xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-panel-lg)] p-6 md:p-8 shadow-2xl flex flex-col gap-6 animate-in fade-in zoom-in-95 duration-200">
-            {/* Modal Header */}
-            <div className="flex items-start justify-between pb-4 border-b border-[var(--color-border)]">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-[var(--radius-option)] bg-[var(--color-accent-tint)] border border-[var(--color-accent-border)] flex items-center justify-center text-[var(--color-accent-strong)] shrink-0">
-                  <Scale className="w-5 h-5" strokeWidth={1.7} />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-[var(--color-ink)] tracking-tight flex items-center gap-2">
-                    Side-by-Side Model Benchmark & Comparison
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border border-[var(--color-status-free-border)] font-semibold">
-                      LIVE EVALUATION
-                    </span>
-                  </h2>
-                  <p className="text-xs text-[var(--color-ink-secondary)] mt-0.5">
-                    Compare mAP@50 accuracy, precision, recall, latency, and FPS throughput between model checkpoints.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsBenchmarkModalOpen(false)}
-                className="p-2 rounded-[var(--radius-pill)] hover:bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] hover:text-[var(--color-ink)] transition-colors cursor-pointer"
-                title="Close Modal"
-              >
-                <X className="w-5 h-5" strokeWidth={1.7} />
-              </button>
-            </div>
+      {/* 1. Breadcrumb */}
+      <div className="platform-breadcrumb">
+        <span>Platform</span>
+        <span>/</span>
+        <span className="text-[#30312F] font-medium">Model Training & Deployment Hub</span>
+      </div>
 
-            {/* Model Selectors Header Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Selector A (Baseline) */}
-              <div className="p-4 rounded-[var(--radius-card)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-[var(--color-ink)] flex items-center gap-1.5">
-                    <Award className="w-3.5 h-3.5 text-[var(--color-ink-secondary)]" strokeWidth={1.7} />
-                    Model A (Baseline / Reference)
-                  </span>
-                  {modelAStats.isActive && (
-                    <span className="text-[9px] font-mono px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border border-[var(--color-status-free-border)] font-semibold">
-                      LIVE ACTIVE
-                    </span>
-                  )}
-                </div>
-                <select
-                  value={benchmarkModelAId}
-                  onChange={(e) => setBenchmarkModelAId(e.target.value)}
-                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-input)] px-3 py-2 text-xs text-[var(--color-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent-strong)] cursor-pointer font-sans"
-                >
-                  {modelsList.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.model_name} ({m.version || 'v1.0'}) &bull; mAP50: {m.map50 || '98.6'}%
-                    </option>
-                  ))}
-                  {modelsList.length === 0 && (
-                    <option value="baseline">YOLO26-Baseline (Production v1.0.0)</option>
-                  )}
-                </select>
-              </div>
+      {/* 2. Platform Services Introduction Header */}
+      <div className="platform-intro">
+        <div className="platform-overview">
+          <div className="platform-metadata">
+            <PillTag variant="neutral">YOLO Architecture</PillTag>
+            <PillTag variant="neutral">GPU Cluster: 172.30.81.175:9000</PillTag>
+            <PillTag variant="active">
+              Live Active: {activeModel?.model_name || 'YOLO26m'}
+            </PillTag>
+          </div>
 
-              {/* Selector B (Candidate) */}
-              <div className="p-4 rounded-[var(--radius-card)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-[var(--color-ink)] flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-[var(--color-accent-strong)]" strokeWidth={1.7} />
-                    Model B (Challenger / Candidate)
-                  </span>
-                  {modelBStats.isActive && (
-                    <span className="text-[9px] font-mono px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border border-[var(--color-status-free-border)] font-semibold">
-                      LIVE ACTIVE
-                    </span>
-                  )}
-                </div>
-                <select
-                  value={benchmarkModelBId}
-                  onChange={(e) => setBenchmarkModelBId(e.target.value)}
-                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-input)] px-3 py-2 text-xs text-[var(--color-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent-strong)] cursor-pointer font-sans"
-                >
-                  {modelsList.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.model_name} ({m.version || 'v1.0'}) &bull; mAP50: {m.map50 || '98.6'}%
-                    </option>
-                  ))}
-                  {modelsList.length === 0 && (
-                    <option value="candidate">YOLO26-Parking-FineTuned (Candidate v2.0.0)</option>
-                  )}
-                </select>
-              </div>
-            </div>
+          <h1 className="platform-title">
+            Model Training & Deployment Hub
+          </h1>
 
-            {/* Comparison Metrics Matrix */}
-            <div className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden">
-              <div className="grid grid-cols-3 p-3 bg-[var(--color-surface-muted)] border-b border-[var(--color-border)] text-xs text-[var(--color-ink-secondary)] font-semibold">
-                <div className="col-span-1">EVALUATION METRIC</div>
-                <div className="text-center truncate">{modelAStats.name}</div>
-                <div className="text-center truncate">{modelBStats.name}</div>
-              </div>
+          <p className="platform-description">
+            ระบบเทรนโมเดล YOLO อัตโนมัติ (Autonomous Training Pipeline) บนเครื่อง GPU ประจำมหาวิทยาลัย (GTX 1660 SUPER 6GB) พร้อมระบบวัดผลความแม่นยำและการทำ Zero-Downtime Hot Deploy
+          </p>
+        </div>
 
-              <div className="divide-y divide-[var(--color-border)] text-xs font-mono">
-                {/* 1. mAP@0.5 Accuracy */}
-                <div className="grid grid-cols-3 p-3.5 items-center">
-                  <div className="flex flex-col font-sans">
-                    <span className="text-[var(--color-ink)] font-semibold">mAP@0.5 Score</span>
-                    <span className="text-[10px] text-[var(--color-ink-muted)]">Higher is Better</span>
-                  </div>
-                  <div className="flex justify-center">
-                    <span
-                      className={`px-3 py-1 rounded-[var(--radius-pill)] font-bold border transition-colors tabular-nums ${
-                        map50Winner === 'A'
-                          ? 'bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border-[var(--color-status-free-border)]'
-                          : map50Winner === 'B'
-                          ? 'bg-[var(--color-status-full-bg)] text-[var(--color-status-full-text)] border-[var(--color-status-full-border)]'
-                          : 'bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border-[var(--color-border)]'
-                      }`}
-                    >
-                      {modelAStats.map50}% {map50Winner === 'A' && '★'}
-                    </span>
-                  </div>
-                  <div className="flex justify-center">
-                    <span
-                      className={`px-3 py-1 rounded-[var(--radius-pill)] font-bold border transition-colors tabular-nums ${
-                        map50Winner === 'B'
-                          ? 'bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border-[var(--color-status-free-border)]'
-                          : map50Winner === 'A'
-                          ? 'bg-[var(--color-status-full-bg)] text-[var(--color-status-full-text)] border-[var(--color-status-full-border)]'
-                          : 'bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border-[var(--color-border)]'
-                      }`}
-                    >
-                      {modelBStats.map50}% {map50Winner === 'B' && '★'}
-                    </span>
-                  </div>
-                </div>
+        {/* Header Toolbar Controls */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 bg-[#FAF8EF] border border-[#DEDED2] rounded-full px-4 h-12 text-xs font-medium text-[#30312F]">
+            <span className="w-2 h-2 rounded-full bg-[#22C55E]"></span>
+            <span>GPU: {gpuTelemetry?.temperature_c ? `${gpuTelemetry.temperature_c}°C` : 'Normal'}</span>
+            <span className="text-[#85847E]">({gpuTelemetry?.memory_used_mb ? `${gpuTelemetry.memory_used_mb}M` : '—'} / {gpuTelemetry?.memory_total_mb ? `${gpuTelemetry.memory_total_mb}M` : '6144M'})</span>
+          </div>
 
-                {/* 2. Precision */}
-                <div className="grid grid-cols-3 p-3.5 items-center">
-                  <div className="flex flex-col font-sans">
-                    <span className="text-[var(--color-ink)] font-semibold">Precision Rate</span>
-                    <span className="text-[10px] text-[var(--color-ink-muted)]">Higher is Better</span>
-                  </div>
-                  <div className="flex justify-center">
-                    <span
-                      className={`px-3 py-1 rounded-[var(--radius-pill)] font-bold border transition-colors tabular-nums ${
-                        precisionWinner === 'A'
-                          ? 'bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border-[var(--color-status-free-border)]'
-                          : precisionWinner === 'B'
-                          ? 'bg-[var(--color-status-full-bg)] text-[var(--color-status-full-text)] border-[var(--color-status-full-border)]'
-                          : 'bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border-[var(--color-border)]'
-                      }`}
-                    >
-                      {modelAStats.precision}%
-                    </span>
-                  </div>
-                  <div className="flex justify-center">
-                    <span
-                      className={`px-3 py-1 rounded-[var(--radius-pill)] font-bold border transition-colors tabular-nums ${
-                        precisionWinner === 'B'
-                          ? 'bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border-[var(--color-status-free-border)]'
-                          : precisionWinner === 'A'
-                          ? 'bg-[var(--color-status-full-bg)] text-[var(--color-status-full-text)] border-[var(--color-status-full-border)]'
-                          : 'bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border-[var(--color-border)]'
-                      }`}
-                    >
-                      {modelBStats.precision}%
-                    </span>
-                  </div>
-                </div>
+          <PillButton
+            variant="secondary"
+            icon={Scale}
+            onClick={() => setIsBenchmarkModalOpen(true)}
+            className="h-12"
+          >
+            Benchmark & Compare
+          </PillButton>
 
-                {/* 3. Recall */}
-                <div className="grid grid-cols-3 p-3.5 items-center">
-                  <div className="flex flex-col font-sans">
-                    <span className="text-[var(--color-ink)] font-semibold">Recall Rate</span>
-                    <span className="text-[10px] text-[var(--color-ink-muted)]">Higher is Better</span>
-                  </div>
-                  <div className="flex justify-center">
-                    <span
-                      className={`px-3 py-1 rounded-[var(--radius-pill)] font-bold border transition-colors tabular-nums ${
-                        recallWinner === 'A'
-                          ? 'bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border-[var(--color-status-free-border)]'
-                          : recallWinner === 'B'
-                          ? 'bg-[var(--color-status-full-bg)] text-[var(--color-status-full-text)] border-[var(--color-status-full-border)]'
-                          : 'bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border-[var(--color-border)]'
-                      }`}
-                    >
-                      {modelAStats.recall}%
-                    </span>
-                  </div>
-                  <div className="flex justify-center">
-                    <span
-                      className={`px-3 py-1 rounded-[var(--radius-pill)] font-bold border transition-colors tabular-nums ${
-                        recallWinner === 'B'
-                          ? 'bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border-[var(--color-status-free-border)]'
-                          : recallWinner === 'A'
-                          ? 'bg-[var(--color-status-full-bg)] text-[var(--color-status-full-text)] border-[var(--color-status-full-border)]'
-                          : 'bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border-[var(--color-border)]'
-                      }`}
-                    >
-                      {modelBStats.recall}%
-                    </span>
-                  </div>
-                </div>
+          <PillButton
+            variant="primary"
+            icon={RefreshCw}
+            onClick={() => { fetchModels(); fetchDatasets(); fetchTelemetry(); }}
+            className="h-12"
+          >
+            รีเฟรชสถิติ
+          </PillButton>
+        </div>
+      </div>
 
-                {/* 4. Inference Latency */}
-                <div className="grid grid-cols-3 p-3.5 items-center">
-                  <div className="flex flex-col font-sans">
-                    <span className="text-[var(--color-ink)] font-semibold">Inference Latency</span>
-                    <span className="text-[10px] text-[var(--color-ink-muted)]">Lower is Faster</span>
-                  </div>
-                  <div className="flex justify-center">
-                    <span
-                      className={`px-3 py-1 rounded-[var(--radius-pill)] font-bold border transition-colors tabular-nums ${
-                        latencyWinner === 'A'
-                          ? 'bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border-[var(--color-status-free-border)]'
-                          : latencyWinner === 'B'
-                          ? 'bg-[var(--color-status-full-bg)] text-[var(--color-status-full-text)] border-[var(--color-status-full-border)]'
-                          : 'bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border-[var(--color-border)]'
-                      }`}
-                    >
-                      {modelAStats.latency}ms
-                    </span>
-                  </div>
-                  <div className="flex justify-center">
-                    <span
-                      className={`px-3 py-1 rounded-[var(--radius-pill)] font-bold border transition-colors tabular-nums ${
-                        latencyWinner === 'B'
-                          ? 'bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border-[var(--color-status-free-border)]'
-                          : latencyWinner === 'A'
-                          ? 'bg-[var(--color-status-full-bg)] text-[var(--color-status-full-text)] border-[var(--color-status-full-border)]'
-                          : 'bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border-[var(--color-border)]'
-                      }`}
-                    >
-                      {modelBStats.latency}ms
-                    </span>
-                  </div>
-                </div>
-
-                {/* 5. Throughput FPS */}
-                <div className="grid grid-cols-3 p-3.5 items-center">
-                  <div className="flex flex-col font-sans">
-                    <span className="text-[var(--color-ink)] font-semibold">Real-Time FPS</span>
-                    <span className="text-[10px] text-[var(--color-ink-muted)]">Higher is Smoother</span>
-                  </div>
-                  <div className="flex justify-center">
-                    <span
-                      className={`px-3 py-1 rounded-[var(--radius-pill)] font-bold border transition-colors tabular-nums ${
-                        fpsWinner === 'A'
-                          ? 'bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border-[var(--color-status-free-border)]'
-                          : fpsWinner === 'B'
-                          ? 'bg-[var(--color-status-full-bg)] text-[var(--color-status-full-text)] border-[var(--color-status-full-border)]'
-                          : 'bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border-[var(--color-border)]'
-                      }`}
-                    >
-                      {modelAStats.fps} FPS
-                    </span>
-                  </div>
-                  <div className="flex justify-center">
-                    <span
-                      className={`px-3 py-1 rounded-[var(--radius-pill)] font-bold border transition-colors tabular-nums ${
-                        fpsWinner === 'B'
-                          ? 'bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border-[var(--color-status-free-border)]'
-                          : fpsWinner === 'A'
-                          ? 'bg-[var(--color-status-full-bg)] text-[var(--color-status-full-text)] border-[var(--color-status-full-border)]'
-                          : 'bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border-[var(--color-border)]'
-                      }`}
-                    >
-                      {modelBStats.fps} FPS
-                    </span>
-                  </div>
-                </div>
-
-                {/* 6. Training Epochs */}
-                <div className="grid grid-cols-3 p-3.5 items-center">
-                  <span className="text-[var(--color-ink)] font-semibold font-sans">Trained Epochs</span>
-                  <div className="text-center text-[var(--color-ink-secondary)] tabular-nums">{modelAStats.epochs} Epochs</div>
-                  <div className="text-center text-[var(--color-ink-secondary)] tabular-nums">{modelBStats.epochs} Epochs</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Overall Verdict Banner */}
-            <div
-              className={`p-4 rounded-[var(--radius-card)] border flex items-center justify-between gap-3 ${
-                isOverallWinnerB
-                  ? 'bg-[var(--color-status-free-bg)] border-[var(--color-status-free-border)]'
-                  : 'bg-[var(--color-accent-tint)] border-[var(--color-accent-border)]'
-              }`}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-[var(--radius-tile)] bg-[var(--color-surface)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-accent-strong)] shrink-0">
-                  <Award className="w-5 h-5" strokeWidth={1.7} />
-                </div>
-                <div className="min-w-0">
-                  <span className="text-xs font-bold text-[var(--color-ink)] block truncate">
-                    Recommendation: {isOverallWinnerB ? modelBStats.name : modelAStats.name} (Superior Performance)
-                  </span>
-                  <span className="text-[11px] text-[var(--color-ink-secondary)]">
-                    {isOverallWinnerB
-                      ? `Model B yields higher mAP50 score (+${(modelBStats.map50 - modelAStats.map50).toFixed(1)}%) with ${modelBStats.latency}ms response time.`
-                      : `Model A maintains lower latency (${modelAStats.latency}ms) with reliable stability.`}
-                  </span>
-                </div>
-              </div>
-
-              <div className="shrink-0 flex items-center gap-2">
-                <span className="text-[10px] font-mono px-2.5 py-1 rounded-[var(--radius-pill)] bg-[var(--color-surface)] text-[var(--color-ink)] border border-[var(--color-border)] font-bold">
-                  {isOverallWinnerB ? 'WINNER: MODEL B' : 'WINNER: MODEL A'}
-                </span>
-              </div>
-            </div>
-
-            {/* Modal Actions Footer */}
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <Button
+      {/* ================= CENTRAL MODAL: Benchmark & Evaluation ================= */}
+      <Modal
+        isOpen={isBenchmarkModalOpen}
+        onClose={() => setIsBenchmarkModalOpen(false)}
+        title="Side-by-Side Model Benchmark & Comparison"
+        subtitle="Compare mAP@50 accuracy, precision, recall, latency, and FPS throughput between model checkpoints"
+        icon={Scale}
+        iconBg="bg-[#EBE5F6]"
+        iconBorder="border-[#D8CEEE]"
+        badge={<PillTag variant="active">LIVE EVALUATION</PillTag>}
+        size="2xl"
+        footer={
+          <>
+            <span className="font-mono text-xs text-[#85847E]">
+              Evaluation Matrix: A/B Dual Model Benchmark
+            </span>
+            <div className="flex items-center gap-2">
+              <PillButton
                 variant="secondary"
-                size="md"
                 onClick={() => setIsBenchmarkModalOpen(false)}
+                className="h-10 text-xs px-4"
               >
-                Close Comparison
-              </Button>
-
-              <Button
+                ปิดหน้าต่าง
+              </PillButton>
+              <PillButton
                 variant="primary"
-                size="md"
+                icon={Zap}
                 onClick={() => {
                   const targetId = isOverallWinnerB ? modelBStats.id : modelAStats.id
                   if (targetId && targetId !== 'baseline' && targetId !== 'candidate') {
@@ -808,72 +567,297 @@ export default function AutoTrainerPage({ apiBase }) {
                   }
                   setIsBenchmarkModalOpen(false)
                 }}
+                className="h-10 text-xs px-4"
               >
-                <Zap className="w-4 h-4 fill-current shrink-0" strokeWidth={1.7} />
-                <span>Deploy Winning Model to Live System</span>
-              </Button>
+                Deploy Winning Model
+              </PillButton>
+            </div>
+          </>
+        }
+      >
+        {/* Model Selectors Header Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Selector A (Baseline) */}
+          <div className="p-4 rounded-[18px] bg-[#FAF8EF] border border-[#DEDED2] space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-[#30312F] flex items-center gap-1.5">
+                <Award className="w-3.5 h-3.5 text-[#85847E]" strokeWidth={1.7} />
+                Model A (Baseline / Reference)
+              </span>
+              {modelAStats.isActive && (
+                <PillTag variant="active">LIVE ACTIVE</PillTag>
+              )}
+            </div>
+            <select
+              value={benchmarkModelAId}
+              onChange={(e) => setBenchmarkModelAId(e.target.value)}
+              className="w-full bg-[#FFFDF7] border border-[#DEDED2] rounded-xl px-3 py-2 text-xs text-[#30312F] focus:outline-none focus:border-[#30312F] cursor-pointer font-sans"
+            >
+              {modelsList.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.model_name} ({m.version || 'v1.0'}) &bull; mAP50: {m.map50 || '98.6'}%
+                </option>
+              ))}
+              {modelsList.length === 0 && (
+                <option value="baseline">YOLO26-Baseline (Production v1.0.0)</option>
+              )}
+            </select>
+          </div>
+
+          {/* Selector B (Candidate) */}
+          <div className="p-4 rounded-[18px] bg-[#FAF8EF] border border-[#DEDED2] space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-[#30312F] flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#30312F]" strokeWidth={1.7} />
+                Model B (Challenger / Candidate)
+              </span>
+              {modelBStats.isActive && (
+                <PillTag variant="active">LIVE ACTIVE</PillTag>
+              )}
+            </div>
+            <select
+              value={benchmarkModelBId}
+              onChange={(e) => setBenchmarkModelBId(e.target.value)}
+              className="w-full bg-[#FFFDF7] border border-[#DEDED2] rounded-xl px-3 py-2 text-xs text-[#30312F] focus:outline-none focus:border-[#30312F] cursor-pointer font-sans"
+            >
+              {modelsList.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.model_name} ({m.version || 'v1.0'}) &bull; mAP50: {m.map50 || '98.6'}%
+                </option>
+              ))}
+              {modelsList.length === 0 && (
+                <option value="candidate">YOLO26-Parking-FineTuned (Candidate v2.0.0)</option>
+              )}
+            </select>
+          </div>
+        </div>
+
+        {/* Comparison Metrics Matrix */}
+        <div className="rounded-[18px] border border-[#DEDED2] bg-[#FFFDF7] overflow-hidden">
+          <div className="grid grid-cols-3 p-3 bg-[#FAF8EF] border-b border-[#DEDED2] text-xs text-[#85847E] font-semibold">
+            <div className="col-span-1">EVALUATION METRIC</div>
+            <div className="text-center truncate">{modelAStats.name}</div>
+            <div className="text-center truncate">{modelBStats.name}</div>
+          </div>
+
+          <div className="divide-y divide-[#F0EEE4] text-xs font-mono">
+            {/* 1. mAP@0.5 Accuracy */}
+            <div className="grid grid-cols-3 p-3.5 items-center">
+              <div className="flex flex-col font-sans">
+                <span className="text-[#30312F] font-semibold">mAP@0.5 Score</span>
+                <span className="text-[10px] text-[#85847E]">Higher is Better</span>
+              </div>
+              <div className="flex justify-center">
+                <span
+                  className={`px-3 py-1 rounded-full font-bold border transition-colors tabular-nums ${
+                    map50Winner === 'A'
+                      ? 'bg-[#E7F4D8] text-[#36612D] border-[#BBF7D0]'
+                      : map50Winner === 'B'
+                      ? 'bg-[#FEF2F2] text-[#991B1B] border-[#FECACA]'
+                      : 'bg-[#FAF8EF] text-[#85847E] border-[#DEDED2]'
+                  }`}
+                >
+                  {modelAStats.map50}% {map50Winner === 'A' && '★'}
+                </span>
+              </div>
+              <div className="flex justify-center">
+                <span
+                  className={`px-3 py-1 rounded-full font-bold border transition-colors tabular-nums ${
+                    map50Winner === 'B'
+                      ? 'bg-[#E7F4D8] text-[#36612D] border-[#BBF7D0]'
+                      : map50Winner === 'A'
+                      ? 'bg-[#FEF2F2] text-[#991B1B] border-[#FECACA]'
+                      : 'bg-[#FAF8EF] text-[#85847E] border-[#DEDED2]'
+                  }`}
+                >
+                  {modelBStats.map50}% {map50Winner === 'B' && '★'}
+                </span>
+              </div>
+            </div>
+
+            {/* 2. Precision */}
+            <div className="grid grid-cols-3 p-3.5 items-center">
+              <div className="flex flex-col font-sans">
+                <span className="text-[#30312F] font-semibold">Precision Rate</span>
+                <span className="text-[10px] text-[#85847E]">Higher is Better</span>
+              </div>
+              <div className="flex justify-center">
+                <span
+                  className={`px-3 py-1 rounded-full font-bold border transition-colors tabular-nums ${
+                    precisionWinner === 'A'
+                      ? 'bg-[#E7F4D8] text-[#36612D] border-[#BBF7D0]'
+                      : precisionWinner === 'B'
+                      ? 'bg-[#FEF2F2] text-[#991B1B] border-[#FECACA]'
+                      : 'bg-[#FAF8EF] text-[#85847E] border-[#DEDED2]'
+                  }`}
+                >
+                  {modelAStats.precision}%
+                </span>
+              </div>
+              <div className="flex justify-center">
+                <span
+                  className={`px-3 py-1 rounded-full font-bold border transition-colors tabular-nums ${
+                    precisionWinner === 'B'
+                      ? 'bg-[#E7F4D8] text-[#36612D] border-[#BBF7D0]'
+                      : precisionWinner === 'A'
+                      ? 'bg-[#FEF2F2] text-[#991B1B] border-[#FECACA]'
+                      : 'bg-[#FAF8EF] text-[#85847E] border-[#DEDED2]'
+                  }`}
+                >
+                  {modelBStats.precision}%
+                </span>
+              </div>
+            </div>
+
+            {/* 3. Recall */}
+            <div className="grid grid-cols-3 p-3.5 items-center">
+              <div className="flex flex-col font-sans">
+                <span className="text-[#30312F] font-semibold">Recall Rate</span>
+                <span className="text-[10px] text-[#85847E]">Higher is Better</span>
+              </div>
+              <div className="flex justify-center">
+                <span
+                  className={`px-3 py-1 rounded-full font-bold border transition-colors tabular-nums ${
+                    recallWinner === 'A'
+                      ? 'bg-[#E7F4D8] text-[#36612D] border-[#BBF7D0]'
+                      : recallWinner === 'B'
+                      ? 'bg-[#FEF2F2] text-[#991B1B] border-[#FECACA]'
+                      : 'bg-[#FAF8EF] text-[#85847E] border-[#DEDED2]'
+                  }`}
+                >
+                  {modelAStats.recall}%
+                </span>
+              </div>
+              <div className="flex justify-center">
+                <span
+                  className={`px-3 py-1 rounded-full font-bold border transition-colors tabular-nums ${
+                    recallWinner === 'B'
+                      ? 'bg-[#E7F4D8] text-[#36612D] border-[#BBF7D0]'
+                      : recallWinner === 'A'
+                      ? 'bg-[#FEF2F2] text-[#991B1B] border-[#FECACA]'
+                      : 'bg-[#FAF8EF] text-[#85847E] border-[#DEDED2]'
+                  }`}
+                >
+                  {modelBStats.recall}%
+                </span>
+              </div>
+            </div>
+
+            {/* 4. Inference Latency */}
+            <div className="grid grid-cols-3 p-3.5 items-center">
+              <div className="flex flex-col font-sans">
+                <span className="text-[#30312F] font-semibold">Inference Latency</span>
+                <span className="text-[10px] text-[#85847E]">Lower is Faster</span>
+              </div>
+              <div className="flex justify-center">
+                <span
+                  className={`px-3 py-1 rounded-full font-bold border transition-colors tabular-nums ${
+                    latencyWinner === 'A'
+                      ? 'bg-[#E7F4D8] text-[#36612D] border-[#BBF7D0]'
+                      : latencyWinner === 'B'
+                      ? 'bg-[#FEF2F2] text-[#991B1B] border-[#FECACA]'
+                      : 'bg-[#FAF8EF] text-[#85847E] border-[#DEDED2]'
+                  }`}
+                >
+                  {modelAStats.latency}ms
+                </span>
+              </div>
+              <div className="flex justify-center">
+                <span
+                  className={`px-3 py-1 rounded-full font-bold border transition-colors tabular-nums ${
+                    latencyWinner === 'B'
+                      ? 'bg-[#E7F4D8] text-[#36612D] border-[#BBF7D0]'
+                      : latencyWinner === 'A'
+                      ? 'bg-[#FEF2F2] text-[#991B1B] border-[#FECACA]'
+                      : 'bg-[#FAF8EF] text-[#85847E] border-[#DEDED2]'
+                  }`}
+                >
+                  {modelBStats.latency}ms
+                </span>
+              </div>
+            </div>
+
+            {/* 5. Throughput FPS */}
+            <div className="grid grid-cols-3 p-3.5 items-center">
+              <div className="flex flex-col font-sans">
+                <span className="text-[#30312F] font-semibold">Real-Time FPS</span>
+                <span className="text-[10px] text-[#85847E]">Higher is Smoother</span>
+              </div>
+              <div className="flex justify-center">
+                <span
+                  className={`px-3 py-1 rounded-full font-bold border transition-colors tabular-nums ${
+                    fpsWinner === 'A'
+                      ? 'bg-[#E7F4D8] text-[#36612D] border-[#BBF7D0]'
+                      : fpsWinner === 'B'
+                      ? 'bg-[#FEF2F2] text-[#991B1B] border-[#FECACA]'
+                      : 'bg-[#FAF8EF] text-[#85847E] border-[#DEDED2]'
+                  }`}
+                >
+                  {modelAStats.fps} FPS
+                </span>
+              </div>
+              <div className="flex justify-center">
+                <span
+                  className={`px-3 py-1 rounded-full font-bold border transition-colors tabular-nums ${
+                    fpsWinner === 'B'
+                      ? 'bg-[#E7F4D8] text-[#36612D] border-[#BBF7D0]'
+                      : fpsWinner === 'A'
+                      ? 'bg-[#FEF2F2] text-[#991B1B] border-[#FECACA]'
+                      : 'bg-[#FAF8EF] text-[#85847E] border-[#DEDED2]'
+                  }`}
+                >
+                  {modelBStats.fps} FPS
+                </span>
+              </div>
+            </div>
+
+            {/* 6. Training Epochs */}
+            <div className="grid grid-cols-3 p-3.5 items-center">
+              <span className="text-[#30312F] font-semibold font-sans">Trained Epochs</span>
+              <div className="text-center text-[#85847E] tabular-nums">{modelAStats.epochs} Epochs</div>
+              <div className="text-center text-[#85847E] tabular-nums">{modelBStats.epochs} Epochs</div>
             </div>
           </div>
         </div>
-      )}
 
-      {/* 1. Header Banner (Full Width, White Corporate) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="font-sans font-semibold text-[21px] text-[var(--color-ink)] leading-snug tracking-tight">
-              Model Training & Deployment Hub
-            </h1>
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-[var(--radius-pill)] text-xs font-medium bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border border-[var(--color-border)]">
-              <span className="font-mono">GPU Cluster 172.30.81.175:9000</span>
+        {/* Overall Verdict Banner */}
+        <div
+          className={`p-4 rounded-[18px] border flex items-center justify-between gap-3 ${
+            isOverallWinnerB
+              ? 'bg-[#E7F4D8] border-[#BBF7D0]'
+              : 'bg-[#FAF8EF] border-[#DEDED2]'
+          }`}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-[12px] bg-[#FFFDF7] border border-[#DEDED2] flex items-center justify-center text-[#30312F] shrink-0">
+              <Award className="w-5 h-5" strokeWidth={1.7} />
+            </div>
+            <div className="min-w-0">
+              <span className="text-xs font-bold text-[#30312F] block truncate">
+                Recommendation: {isOverallWinnerB ? modelBStats.name : modelAStats.name} (Superior Performance)
+              </span>
+              <span className="text-[11px] text-[#686962]">
+                {isOverallWinnerB
+                  ? `Model B yields higher mAP50 score (+${(modelBStats.map50 - modelAStats.map50).toFixed(1)}%) with ${modelBStats.latency}ms response time.`
+                  : `Model A maintains lower latency (${modelAStats.latency}ms) with reliable stability.`}
+              </span>
+            </div>
+          </div>
+
+          <div className="shrink-0 flex items-center gap-2">
+            <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-[#FFFDF7] text-[#30312F] border border-[#DEDED2] font-bold">
+              {isOverallWinnerB ? 'WINNER: MODEL B' : 'WINNER: MODEL A'}
             </span>
           </div>
-          <p className="text-xs sm:text-[13px] text-[var(--color-ink-secondary)] mt-0.5 font-normal">
-            Autonomous YOLO Fine-Tuning Pipeline • GTX 1660 SUPER 6GB • Zero-Downtime Hot Deploy
-          </p>
         </div>
-
-        {/* Telemetry & Live Active Model Controls */}
-        <div className="flex items-center gap-2.5 flex-wrap shrink-0">
-          {/* Active Model Badge */}
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-pill)] bg-[var(--color-green-tint)] text-[var(--color-green-text)] border border-[var(--color-green-border)] text-xs font-medium">
-            <Zap className="w-3.5 h-3.5 fill-current shrink-0" strokeWidth={1.7} />
-            <span>
-              Live Active: {activeModel?.model_name ? (
-                <>
-                  <strong>{activeModel.model_name}</strong>
-                  {activeModel.version ? ` (${activeModel.version})` : ''}
-                </>
-              ) : (
-                '—'
-              )}
-            </span>
-          </span>
-
-          <span className="inline-flex items-center px-3 py-1.5 rounded-[var(--radius-pill)] bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border border-[var(--color-border)] text-xs font-medium font-sans tabular-nums">
-            <span>
-              GPU: {gpuTelemetry?.temperature_c ? `${gpuTelemetry.temperature_c}°C` : '—'} ({gpuTelemetry?.memory_used_mb ? `${gpuTelemetry.memory_used_mb}M` : '—'}{gpuTelemetry?.memory_total_mb ? ` / ${gpuTelemetry.memory_total_mb}M` : ''})
-            </span>
-          </span>
-
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => { fetchModels(); fetchDatasets(); fetchTelemetry(); }}
-            title="Refresh State"
-          >
-            <RefreshCw className="w-3.5 h-3.5 shrink-0" strokeWidth={1.7} />
-            <span>Sync</span>
-          </Button>
-        </div>
-      </div>
+      </Modal>
 
       {/* 2. Equal 50/50 Dual Card Workspace (Horizontally Aligned & Matching Heights) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full items-stretch">
         {/* =========================================================================
             LEFT CARD: 1. SETUP TRAINING JOB (50% Width)
             ========================================================================= */}
-        <div className="w-full rounded-[var(--radius-card)] bg-[var(--color-surface)] border border-[var(--color-border)] p-6 flex flex-col justify-between gap-5 min-w-0 box-sizing-border">
+        <div className="w-full rounded-[24px] bg-[#FFFDF7] border border-[#DEDED2] p-6 lg:p-8 flex flex-col justify-between gap-5 min-w-0 box-sizing-border shadow-xs">
           <div className="space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
               <div className="flex items-center gap-2">
@@ -1069,7 +1053,7 @@ export default function AutoTrainerPage({ apiBase }) {
         {/* =========================================================================
             RIGHT CARD: 2. MODEL EVALUATION & DEPLOYMENT (50% Width - Perfectly Matched)
             ========================================================================= */}
-        <div className="w-full rounded-[var(--radius-card)] bg-[var(--color-surface)] border border-[var(--color-border)] p-6 flex flex-col justify-between gap-5 shadow-sm">
+        <div className="w-full rounded-[24px] bg-[#FFFDF7] border border-[#DEDED2] p-6 lg:p-8 flex flex-col justify-between gap-5 shadow-xs">
           <div className="space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
               <div className="flex items-center gap-2">
@@ -1250,7 +1234,7 @@ export default function AutoTrainerPage({ apiBase }) {
       </div>
 
       {/* 3. Terminal Execution Logs Card (Full Width) */}
-      <div className="w-full rounded-[var(--radius-card)] bg-[var(--color-surface)] border border-[var(--color-border)] p-5 flex flex-col gap-3 shadow-sm">
+      <div className="w-full rounded-[24px] bg-[#FFFDF7] border border-[#DEDED2] p-6 flex flex-col gap-3 shadow-xs">
         <div className="flex items-center justify-between">
           <button
             type="button"
@@ -1270,30 +1254,30 @@ export default function AutoTrainerPage({ apiBase }) {
               showToast('Logs copied to clipboard', 'info')
               setTimeout(() => setCopied(false), 2000)
             }}
-            className="px-2.5 py-1 rounded-[var(--radius-pill)] bg-[var(--color-surface-muted)] hover:bg-[var(--color-border)] text-[var(--color-ink-secondary)] hover:text-[var(--color-ink)] text-xs font-mono flex items-center gap-1 cursor-pointer border border-[var(--color-border)] transition-colors"
+            className="px-3 py-1.5 rounded-full bg-[#FAF8EF] hover:bg-[#F0EEE4] text-[#686962] hover:text-[#30312F] text-xs font-mono flex items-center gap-1.5 cursor-pointer border border-[#DEDED2] transition-colors"
           >
-            <Copy className="w-3 h-3" strokeWidth={1.7} />
+            <Copy className="w-3.5 h-3.5" strokeWidth={1.7} />
             <span>{copied ? 'Copied' : 'Copy'}</span>
           </button>
         </div>
 
         {showLogs && (
-          <div ref={terminalEndRef} className="p-3.5 rounded-[var(--radius-card)] bg-[var(--color-surface-muted)] font-mono text-xs max-h-52 overflow-y-auto space-y-1 border border-[var(--color-border)] text-[var(--color-ink)]">
+          <div ref={terminalEndRef} className="p-4 rounded-[16px] bg-[#FAF8EF] font-mono text-xs max-h-52 overflow-y-auto space-y-1 border border-[#DEDED2] text-[#30312F]">
             {logs.length === 0 ? (
-              <span className="text-[var(--color-ink-muted)]">Waiting for training dispatch. Click 'Start Auto-Training' above.</span>
+              <span className="text-[#85847E]">Waiting for training dispatch. Click 'Start Auto-Training' above.</span>
             ) : (
               logs.map((line, idx) => {
-                let lineClass = 'text-[var(--color-ink)]'
+                let lineClass = 'text-[#30312F]'
                 if (line.includes('ERROR') || line.includes('ERR') || line.includes('Failed')) {
-                  lineClass = 'text-[var(--color-status-full-text)] font-semibold'
+                  lineClass = 'text-[#991B1B] font-semibold'
                 } else if (line.includes('WARN')) {
-                  lineClass = 'text-[var(--color-status-mod-text)] font-semibold'
+                  lineClass = 'text-[#92400E] font-semibold'
                 } else if (line.includes('SUCCESS') || line.includes('DONE') || line.includes('Completed')) {
-                  lineClass = 'text-[var(--color-status-free-text)] font-semibold'
+                  lineClass = 'text-[#36612D] font-semibold'
                 }
                 return (
                   <div key={idx} className="flex items-start gap-2">
-                    <span className="text-[var(--color-ink-muted)] select-none shrink-0">{(idx + 1).toString().padStart(3, '0')}</span>
+                    <span className="text-[#85847E] select-none shrink-0">{(idx + 1).toString().padStart(3, '0')}</span>
                     <span className={`flex-1 break-all ${lineClass}`}>{line}</span>
                   </div>
                 )
@@ -1304,7 +1288,7 @@ export default function AutoTrainerPage({ apiBase }) {
       </div>
 
       {/* 4. Model Registry Checkpoints Grid (Full Width) */}
-      <div className="w-full rounded-[var(--radius-card)] bg-[var(--color-surface)] border border-[var(--color-border)] p-6 flex flex-col gap-4 shadow-sm">
+      <div className="w-full rounded-[24px] bg-[#FFFDF7] border border-[#DEDED2] p-6 lg:p-8 flex flex-col gap-5 shadow-xs">
         <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
           <div className="flex items-center gap-2">
             <Award className="w-4 h-4 text-[var(--color-accent-strong)]" strokeWidth={1.7} />
@@ -1326,31 +1310,27 @@ export default function AutoTrainerPage({ apiBase }) {
             return (
               <div
                 key={m.id}
-                className={`p-4 rounded-[var(--radius-card)] border transition-all flex flex-col justify-between gap-3 min-w-0 ${
+                className={`p-5 rounded-[20px] transition-all flex flex-col justify-between gap-3.5 min-w-0 ${
                   isActive
-                    ? 'bg-[var(--color-surface)] border-2 border-[var(--color-status-free-border)] shadow-sm'
-                    : 'bg-[var(--color-surface)] border border-[var(--color-border)] hover:border-[var(--color-ink-muted)]'
+                    ? 'bg-[#FFFDF7] border-2 border-[#22C55E] shadow-sm'
+                    : 'bg-[#FAF8EF] border border-[#DEDED2] hover:border-[#B8B8A8] hover:-translate-y-0.5'
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <span className="font-bold text-xs text-[var(--color-ink)] block truncate" title={m.model_name}>{m.model_name}</span>
-                    <span className="text-[10px] font-mono text-[var(--color-ink-secondary)] truncate block">{m.version || 'v1.0.0'}</span>
+                    <span className="font-bold text-xs text-[#30312F] block truncate" title={m.model_name}>{m.model_name}</span>
+                    <span className="text-[11px] font-mono text-[#85847E] truncate block mt-0.5">{m.version || 'v1.0.0'}</span>
                   </div>
                   {isActive ? (
-                    <span className="text-[9px] font-mono px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-status-free-bg)] text-[var(--color-status-free-text)] border border-[var(--color-status-free-border)] font-semibold shrink-0">
-                      ACTIVE
-                    </span>
+                    <PillTag variant="active">ACTIVE</PillTag>
                   ) : (
-                    <span className="text-[9px] font-mono px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-surface-muted)] text-[var(--color-ink-secondary)] border border-[var(--color-border)] font-medium shrink-0">
-                      STANDBY
-                    </span>
+                    <PillTag variant="neutral">STANDBY</PillTag>
                   )}
                 </div>
 
-                <div className="flex justify-between p-2 rounded-[var(--radius-tile)] bg-[var(--color-surface-muted)] border border-[var(--color-border)] font-mono text-xs">
-                  <span className="text-[var(--color-ink-secondary)] font-sans">mAP50 Accuracy:</span>
-                  <span className="text-[var(--color-status-free-text)] font-bold tabular-nums">{m.map50 ? `${m.map50}%` : '98.6%'}</span>
+                <div className="flex justify-between items-center p-2.5 rounded-[12px] bg-[#FFFDF7] border border-[#DEDED2] font-mono text-xs">
+                  <span className="text-[#85847E] font-sans">mAP50 Accuracy:</span>
+                  <span className="text-[#36612D] font-bold tabular-nums">{m.map50 ? `${m.map50}%` : '98.6%'}</span>
                 </div>
 
                 <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between gap-2">

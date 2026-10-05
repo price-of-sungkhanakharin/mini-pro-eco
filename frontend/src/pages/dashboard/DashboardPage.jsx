@@ -35,7 +35,7 @@ export default function DashboardPage({ onOpenModal, onNavigate }) {
   const onlineCount = [cam1?.isOnline, cam2?.isOnline, cam3?.isOnline].filter(Boolean).length
 
   return (
-    <div className="dashboard-container">
+    <div className="platform-workspace">
       {/* S0: ViewControlBar + 4-KPI Strip */}
       <ViewControlBar
         selectedZone={selectedZone}

@@ -94,7 +94,7 @@ export default function AiForecast({
     : predictedFreePct >= 35 && predictedFreePct < 60
 
   return (
-    <div className="p-5 rounded-[var(--radius-card)] bg-[var(--color-green-tint)] border border-[var(--color-green-border)] flex flex-col gap-4 min-w-0 box-sizing-border">
+    <div className="p-6 lg:p-7 rounded-[24px] bg-[#E7F4D8] border border-[#BBF7D0] flex flex-col justify-between gap-5 min-w-0 box-sizing-border shadow-xs hover:-translate-y-0.5 hover:border-[#96D896] transition-all">
       {/* Eyebrow & Top Bar with Horizon Switcher */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--color-green-text)]">

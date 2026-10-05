@@ -10,6 +10,7 @@ import IngestionLogsPage from './pages/ingestion_logs/IngestionLogsPage.jsx'
 import EcosystemPage from './pages/ecosystem/EcosystemPage.jsx'
 import AnalyticsPage from './pages/analytics/AnalyticsPage.jsx'
 import ProjectDetailsPage from './pages/details/ProjectDetailsPage.jsx'
+import LiveCamerasPage from './pages/dashboard/LiveCamerasPage.jsx'
 
 import {
   getSavedOrInitialSlots,
@@ -51,6 +52,8 @@ const API_BASE_URL =
 const pathToViewMap = {
   '/': 'dashboard',
   '/dashboard': 'dashboard',
+  '/live-cameras': 'live_cameras',
+  '/cameras': 'live_cameras',
   '/logs': 'logs',
   '/ingestion-logs': 'logs',
   '/trainer': 'trainer',
@@ -66,6 +69,7 @@ const pathToViewMap = {
 
 const viewToPathMap = {
   dashboard: '/dashboard',
+  live_cameras: '/live-cameras',
   logs: '/logs',
   trainer: '/trainer',
   setup: '/setup',
@@ -370,7 +374,7 @@ function App() {
             />
           )}
           {currentView === 'live_cameras' && (
-            <DashboardPage
+            <LiveCamerasPage
               onOpenModal={(cam) => setSelectedCamera(cam)}
               onNavigate={handleNavigate}
             />

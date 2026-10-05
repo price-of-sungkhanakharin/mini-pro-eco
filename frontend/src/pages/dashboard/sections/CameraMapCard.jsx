@@ -26,11 +26,11 @@ export default function CameraMapCard({
           <button
             type="button"
             onClick={() => onNavigate?.('live_cameras')}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFFFF] border border-[#CFCFC4] rounded-full font-sans font-semibold text-xs text-[#30312F] hover:bg-[#FAF8EF] hover:border-[#85847E] transition-all cursor-pointer"
-            title="ขยายมุมมองเพื่อดูเฉพาะกล้องวงจรปิด"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFFFF] border border-[#CFCFC4] rounded-full font-sans font-semibold text-xs text-[#30312F] hover:bg-[#FAF8EF] hover:border-[#85847E] transition-all cursor-pointer shadow-2xs"
+            title="เปิดหน้าต่างขยายมุมมองเพื่อดูเฉพาะกล้องวงจรปิดแบบเต็มจอ"
           >
             <Maximize2 className="w-3.5 h-3.5 text-[#30312F]" />
-            <span>ดูแบบแยกกล้อง</span>
+            <span>ขยายดู 3 กล้อง (หน้าใหม่)</span>
           </button>
         </div>
       </div>

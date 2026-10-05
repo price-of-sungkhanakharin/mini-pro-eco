@@ -82,7 +82,7 @@ export default function CameraCard({
             onOpenModal && onOpenModal(camera)
           }}
           className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-[#FFFDF7]/90 hover:bg-[#FFFDF7] border border-[#DEDED2] flex items-center justify-center text-[#30312F] cursor-pointer transition-colors shadow-2xs"
-          title="ขยายดูจอใหญ่"
+          title="เปิดดูกล้องแยก"
         >
           <Maximize2 className="w-3.5 h-3.5" />
         </button>
@@ -125,7 +125,7 @@ export default function CameraCard({
           className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-full bg-[#FAF8EF] hover:bg-[#F0EEE4] border border-[#DEDED2] text-xs font-medium text-[#30312F] cursor-pointer transition-colors"
         >
           <Maximize2 className="w-3.5 h-3.5" />
-          <span>ขยายจอ</span>
+          <span>ดูกล้องแยก</span>
         </button>
 
         {showRoiToggle && (

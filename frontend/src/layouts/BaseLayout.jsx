@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import Navbar from '../components/navigation/Navbar.jsx'
 import RightSidebar from '../components/navigation/RightSidebar.jsx'
-import CameraModal from '../components/ui/CameraModal.jsx'
 
 /**
  * BaseLayout (Editorial Light Bento SaaS Layout Shell)
@@ -16,8 +15,6 @@ export default function BaseLayout({
   stats,
   currentView,
   onSelectView,
-  selectedCamera,
-  onCloseCameraModal,
   onNavigate,
   children
 }) {
@@ -59,15 +56,6 @@ export default function BaseLayout({
           onCloseMobileDrawer={() => setIsMobileDrawerOpen(false)}
         />
       </div>
-
-      {/* High-Resolution Camera Inspection Modal Overlay */}
-      {selectedCamera && (
-        <CameraModal
-          camera={selectedCamera}
-          onClose={onCloseCameraModal}
-          onNavigate={onNavigate}
-        />
-      )}
     </div>
   )
 }

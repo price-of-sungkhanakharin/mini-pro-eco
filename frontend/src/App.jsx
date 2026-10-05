@@ -11,7 +11,7 @@ import EcosystemPage from './pages/ecosystem/EcosystemPage.jsx'
 import AnalyticsPage from './pages/analytics/AnalyticsPage.jsx'
 import ProjectDetailsPage from './pages/details/ProjectDetailsPage.jsx'
 import LiveCamerasPage from './pages/dashboard/LiveCamerasPage.jsx'
-import CameraModal from './components/ui/CameraModal.jsx'
+import CameraDetailPage from './pages/dashboard/CameraDetailPage.jsx'
 
 import {
   getSavedOrInitialSlots,
@@ -55,6 +55,9 @@ const pathToViewMap = {
   '/dashboard': 'dashboard',
   '/live-cameras': 'live_cameras',
   '/cameras': 'live_cameras',
+  '/camera': 'camera_detail',
+  '/camera-detail': 'camera_detail',
+  '/camera-workspace': 'camera_detail',
   '/logs': 'logs',
   '/ingestion-logs': 'logs',
   '/trainer': 'trainer',
@@ -71,6 +74,7 @@ const pathToViewMap = {
 const viewToPathMap = {
   dashboard: '/dashboard',
   live_cameras: '/live-cameras',
+  camera_detail: '/camera',
   logs: '/logs',
   trainer: '/trainer',
   setup: '/setup',
@@ -82,6 +86,9 @@ const viewToPathMap = {
 function getViewFromLocation() {
   if (typeof window === 'undefined') return 'dashboard'
   const path = window.location.pathname.toLowerCase().replace(/\/$/, '') || '/'
+  if (path === '/camera' || path.startsWith('/camera/')) {
+    return 'camera_detail'
+  }
   if (pathToViewMap[path]) {
     return pathToViewMap[path]
   }
@@ -91,6 +98,19 @@ function getViewFromLocation() {
     return pathToViewMap[`/${qView}`]
   }
   return 'dashboard'
+}
+
+function getCameraIdFromLocation() {
+  if (typeof window === 'undefined') return 'cam1'
+  const params = new URLSearchParams(window.location.search)
+  const qId = params.get('id') || params.get('cam')
+  if (qId) return qId.toLowerCase()
+  const path = window.location.pathname.toLowerCase()
+  if (path.startsWith('/camera/')) {
+    const parts = path.split('/')
+    if (parts[2]) return parts[2].toLowerCase()
+  }
+  return 'cam1'
 }
 
 function App() {
@@ -118,7 +138,7 @@ function App() {
   const [currentView, setCurrentView] = useState(() => getViewFromLocation())
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [selectedCamera, setSelectedCamera] = useState(null)
-  const [setupCameraId, setSetupCameraId] = useState('cam1')
+  const [setupCameraId, setSetupCameraId] = useState(() => getCameraIdFromLocation())
 
   const handleNavigate = (view, targetCamId, push = true) => {
     if (targetCamId) {
@@ -127,11 +147,24 @@ function App() {
     setCurrentView(view)
 
     if (push && typeof window !== 'undefined') {
-      const targetPath = viewToPathMap[view] || `/${view}`
-      if (window.location.pathname !== targetPath) {
-        window.history.pushState({ view, targetCamId }, '', targetPath)
+      let targetPath = viewToPathMap[view] || `/${view}`
+      if (view === 'camera_detail') {
+        const camParam = targetCamId || setupCameraId || 'cam1'
+        targetPath = `/camera?id=${camParam}`
+      }
+      if (window.location.pathname + window.location.search !== targetPath) {
+        window.history.pushState({ view, targetCamId: targetCamId || setupCameraId }, '', targetPath)
       }
     }
+  }
+
+  const handleOpenCameraDetail = (cam) => {
+    const targetId = typeof cam === 'string'
+      ? cam
+      : (cam?.camId || cam?.camera_id || (cam?.id ? `cam${cam.id}` : 'cam1'))
+    setSelectedCamera(cam)
+    setSetupCameraId(targetId)
+    handleNavigate('camera_detail', targetId)
   }
 
   // Parking live stats state - dynamically synchronized with ROI setup across all cameras
@@ -159,7 +192,7 @@ function App() {
   useEffect(() => {
     const handlePopState = (e) => {
       const nextView = e.state?.view || getViewFromLocation()
-      const targetCamId = e.state?.targetCamId
+      const targetCamId = e.state?.targetCamId || getCameraIdFromLocation()
       if (targetCamId) {
         setSetupCameraId(targetCamId)
       }
@@ -168,9 +201,12 @@ function App() {
 
     if (typeof window !== 'undefined') {
       const initialView = getViewFromLocation()
-      const targetPath = viewToPathMap[initialView] || `/${initialView}`
+      let targetPath = viewToPathMap[initialView] || `/${initialView}`
+      if (initialView === 'camera_detail') {
+        targetPath = `/camera?id=${getCameraIdFromLocation()}`
+      }
       if (window.location.pathname === '/' || window.location.pathname !== targetPath) {
-        window.history.replaceState({ view: initialView }, '', targetPath)
+        window.history.replaceState({ view: initialView, targetCamId: getCameraIdFromLocation() }, '', targetPath)
       }
     }
 
@@ -342,20 +378,27 @@ function App() {
             handleQuickAdminDemo={handleQuickAdminDemo}
           />
         </BlankLayout>
+      ) : currentView === 'camera_detail' ? (
+        <CameraDetailPage
+          activeCameraId={setupCameraId || 'cam1'}
+          onSelectCamera={(newCamId) => {
+            setSetupCameraId(newCamId)
+            handleNavigate('camera_detail', newCamId)
+          }}
+          onBack={() => {
+            if (typeof window !== 'undefined' && window.history.length > 1) {
+              window.history.back()
+            } else {
+              handleNavigate('dashboard')
+            }
+          }}
+          onNavigate={handleNavigate}
+        />
       ) : currentView === 'live_cameras' ? (
-        <>
-          <LiveCamerasPage
-            onOpenModal={(cam) => setSelectedCamera(cam)}
-            onNavigate={handleNavigate}
-          />
-          {selectedCamera && (
-            <CameraModal
-              camera={selectedCamera}
-              onClose={() => setSelectedCamera(null)}
-              onNavigate={handleNavigate}
-            />
-          )}
-        </>
+        <LiveCamerasPage
+          onOpenModal={handleOpenCameraDetail}
+          onNavigate={handleNavigate}
+        />
       ) : (
         <BaseLayout
           user={user}
@@ -365,13 +408,11 @@ function App() {
           onSelectView={(view) => handleNavigate(view)}
           isSidebarCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          selectedCamera={selectedCamera}
-          onCloseCameraModal={() => setSelectedCamera(null)}
           onNavigate={handleNavigate}
         >
           {currentView === 'dashboard' && (
             <DashboardPage
-              onOpenModal={(cam) => setSelectedCamera(cam)}
+              onOpenModal={handleOpenCameraDetail}
               onNavigate={handleNavigate}
             />
           )}
@@ -406,13 +447,13 @@ function App() {
           )}
           {currentView === 'ai_inference' && (
             <DashboardPage
-              onOpenModal={(cam) => setSelectedCamera(cam)}
+              onOpenModal={handleOpenCameraDetail}
               onNavigate={handleNavigate}
             />
           )}
           {currentView === 'line_bot' && (
             <DashboardPage
-              onOpenModal={(cam) => setSelectedCamera(cam)}
+              onOpenModal={handleOpenCameraDetail}
               onNavigate={handleNavigate}
             />
           )}

@@ -76,11 +76,11 @@ export default function CameraMapCard({
                 </div>
               </div>
 
-              {/* 16:9 Viewport (Click opens pop-up) */}
+              {/* 16:9 Viewport (Click opens dedicated camera view) */}
               <div
                 className="relative w-full aspect-video rounded-[14px] overflow-hidden border border-[#CFCFC4] bg-[#F4F1E8] flex items-center justify-center cursor-pointer group/viewport"
                 onClick={() => onOpenModal && onOpenModal(cam)}
-                title="คลิกเพื่อเปิดป๊อปอัปดูภาพและเซนเซอร์ความละเอียดสูง"
+                title="คลิกเพื่อเปิดดูกล้องแยกความละเอียดสูง"
               >
                 <img
                   src={cam.imageUrl}
@@ -102,7 +102,7 @@ export default function CameraMapCard({
                 {/* Hover overlay hint */}
                 <div className="absolute inset-0 bg-[#30312F]/40 opacity-0 group-hover/viewport:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white font-sans text-xs font-semibold backdrop-blur-[2px]">
                   <Maximize2 className="w-4 h-4" />
-                  <span>คลิกดูป๊อปอัป</span>
+                  <span>เปิดดูกล้องแยก</span>
                 </div>
               </div>
 
@@ -131,7 +131,7 @@ export default function CameraMapCard({
                   onClick={() => onOpenModal && onOpenModal(cam)}
                   className="px-2.5 py-1 rounded-full bg-[#FAF8EF] hover:bg-[#EAF6E8] text-[#30312F] hover:text-[#4F6B4A] border border-[#CFCFC4] hover:border-[#C7E0B8] font-sans font-semibold text-[11px] transition-all cursor-pointer shrink-0"
                 >
-                  ป๊อปอัป
+                  ดูกล้องแยก
                 </button>
               </div>
             </div>

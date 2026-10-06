@@ -51,8 +51,8 @@ def migrate():
                 name = data.get("name", f"Camera {cam_id}")
                 capacity = int(data.get("capacity", len(data.get("slots", []))))
                 vehicle_type = "motorcycle" if "bike" in name.lower() or "มอเตอร์ไซค์" in name or cam_id == "cam3" else "car"
-                polygon = data.get("polygon", [])
-                slots = data.get("slots", [])
+                polygon = data.get("zones") if data.get("zones") is not None else data.get("polygon", [])
+                slots = []
 
                 # Upsert into parking_templates
                 cur.execute(

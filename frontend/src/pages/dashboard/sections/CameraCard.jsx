@@ -64,7 +64,7 @@ export default function CameraCard({
 
         {/* Top HUD Tag */}
         <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-[#FFFDF7]/90 backdrop-blur-xs border border-[#DEDED2] text-[10px] font-mono text-[#30312F]">
-          1600×1200{camera.ip ? ` · ${camera.ip}` : ''}
+          {camera.slotCode || 'CAM'}{camera.ip ? ` · ${camera.ip}` : ''}
         </div>
 
         {/* Bottom Timestamp HUD */}

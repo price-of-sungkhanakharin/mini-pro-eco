@@ -27,12 +27,12 @@ import {
   fetchRoiFromServer,
   getSavedOrInitialZones,
   saveZonesToStorage,
-  normalizeZones
+  normalizeZones,
+  FRAMESIZE_RESOLUTIONS,
+  scaleZones,
+  inferBaseResolution,
+  getDefaultZonesForCamera
 } from '../../../utils/dumpData'
-
-// Native image resolution of the camera snapshot (1600x1200)
-const NATIVE_WIDTH = 1600
-const NATIVE_HEIGHT = 1200
 
 // Calculate polygon pixel area using Shoelace formula
 function calculatePolygonArea(points) {
@@ -60,16 +60,25 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
 
   // Camera Hardware Capture Settings (Framesize & Quality)
   const [camHardwareSettings, setCamHardwareSettings] = useState({
-    framesize: 13,
+    framesize: 11,
     quality: 10,
-    interval_sec: 15
+    interval_sec: 20
+  })
+
+  // Dynamic camera image resolution state (width & height matching the loaded feed or framesize)
+  const [imgDimensions, setImgDimensions] = useState(() => {
+    const saved = getSavedOrInitialZones(selectedCamId)
+    if (saved && saved[0] && saved[0].frame_width && saved[0].frame_height) {
+      return { width: saved[0].frame_width, height: saved[0].frame_height }
+    }
+    return { width: 1280, height: 720 }
   })
 
   // Custom uploaded/configured snapshot image for current camera
   const [customCamImage, setCustomCamImage] = useState(() => getCameraImage(selectedCamId))
 
   // Multi-Zone Area Polygons state (AI pixel masks / parking lot boundaries per camera)
-  const [zones, setZones] = useState(() => getSavedOrInitialZones(selectedCamId))
+  const [zones, setZones] = useState(() => getSavedOrInitialZones(selectedCamId, 1280, 720))
   const [selectedZoneId, setSelectedZoneId] = useState(null)
   const [zoneDrawType, setZoneDrawType] = useState('car') // 'car' or 'motorcycle'
   const [isDrawingZone, setIsDrawingZone] = useState(false)
@@ -112,11 +121,21 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
       if (res.ok) {
         const data = await res.json()
         if (data && data[camId]) {
+          const fs = data[camId].framesize ?? 13
           setCamHardwareSettings({
-            framesize: data[camId].framesize ?? 13,
+            framesize: fs,
             quality: data[camId].quality ?? 10,
             interval_sec: data[camId].interval_sec ?? 15
           })
+          const defaultRes = FRAMESIZE_RESOLUTIONS[fs]
+          if (defaultRes && defaultRes.width) {
+            setImgDimensions((prev) => {
+              if (prev.width === 1600 && prev.height === 1200 && fs !== 13) {
+                return defaultRes
+              }
+              return prev
+            })
+          }
         }
       }
     } catch (e) {
@@ -124,10 +143,20 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
     }
   }
 
-  // Save camera hardware capture settings
+  // Save camera hardware capture settings and dynamically scale existing zones to the target resolution
   const handleSaveHardwareSettings = async (newSettings) => {
     try {
       setIsSyncingServer(true)
+      const targetRes = FRAMESIZE_RESOLUTIONS[newSettings.framesize]
+      if (targetRes && (targetRes.width !== imgDimensions.width || targetRes.height !== imgDimensions.height)) {
+        // Adapt zones to the new target framesize resolution
+        const scaled = scaleZones(zones, targetRes.width, targetRes.height, imgDimensions.width, imgDimensions.height)
+        setZones(scaled)
+        setImgDimensions(targetRes)
+        saveZonesToStorage(scaled, selectedCamId)
+        await saveRoiToServer(selectedCamId, [], scaled, targetRes.width, targetRes.height)
+      }
+
       const apiBase = getIngestionApiBase()
       await fetch(`${apiBase}/api/settings`, {
         method: 'POST',
@@ -150,11 +179,32 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
           })
         })
       } catch (err) {}
-      showToast(`บันทึก Framesize (${newSettings.framesize}) & Quality (${newSettings.quality}) เรียบร้อย!`)
+      showToast(`บันทึก Framesize (${newSettings.framesize}: ${targetRes?.width || ''}x${targetRes?.height || ''}) & Quality (${newSettings.quality}) เรียบร้อย! โซนปรับขนาดตามภาพอัตโนมัติ`)
     } catch (err) {
       showToast('บันทึกการตั้งค่าไม่สำเร็จ', 'error')
     } finally {
       setIsSyncingServer(false)
+    }
+  }
+
+  // Handle camera background image load: automatically detects physical image pixel dimensions
+  const handleImageLoad = (e) => {
+    const nw = e.target.naturalWidth
+    const nh = e.target.naturalHeight
+    if (nw > 0 && nh > 0) {
+      setImgDimensions((prev) => {
+        if (prev.width !== nw || prev.height !== nh) {
+          // Scale zones to match real image resolution
+          setZones((prevZones) => {
+            const scaled = scaleZones(prevZones, nw, nh, prev.width, prev.height)
+            saveZonesToStorage(scaled, selectedCamId, false)
+            saveRoiToServer(selectedCamId, [], scaled, nw, nh)
+            return scaled
+          })
+          return { width: nw, height: nh }
+        }
+        return prev
+      })
     }
   }
 
@@ -198,8 +248,11 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
           const rawZones = serverCam.zones || serverCam.polygon
           const normalized = normalizeZones(rawZones)
           if (normalized.length > 0) {
-            setZones(normalized)
-            saveZonesToStorage(normalized, selectedCamId, false)
+            const sW = serverCam.frame_width || (serverCam.resolution && serverCam.resolution[0]) || null
+            const sH = serverCam.frame_height || (serverCam.resolution && serverCam.resolution[1]) || null
+            const scaled = scaleZones(normalized, imgDimensions.width, imgDimensions.height, sW, sH)
+            setZones(scaled)
+            saveZonesToStorage(scaled, selectedCamId, false)
           }
         }
       } catch (e) {
@@ -220,14 +273,14 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
       // Debounced auto-sync to central server (1.5s after editing)
       if (zones.length > 0) {
         const timer = setTimeout(() => {
-          saveRoiToServer(selectedCamId, [], zones)
+          saveRoiToServer(selectedCamId, [], zones, imgDimensions.width, imgDimensions.height)
         }, 1500)
         return () => clearTimeout(timer)
       }
     } else {
       prevCamIdRef.current = selectedCamId
     }
-  }, [zones, selectedCamId])
+  }, [zones, selectedCamId, imgDimensions])
 
   const showToast = (msg, type = 'success') => {
     setNotification({ msg, type })
@@ -241,22 +294,22 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
     customCamImage ||
     `${getIngestionApiBase()}/api/v1/line/snapshot/${selectedCamId}?mode=raw&t=${liveSnapshotKey}`
 
-  // Convert Mouse Event coords to SVG Native coordinate system (1600x1200)
+  // Convert Mouse Event coords to SVG coordinate system (matching active image resolution)
   const getSvgCoordinates = (e) => {
     if (!svgRef.current) return { x: 0, y: 0 }
     const rect = svgRef.current.getBoundingClientRect()
     const clientX = e.clientX ?? (e.touches && e.touches[0]?.clientX) ?? 0
     const clientY = e.clientY ?? (e.touches && e.touches[0]?.clientY) ?? 0
 
-    const scaleX = NATIVE_WIDTH / rect.width
-    const scaleY = NATIVE_HEIGHT / rect.height
+    const scaleX = imgDimensions.width / rect.width
+    const scaleY = imgDimensions.height / rect.height
 
     const x = Math.round((clientX - rect.left) * scaleX)
     const y = Math.round((clientY - rect.top) * scaleY)
 
     return {
-      x: Math.max(0, Math.min(NATIVE_WIDTH, x)),
-      y: Math.max(0, Math.min(NATIVE_HEIGHT, y))
+      x: Math.max(0, Math.min(imgDimensions.width, x)),
+      y: Math.max(0, Math.min(imgDimensions.height, y))
     }
   }
 
@@ -285,7 +338,13 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
             : `โซนรถยนต์ ${existingOfType + 1}`,
           type: zoneDrawType,
           capacity: defaultCap,
-          points: nextPoints
+          points: nextPoints,
+          points_normalized: nextPoints.map((p) => ({
+            x: +(p.x / imgDimensions.width).toFixed(4),
+            y: +(p.y / imgDimensions.height).toFixed(4)
+          })),
+          frame_width: imgDimensions.width,
+          frame_height: imgDimensions.height
         }
 
         const updated = [...zones, newZone]
@@ -294,7 +353,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
         setIsDrawingZone(false)
         setSelectedZoneId(nextId)
         saveZonesToStorage(updated, selectedCamId)
-        saveRoiToServer(selectedCamId, [], updated)
+        saveRoiToServer(selectedCamId, [], updated, imgDimensions.width, imgDimensions.height)
         showToast(`สร้าง${newZone.name} (ความจุ ${defaultCap}) เรียบร้อย!`)
       }
     }
@@ -311,7 +370,17 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
           if (z.id !== zoneId) return z
           const newPts = [...z.points]
           newPts[pointIndex] = coords
-          return { ...z, points: newPts }
+          const newNorm = newPts.map((p) => ({
+            x: +(p.x / imgDimensions.width).toFixed(4),
+            y: +(p.y / imgDimensions.height).toFixed(4)
+          }))
+          return {
+            ...z,
+            points: newPts,
+            points_normalized: newNorm,
+            frame_width: imgDimensions.width,
+            frame_height: imgDimensions.height
+          }
         })
       )
     }
@@ -321,7 +390,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
     if (dragging) {
       setDragging(null)
       saveZonesToStorage(zones, selectedCamId)
-      saveRoiToServer(selectedCamId, [], zones)
+      saveRoiToServer(selectedCamId, [], zones, imgDimensions.width, imgDimensions.height)
     }
   }
 
@@ -336,7 +405,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
     setZones(updated)
     if (selectedZoneId === zoneId) setSelectedZoneId(null)
     saveZonesToStorage(updated, selectedCamId)
-    saveRoiToServer(selectedCamId, [], updated)
+    saveRoiToServer(selectedCamId, [], updated, imgDimensions.width, imgDimensions.height)
     showToast('ลบโซนเรียบร้อยแล้ว', 'info')
   }
 
@@ -347,7 +416,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
       setZoneDraft([])
       setIsDrawingZone(false)
       saveZonesToStorage([], selectedCamId)
-      saveRoiToServer(selectedCamId, [], [])
+      saveRoiToServer(selectedCamId, [], [], imgDimensions.width, imgDimensions.height)
       showToast(`ล้างโซนทั้งหมดของ ${activeCam.code} เรียบร้อย`, 'info')
     }
   }
@@ -357,30 +426,30 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
     const updated = zones.map((z) => (z.id === zoneId ? { ...z, capacity: capNum } : z))
     setZones(updated)
     saveZonesToStorage(updated, selectedCamId)
-    saveRoiToServer(selectedCamId, [], updated)
+    saveRoiToServer(selectedCamId, [], updated, imgDimensions.width, imgDimensions.height)
   }
 
   const handleUpdateZoneName = (zoneId, newName) => {
     const updated = zones.map((z) => (z.id === zoneId ? { ...z, name: newName } : z))
     setZones(updated)
     saveZonesToStorage(updated, selectedCamId)
-    saveRoiToServer(selectedCamId, [], updated)
+    saveRoiToServer(selectedCamId, [], updated, imgDimensions.width, imgDimensions.height)
   }
 
   const handleUpdateZoneType = (zoneId, newType) => {
     const updated = zones.map((z) => (z.id === zoneId ? { ...z, type: newType } : z))
     setZones(updated)
     saveZonesToStorage(updated, selectedCamId)
-    saveRoiToServer(selectedCamId, [], updated)
+    saveRoiToServer(selectedCamId, [], updated, imgDimensions.width, imgDimensions.height)
   }
 
   const handleManualSaveAll = async () => {
     setIsSyncingServer(true)
     saveZonesToStorage(zones, selectedCamId)
-    const ok = await saveRoiToServer(selectedCamId, [], zones)
+    const ok = await saveRoiToServer(selectedCamId, [], zones, imgDimensions.width, imgDimensions.height)
     setIsSyncingServer(false)
     if (ok) {
-      showToast(`บันทึกการตั้งค่าโซนของ ${activeCam.code} ไปยัง Server เรียบร้อย!`)
+      showToast(`บันทึกการตั้งค่าโซนของ ${activeCam.code} (${imgDimensions.width}x${imgDimensions.height}) ไปยัง Server เรียบร้อย!`)
     } else {
       showToast(`บันทึกในเครื่องเรียบร้อย (Server Sync Pending)`, 'info')
     }
@@ -414,6 +483,14 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
   const totalCarCap = carZones.reduce((sum, z) => sum + (Number(z.capacity) || 6), 0)
   const totalBikeCap = bikeZones.reduce((sum, z) => sum + (Number(z.capacity) || 9), 0)
   const totalCap = totalCarCap + totalBikeCap
+
+  // Dynamic scaling metrics based on active camera image resolution
+  const resScale = imgDimensions.width / 1600
+  const vertexRadius = Math.max(8, Math.round(14 * resScale))
+  const draftRadius = Math.max(6, Math.round(10 * resScale))
+  const labelW = Math.max(180, Math.round(320 * resScale))
+  const labelH = Math.max(22, Math.round(34 * resScale))
+  const labelFontSize = Math.max(10, Math.round(14 * resScale))
 
   return (
     <div className="parking-setup-container">
@@ -605,13 +682,14 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
               src={activeImageUrl}
               alt={`${activeCam.code} Background Feed`}
               className="roi-bg-image"
+              onLoad={handleImageLoad}
             />
 
             {/* SVG Vector Drawing Layer */}
             <svg
               ref={svgRef}
               className="roi-svg-overlay"
-              viewBox={`0 0 ${NATIVE_WIDTH} ${NATIVE_HEIGHT}`}
+              viewBox={`0 0 ${imgDimensions.width} ${imgDimensions.height}`}
               onMouseMove={handleSvgMouseMove}
               onMouseUp={handleSvgMouseUp}
               onClick={handleSvgClick}
@@ -643,18 +721,19 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                       {showLabels && (
                         <g className="zone-label-group" pointerEvents="none">
                           <rect
-                            x={minX + 12}
-                            y={minY + 12}
-                            width={320}
-                            height={34}
-                            rx={6}
+                            x={minX + 8}
+                            y={minY + 8}
+                            width={labelW}
+                            height={labelH}
+                            rx={4}
                             className={`zone-label-bg ${isBikeZone ? 'bike-badge' : ''}`}
                           />
                           <text
-                            x={minX + 172}
-                            y={minY + 34}
+                            x={minX + 8 + labelW / 2}
+                            y={minY + 8 + labelH * 0.68}
                             textAnchor="middle"
                             className={`zone-label-text ${isBikeZone ? 'bike-text' : ''}`}
+                            style={{ fontSize: `${labelFontSize}px` }}
                           >
                             {zone.name} (ความจุ {zone.capacity} {isBikeZone ? 'คัน' : 'ช่อง'})
                           </text>
@@ -668,15 +747,16 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                             <circle
                               cx={pt.x}
                               cy={pt.y}
-                              r={14}
+                              r={vertexRadius}
                               className={`zone-handle-vertex ${isBikeZone ? 'bike-handle' : ''}`}
                               onMouseDown={(e) => handleZonePointMouseDown(e, zone.id, pIdx)}
                             />
                             <text
                               x={pt.x}
-                              y={pt.y - 18}
+                              y={pt.y - vertexRadius - 4}
                               textAnchor="middle"
-                              className="text-[14px] fill-[var(--color-ink)] font-bold font-mono"
+                              className="fill-[var(--color-ink)] font-bold font-mono"
+                              style={{ fontSize: `${Math.max(10, vertexRadius)}px` }}
                               pointerEvents="none"
                             >
                               P{pIdx + 1}
@@ -695,7 +775,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                       key={pIdx}
                       cx={pt.x}
                       cy={pt.y}
-                      r={10}
+                      r={draftRadius}
                       className={`draft-vertex ${zoneDrawType === 'motorcycle' ? 'bike' : 'car'}`}
                     />
                   ))}
@@ -733,7 +813,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                   Cursor: <strong className="text-[var(--color-ink)] font-semibold">X:{cursorPos.x} Y:{cursorPos.y}</strong>
                 </span>
                 <span>
-                  ความละเอียด: <strong className="text-[var(--color-ink)] font-semibold">{NATIVE_WIDTH}×{NATIVE_HEIGHT}</strong>
+                  ความละเอียด: <strong className="text-[var(--color-ink)] font-semibold">{imgDimensions.width}×{imgDimensions.height}</strong>
                 </span>
               </div>
             </div>
@@ -744,7 +824,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
             <div className="flex items-center gap-2 text-xs text-[var(--color-ink-secondary)]">
               <Sparkles className="w-4 h-4 text-[var(--color-green-text)] shrink-0" strokeWidth={1.8} />
               <span>
-                <strong className="text-[var(--color-ink)]">คำแนะนำการตั้งค่าโซน (Pure Zone Setup):</strong> กด <strong className="text-[var(--color-ink)]">"+ วาดโซนรถยนต์"</strong> หรือ <strong className="text-[var(--color-ink)]">"+ วาดโซนมอเตอร์ไซค์"</strong> แล้วคลิก 4 มุมบนภาพเพื่อสร้างกรอบพื้นที่ จากนั้นลากจุดมุม P1-P4 เพื่อปรับองศา และกรอกจำนวนความจุ (Capacity) ในแถบด้านขวาได้ทันที
+                <strong className="text-[var(--color-ink)]">ระบบวาดโซนแบบไดนามิก (Dynamic Resolution Support):</strong> กรอบโซนจะปรับสัดส่วนอัตโนมัติตามความละเอียดของกล้อง ({imgDimensions.width}×{imgDimensions.height} px) เมื่อเปลี่ยน Framesize หรือดึงภาพสด โซนจะสเกลตามทันที และสามารถคลิกหรือลากจุด P1-P4 เพื่อปรับแต่งได้อิสระ
               </span>
             </div>
           </div>
@@ -795,7 +875,7 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                   const isSelected = selectedZoneId === zone.id
                   const isBike = zone.type === 'motorcycle' || zone.type === 'bike'
                   const areaPx = calculatePolygonArea(zone.points)
-                  const areaPct = ((areaPx / (NATIVE_WIDTH * NATIVE_HEIGHT)) * 100).toFixed(1)
+                  const areaPct = ((areaPx / (imgDimensions.width * imgDimensions.height)) * 100).toFixed(1)
 
                   return (
                     <div
@@ -901,9 +981,14 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
 
             <div className="p-3 bg-[var(--color-card)] flex flex-col gap-2.5">
               <div className="form-group-setup">
-                <label className="text-[12px] font-medium text-[var(--color-ink-secondary)]">
-                  Camera Frame Size (ESP32 ID):
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[12px] font-medium text-[var(--color-ink-secondary)]">
+                    Camera Frame Size (ESP32 ID):
+                  </label>
+                  <span className="text-[11px] font-mono text-[var(--color-green-text)] font-semibold">
+                    {imgDimensions.width}×{imgDimensions.height} px
+                  </span>
+                </div>
                 <select
                   value={camHardwareSettings.framesize}
                   onChange={(e) =>
@@ -916,12 +1001,9 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                 >
                   <option value={13}>13: UXGA (1600x1200) - Default</option>
                   <option value={12}>12: SXGA (1280x1024)</option>
-                  <option value={11}>11: HD (1280x720)</option>
+                  <option value={11}>11: HD (1280x720) - 16:9 Widescreen</option>
                   <option value={10}>10: XGA (1024x768)</option>
                   <option value={9}>9: SVGA (800x600)</option>
-                  <option value={8}>8: VGA (640x480)</option>
-                  <option value={7}>7: CIF (400x296)</option>
-                  <option value={6}>6: QVGA (320x240)</option>
                 </select>
               </div>
 

@@ -63,6 +63,10 @@ const pathToViewMap = {
   '/trainer': 'trainer',
   '/auto-trainer': 'trainer',
   '/setup': 'setup',
+  '/camera-control': 'camera_control',
+  '/cameras-control': 'camera_control',
+  '/camera-settings': 'camera_control',
+  '/deep-sleep': 'camera_control',
   '/ecosystem': 'ecosystem',
   '/services': 'ecosystem',
   '/analytics': 'analytics',
@@ -78,6 +82,7 @@ const viewToPathMap = {
   logs: '/logs',
   trainer: '/trainer',
   setup: '/setup',
+  camera_control: '/setup?tab=camera_control',
   ecosystem: '/ecosystem',
   analytics: '/analytics',
   details: '/details'
@@ -451,6 +456,14 @@ function App() {
             <DashboardPage
               onOpenModal={handleOpenCameraDetail}
               onNavigate={handleNavigate}
+            />
+          )}
+          {currentView === 'camera_control' && (
+            <SetupPage
+              onNavigate={handleNavigate}
+              initialCameraId={setupCameraId}
+              initialTab="camera_control"
+              apiBase={API_BASE_URL}
             />
           )}
           {currentView === 'ecosystem' && (

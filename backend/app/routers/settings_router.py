@@ -49,9 +49,12 @@ def get_camera_settings():
             brightness=float(loc_val.get("brightness", 1.0)),
             contrast=float(loc_val.get("contrast", 1.0)),
             rotation=int(loc_val.get("rotation", 0)),
-            framesize=int(loc_val.get("framesize", 13)),
+            framesize=int(loc_val.get("framesize", 9)),
             quality=int(loc_val.get("quality", 10)),
-            interval_sec=int(loc_val.get("interval_sec", 15)),
+            interval_sec=int(loc_val.get("interval_sec", 20)),
+            deep_sleep_sec=int(loc_val.get("deep_sleep_sec", 20)),
+            deep_sleep_sec_day=int(loc_val.get("deep_sleep_sec_day", loc_val.get("deep_sleep_sec", 20))),
+            deep_sleep_sec_night=int(loc_val.get("deep_sleep_sec_night", 1800)),
         ))
     return results
 
@@ -59,7 +62,7 @@ def get_camera_settings():
 @router.post("", response_model=CameraSettingsSchema)
 @router.post("/", response_model=CameraSettingsSchema)
 def update_camera_settings(settings_payload: CameraSettingsSchema):
-    """Update camera framesize, quality, and enhancement settings."""
+    """Update camera framesize, quality, deep sleep, and enhancement settings."""
     config_path = _get_config_path()
     config_data = {}
     if config_path.exists():
@@ -83,6 +86,9 @@ def update_camera_settings(settings_payload: CameraSettingsSchema):
         locations[target_key]["contrast"] = settings_payload.contrast
         locations[target_key]["rotation"] = settings_payload.rotation
         locations[target_key]["interval_sec"] = settings_payload.interval_sec
+        locations[target_key]["deep_sleep_sec"] = settings_payload.deep_sleep_sec
+        locations[target_key]["deep_sleep_sec_day"] = settings_payload.deep_sleep_sec_day
+        locations[target_key]["deep_sleep_sec_night"] = settings_payload.deep_sleep_sec_night
         config_data["locations"] = locations
         for p in CONFIG_PATHS:
             if p.exists() or str(p).startswith("/home/r211admin") or str(p).startswith("/app/"):

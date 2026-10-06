@@ -35,7 +35,7 @@ export default function LiveCamerasPage({ onOpenModal, onNavigate }) {
           </div>
 
           <span className="hidden md:inline font-sans text-xs text-neutral-400">
-            คลิกที่ภาพกล้องเพื่อเปิดดูข้อมูลละเอียด (1600x1200 native)
+            คลิกที่ภาพกล้องเพื่อเปิดดูข้อมูลละเอียดและการตรวจจับแบบเรียลไทม์
           </span>
         </div>
 
@@ -120,7 +120,7 @@ export default function LiveCamerasPage({ onOpenModal, onNavigate }) {
                 {/* Corner Resolution / Live Stream Tag */}
                 <div className="absolute top-2.5 left-2.5 bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-mono font-medium text-white flex items-center gap-1.5 z-10 border border-white/10">
                   <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-[#83F04C] animate-pulse' : 'bg-neutral-500'}`} />
-                  <span>1600x1200 · LIVE</span>
+                  <span>LIVE STREAM</span>
                 </div>
 
                 {/* Hover Overlay Hint (No buttons, just clear click instruction) */}

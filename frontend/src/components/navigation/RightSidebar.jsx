@@ -7,6 +7,7 @@ import {
   Server,
   BarChart2,
   FileText,
+  Sliders,
   X
 } from 'lucide-react'
 
@@ -38,7 +39,7 @@ export default function RightSidebar({
     {
       id: 'setup',
       label: 'Setup & ROI Config',
-      sub: 'Slot geometry & IP cameras',
+      sub: 'Slot geometry, cameras & deep sleep',
       icon: Settings
     },
     {
@@ -110,7 +111,12 @@ export default function RightSidebar({
         <nav className="sidebar-nav">
           {menuItems.map((item) => {
             const Icon = item.icon
-            const isActive = currentView === item.id
+            const isActive =
+              currentView === item.id ||
+              (item.id === 'setup' &&
+                (currentView === 'camera_control' ||
+                  currentView === 'slot_map' ||
+                  currentView === 'label_studio'))
             return (
               <button
                 key={item.id}

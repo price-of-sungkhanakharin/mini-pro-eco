@@ -1,5 +1,6 @@
 import React from 'react'
 import { Maximize2, AlertTriangle, Car, Bike, Video } from 'lucide-react'
+import { getIngestionApiBase } from '../../../utils/dumpData'
 
 export default function CameraMapCard({
   cameras = [],
@@ -76,18 +77,19 @@ export default function CameraMapCard({
                 </div>
               </div>
 
-              {/* 16:9 Viewport (Click opens dedicated camera view) */}
+              {/* 16:9 Viewport (Click opens dedicated camera view or modal) */}
               <div
                 className="relative w-full aspect-video rounded-[14px] overflow-hidden border border-[#CFCFC4] bg-[#F4F1E8] flex items-center justify-center cursor-pointer group/viewport"
                 onClick={() => onOpenModal && onOpenModal(cam)}
-                title="คลิกเพื่อเปิดดูกล้องแยกความละเอียดสูง"
+                title="คลิกเพื่อเปิดดูรูปภาพขยาย (Image Preview)"
               >
                 <img
                   src={cam.imageUrl}
                   alt={cam.name}
                   className="w-full h-full object-cover group-hover/viewport:scale-[1.02] transition-transform duration-200"
                   onError={(e) => {
-                    e.currentTarget.src = '/dump_data/images/2026-09-22_18-02-28_966.jpg'
+                    const apiBase = getIngestionApiBase()
+                    e.currentTarget.src = `${apiBase}/api/latest?camera_id=${cam.camId || 'cam1'}&image=true`
                   }}
                 />
 
@@ -102,7 +104,7 @@ export default function CameraMapCard({
                 {/* Hover overlay hint */}
                 <div className="absolute inset-0 bg-[#30312F]/40 opacity-0 group-hover/viewport:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white font-sans text-xs font-semibold backdrop-blur-[2px]">
                   <Maximize2 className="w-4 h-4" />
-                  <span>เปิดดูกล้องแยก</span>
+                  <span>เปิดดูรูปขยาย</span>
                 </div>
               </div>
 
@@ -128,7 +130,14 @@ export default function CameraMapCard({
 
                 <button
                   type="button"
-                  onClick={() => onOpenModal && onOpenModal(cam)}
+                  onClick={() => {
+                    const targetCamId = cam.camId || (cam.slotCode ? cam.slotCode.toLowerCase().replace('-', '') : 'cam1')
+                    if (onNavigate) {
+                      onNavigate('camera_detail', targetCamId)
+                    } else if (onOpenModal) {
+                      onOpenModal(cam)
+                    }
+                  }}
                   className="px-2.5 py-1 rounded-full bg-[#FAF8EF] hover:bg-[#EAF6E8] text-[#30312F] hover:text-[#4F6B4A] border border-[#CFCFC4] hover:border-[#C7E0B8] font-sans font-semibold text-[11px] transition-all cursor-pointer shrink-0"
                 >
                   ดูกล้องแยก

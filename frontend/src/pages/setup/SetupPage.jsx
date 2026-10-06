@@ -3,18 +3,18 @@ import {
   Settings,
   Smartphone,
   MapPin,
-  MessageSquare,
-  HardDrive,
   Save,
   CheckCircle2,
   Layers,
   Cpu,
   Sliders,
-  Tag
+  Tag,
+  ChevronRight
 } from 'lucide-react'
 import ParkingSetup from './components_setup/ParkingSetup.jsx'
 import LabelStudioManager from '../trainer/components_trainer/LabelStudioManager.jsx'
 import AutoTrainerStudio from '../trainer/AutoTrainerPage.jsx'
+import CameraControlPage from '../camera_control/CameraControlPage.jsx'
 import { PillTag, PillButton } from '../../components/ui/FigmaCards'
 
 const FRAMESIZE_OPTIONS = [
@@ -22,10 +22,7 @@ const FRAMESIZE_OPTIONS = [
   { value: 12, label: '12: SXGA (1280x1024)' },
   { value: 11, label: '11: HD (1280x720)' },
   { value: 10, label: '10: XGA (1024x768)' },
-  { value: 9, label: '9: SVGA (800x600)' },
-  { value: 8, label: '8: VGA (640x480)' },
-  { value: 7, label: '7: CIF (400x296)' },
-  { value: 6, label: '6: QVGA (320x240)' }
+  { value: 9, label: '9: SVGA (800x600)' }
 ]
 
 export default function SetupPage({
@@ -34,10 +31,31 @@ export default function SetupPage({
   initialTab = 'cameras',
   apiBase
 }) {
-  const [activeTab, setActiveTab] = useState(initialTab)
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const tabParam = params.get('tab')
+      if (tabParam && !['line', 'storage'].includes(tabParam)) return tabParam
+    }
+    return ['line', 'storage'].includes(initialTab) ? 'cameras' : initialTab
+  })
   const [selectedSlotCam, setSelectedSlotCam] = useState(initialCameraId)
   const [saved, setSaved] = useState(false)
   const [saveStatus, setSaveStatus] = useState(null)
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(['line', 'storage'].includes(initialTab) ? 'cameras' : initialTab)
+    }
+  }, [initialTab])
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId)
+    if (typeof window !== 'undefined' && window.history?.replaceState) {
+      const targetPath = `/setup?tab=${tabId}`
+      window.history.replaceState({ view: 'setup' }, '', targetPath)
+    }
+  }
 
   // Initial state for 3 enterprise edge cameras
   const [camConfig, setCamConfig] = useState({
@@ -107,11 +125,6 @@ export default function SetupPage({
     fetchSettings()
   }, [apiBase])
 
-  const [lineConfig] = useState({
-    channelSecret: '••••••••••••••••••••••••••••••••',
-    channelAccessToken: '••••••••••••••••••••••••••••••••••••••••••••••••••••••••',
-    webhookUrl: 'https://api.cpe.eng.psu.ac.th/api/v1/line/webhook'
-  })
 
   const handleSave = async (e) => {
     e.preventDefault()
@@ -209,10 +222,9 @@ export default function SetupPage({
         {[
           { id: 'cameras', label: '3x Phone / ESP32 Cameras', icon: Smartphone },
           { id: 'slots', label: 'Parking Zone ROI Setup', icon: MapPin },
-          { id: 'line', label: 'LINE Chatbot Webhook', icon: MessageSquare },
-          { id: 'storage', label: 'MinIO & DB Connection', icon: HardDrive },
           { id: 'trainer', label: 'Auto-Trainer & Model Hub', icon: Cpu },
-          { id: 'label_studio', label: 'Label Studio Annotation', icon: Tag }
+          { id: 'label_studio', label: 'Label Studio Annotation', icon: Tag },
+          { id: 'camera_control', label: 'Camera & Deep Sleep Control', icon: Sliders }
         ].map((tab) => {
           const Icon = tab.icon
           const active = activeTab === tab.id
@@ -220,7 +232,7 @@ export default function SetupPage({
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabChange(tab.id)}
               className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
                 active
                   ? 'bg-[#30312F] text-white shadow-xs'
@@ -246,6 +258,29 @@ export default function SetupPage({
               <p className="font-sans text-xs text-[#85847E] mt-1 m-0">
                 กำหนดค่า IP Address, ความถี่ Interval, Camera Frame Size (ESP32 ID) และ JPEG Quality ของกล้องแต่ละจุด
               </p>
+            </div>
+
+            {/* Quick jump to Camera & Deep Sleep Control Center */}
+            <div className="p-4 rounded-[18px] bg-[#E7F4D8]/30 border border-[#BBF7D0] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-[10px] bg-[#E7F4D8] text-[#284E1A] flex items-center justify-center shrink-0">
+                  <Sliders className="w-4 h-4 text-[#284E1A]" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-xs text-[#284E1A] m-0">แผงควบคุม 2-Way Hardware & Deep Sleep Control</h4>
+                  <p className="text-[11px] text-[#686962] m-0 mt-0.5">
+                    ปรับรอบเวลา Deep Sleep (กลางวัน 20s / กลางคืน 1800s), ความละเอียด Framesize และดูภาพสด Real-time
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleTabChange('camera_control')}
+                className="px-3.5 py-1.5 rounded-full bg-[#284E1A] hover:bg-[#1E3B13] text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 self-start sm:self-auto"
+              >
+                <span>เปิดแผงควบคุมกล้อง</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -353,82 +388,6 @@ export default function SetupPage({
           </div>
         )}
 
-        {activeTab === 'line' && (
-          <div className="flex flex-col gap-5 max-w-2xl">
-            <div>
-              <h3 className="font-sans font-semibold text-[19px] text-[#30312F] m-0 flex items-center gap-2">
-                <MessageSquare className="w-5 h-5 text-[#30312F]" />
-                <span>การเชื่อมต่อ LINE Messaging API & Webhook</span>
-              </h3>
-              <p className="font-sans text-xs text-[#85847E] mt-1 m-0">
-                ตั้งค่า Token และ Webhook URL สำหรับบอทตอบคำถามผู้ใช้งานนอกมหาวิทยาลัย
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-[#686962]">FastAPI LINE Webhook URL (นำไปใส่ใน LINE Developers Console):</label>
-                <input
-                  type="text"
-                  readOnly
-                  value={lineConfig.webhookUrl}
-                  className="font-mono bg-[#FAF8EF] border border-[#DEDED2] rounded-xl px-3.5 py-2.5 text-xs text-[#30312F]"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-[#686962]">Channel Access Token:</label>
-                <input
-                  type="text"
-                  defaultValue={lineConfig.channelAccessToken}
-                  className="font-mono bg-[#FAF8EF] border border-[#DEDED2] rounded-xl px-3.5 py-2.5 text-xs text-[#30312F]"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-[#686962]">Channel Secret:</label>
-                <input
-                  type="text"
-                  defaultValue={lineConfig.channelSecret}
-                  className="font-mono bg-[#FAF8EF] border border-[#DEDED2] rounded-xl px-3.5 py-2.5 text-xs text-[#30312F]"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'storage' && (
-          <div className="flex flex-col gap-5 max-w-2xl">
-            <div>
-              <h3 className="font-sans font-semibold text-[19px] text-[#30312F] m-0 flex items-center gap-2">
-                <HardDrive className="w-5 h-5 text-[#30312F]" />
-                <span>MinIO Storage & PostgreSQL Database Configuration</span>
-              </h3>
-              <p className="font-sans text-xs text-[#85847E] mt-1 m-0">
-                โครงสร้างที่ใช้จัดเก็บไฟล์ภาพดิบและผลการทำนายใน AI Ecosystem
-              </p>
-            </div>
-
-            <div className="p-6 rounded-[20px] bg-[#FAF8EF] border border-[#DEDED2] divide-y divide-[#DEDED2]">
-              <div className="flex justify-between py-2.5 text-xs">
-                <span className="text-[#85847E]">MinIO Endpoint:</span>
-                <span className="font-mono text-[#36612D] font-medium">localhost:9000 (Console: 9001)</span>
-              </div>
-              <div className="flex justify-between py-2.5 text-xs">
-                <span className="text-[#85847E]">Raw Images Bucket:</span>
-                <span className="font-mono text-[#30312F] font-medium">raw-datasets</span>
-              </div>
-              <div className="flex justify-between py-2.5 text-xs">
-                <span className="text-[#85847E]">PostgreSQL Host:</span>
-                <span className="font-mono text-[#30312F] font-medium">localhost:5432 (ai_ecosystem)</span>
-              </div>
-              <div className="flex justify-between py-2.5 text-xs">
-                <span className="text-[#85847E]">Redis Broker:</span>
-                <span className="font-mono text-[#30312F] font-medium">localhost:6379</span>
-              </div>
-            </div>
-          </div>
-        )}
 
         {activeTab === 'trainer' && (
           <div className="w-full">
@@ -439,6 +398,16 @@ export default function SetupPage({
         {activeTab === 'label_studio' && (
           <div className="w-full">
             <LabelStudioManager apiBase={apiBase} />
+          </div>
+        )}
+
+        {activeTab === 'camera_control' && (
+          <div className="w-full">
+            <CameraControlPage
+              embedded={true}
+              onNavigate={onNavigate}
+              initialCameraId={selectedSlotCam}
+            />
           </div>
         )}
       </div>

@@ -4,7 +4,7 @@
     "port": 5005,
     "upload_interval_sec": 15,
     "max_content_length_mb": 16,
-    "framesize": 13,
+    "framesize": 9,
     "quality": 10
   },
   "locations": {
@@ -24,9 +24,11 @@
       "rotation": 180,
       "brightness": 0.82,
       "contrast": 1.15,
-      "framesize": 13,
+      "framesize": 11,
       "quality": 10,
       "deep_sleep_sec": 20,
+      "deep_sleep_sec_day": 20,
+      "deep_sleep_sec_night": 1800,
       "interval_sec": 20
     },
     "front_dept_2": {
@@ -44,10 +46,12 @@
       "rotation": 180,
       "brightness": 0.82,
       "contrast": 1.15,
-      "framesize": 13,
+      "framesize": 11,
       "quality": 10,
       "deep_sleep_sec": 20,
-      "interval_sec": 15
+      "deep_sleep_sec_day": 20,
+      "deep_sleep_sec_night": 1800,
+      "interval_sec": 20
     },
     "side_dept": {
       "id": "side_dept",
@@ -69,10 +73,12 @@
       "rotation": 180,
       "brightness": 0.8,
       "contrast": 1.15,
-      "framesize": 13,
+      "framesize": 11,
       "quality": 10,
       "deep_sleep_sec": 20,
-      "interval_sec": 15
+      "interval_sec": 20,
+      "deep_sleep_sec_day": 20,
+      "deep_sleep_sec_night": 1800
     }
   },
   "database": {

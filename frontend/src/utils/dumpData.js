@@ -831,16 +831,211 @@ export function parsePolygonFromServer(serverPolygon) {
   return null
 }
 
+export const FRAMESIZE_RESOLUTIONS = {
+  13: { width: 1600, height: 1200 },
+  12: { width: 1280, height: 1024 },
+  11: { width: 1280, height: 720 },
+  10: { width: 1024, height: 768 },
+  9:  { width: 800,  height: 600 }
+}
+
+/**
+ * Standard calibrated default zone templates for each camera (normalized [0, 1])
+ */
+export const DEFAULT_CAMERA_ZONES = {
+  cam1: [
+    {
+      id: 'zone_cam1_car',
+      name: 'โซนรถยนต์',
+      type: 'car',
+      capacity: 6,
+      points_normalized: [
+        { x: 0.0281, y: 0.7367 },
+        { x: 0.2606, y: 0.8117 },
+        { x: 0.9944, y: 0.4125 },
+        { x: 0.8994, y: 0.3200 }
+      ]
+    },
+    {
+      id: 'zone_cam1_bike',
+      name: 'โซนมอเตอร์ไซค์',
+      type: 'motorcycle',
+      capacity: 9,
+      points_normalized: [
+        { x: 0.0588, y: 0.6100 },
+        { x: 0.1263, y: 0.6667 },
+        { x: 0.8194, y: 0.3325 },
+        { x: 0.7425, y: 0.3050 }
+      ]
+    }
+  ],
+  cam2: [
+    {
+      id: 'zone_cam2_car',
+      name: 'โซนรถยนต์',
+      type: 'car',
+      capacity: 6,
+      points_normalized: [
+        { x: 0.2519, y: 0.6217 },
+        { x: 0.2244, y: 0.7375 },
+        { x: 0.9663, y: 0.9242 },
+        { x: 0.9200, y: 0.7575 }
+      ]
+    },
+    {
+      id: 'zone_cam2_bike',
+      name: 'โซนมอเตอร์ไซค์',
+      type: 'motorcycle',
+      capacity: 13,
+      points_normalized: [
+        { x: 0.4413, y: 0.5592 },
+        { x: 0.4369, y: 0.6275 },
+        { x: 0.9675, y: 0.7308 },
+        { x: 0.9538, y: 0.6500 }
+      ]
+    }
+  ],
+  cam3: [
+    {
+      id: 'zone_cam3_bike_1',
+      name: 'โซนมอเตอร์ไซค์ 1',
+      type: 'motorcycle',
+      capacity: 25,
+      points_normalized: [
+        { x: 0.3738, y: 0.1658 },
+        { x: 0.2313, y: 0.9867 },
+        { x: 0.4538, y: 0.9825 },
+        { x: 0.4900, y: 0.1533 }
+      ]
+    },
+    {
+      id: 'zone_cam3_bike_2',
+      name: 'โซนมอเตอร์ไซค์ 2',
+      type: 'motorcycle',
+      capacity: 25,
+      points_normalized: [
+        { x: 0.5631, y: 0.1600 },
+        { x: 0.6025, y: 0.9958 },
+        { x: 0.8569, y: 0.9917 },
+        { x: 0.6763, y: 0.1625 }
+      ]
+    }
+  ]
+}
+
+/**
+ * Generate pixel points scaled to target resolution from default templates
+ */
+export function getDefaultZonesForCamera(camId = 'cam1', targetWidth = 1280, targetHeight = 720) {
+  const templates = DEFAULT_CAMERA_ZONES[camId] || DEFAULT_CAMERA_ZONES.cam1
+  return templates.map((tmpl) => {
+    const pts = tmpl.points_normalized.map((np) => ({
+      x: Math.max(0, Math.min(targetWidth, Math.round(np.x * targetWidth))),
+      y: Math.max(0, Math.min(targetHeight, Math.round(np.y * targetHeight)))
+    }))
+    return {
+      id: tmpl.id,
+      name: tmpl.name,
+      type: tmpl.type,
+      capacity: tmpl.capacity,
+      points: pts,
+      points_normalized: tmpl.points_normalized,
+      frame_width: targetWidth,
+      frame_height: targetHeight
+    }
+  })
+}
+
+/**
+ * Infer the base resolution from points if not explicitly specified
+ */
+export function inferBaseResolution(points) {
+  if (!points || !Array.isArray(points) || points.length === 0) {
+    return { width: 1600, height: 1200 }
+  }
+  let maxX = 0
+  let maxY = 0
+  for (const p of points) {
+    const x = Array.isArray(p) ? p[0] : (p?.x || 0)
+    const y = Array.isArray(p) ? p[1] : (p?.y || 0)
+    if (x > maxX) maxX = x
+    if (y > maxY) maxY = y
+  }
+  if (maxX > 1280 || maxY > 768) return { width: 1600, height: 1200 }
+  if (maxX > 1024 || maxY > 600) return { width: 1280, height: 720 }
+  if (maxX > 800 || maxY > 480) return { width: 1024, height: 768 }
+  if (maxX > 480 || maxY > 320) return { width: 800, height: 600 }
+  return { width: 1600, height: 1200 }
+}
+
+/**
+ * Dynamically scale zone polygon points to target image dimensions
+ */
+export function scaleZones(zones, targetWidth, targetHeight, sourceWidth = null, sourceHeight = null) {
+  if (!Array.isArray(zones) || zones.length === 0) return []
+  if (!targetWidth || !targetHeight) return zones
+
+  return zones.map((zone) => {
+    if (!zone || !Array.isArray(zone.points) || zone.points.length === 0) return zone
+
+    // 1. If normalized points already exist, scale from [0, 1] directly to target
+    if (Array.isArray(zone.points_normalized) && zone.points_normalized.length === zone.points.length) {
+      const newPoints = zone.points_normalized.map((np) => ({
+        x: Math.max(0, Math.min(targetWidth, Math.round(np.x * targetWidth))),
+        y: Math.max(0, Math.min(targetHeight, Math.round(np.y * targetHeight)))
+      }))
+      return {
+        ...zone,
+        points: newPoints,
+        frame_width: targetWidth,
+        frame_height: targetHeight
+      }
+    }
+
+    // 2. Otherwise determine source resolution and compute normalized points
+    let sW = sourceWidth || zone.frame_width
+    let sH = sourceHeight || zone.frame_height
+    if (!sW || !sH) {
+      const inferred = inferBaseResolution(zone.points)
+      sW = inferred.width
+      sH = inferred.height
+    }
+
+    // Normalized points based on source resolution
+    const newNorm = zone.points.map((p) => ({
+      x: +(Math.max(0, Math.min(sW, p.x)) / sW).toFixed(4),
+      y: +(Math.max(0, Math.min(sH, p.y)) / sH).toFixed(4)
+    }))
+
+    const newPoints = newNorm.map((np) => ({
+      x: Math.max(0, Math.min(targetWidth, Math.round(np.x * targetWidth))),
+      y: Math.max(0, Math.min(targetHeight, Math.round(np.y * targetHeight)))
+    }))
+
+    return {
+      ...zone,
+      points: newPoints,
+      points_normalized: newNorm,
+      frame_width: targetWidth,
+      frame_height: targetHeight
+    }
+  })
+}
+
 /**
  * Sync drawn ROI zone area polygon(s) to backend Ingestion Server and detection worker
  */
-export async function saveRoiToServer(camId, slotsIgnored = [], zonesOrPolygon = null) {
+export async function saveRoiToServer(camId, slotsIgnored = [], zonesOrPolygon = null, frameWidth = null, frameHeight = null) {
   let activeZones = []
   if (Array.isArray(zonesOrPolygon) && zonesOrPolygon.length > 0) {
     activeZones = normalizeZones(zonesOrPolygon)
   } else {
     activeZones = getSavedOrInitialZones(camId)
   }
+
+  // Determine active frame resolution
+  const activeW = frameWidth || activeZones[0]?.frame_width || 1600
+  const activeH = frameHeight || activeZones[0]?.frame_height || 1200
 
   const defaultCap = (zType) => (zType === 'car' ? 6 : (camId === 'cam1' ? 9 : (camId === 'cam2' ? 13 : 25)))
   const totalCap = activeZones.reduce((sum, z) => sum + (Number(z.capacity) || defaultCap(z.type)), 0)
@@ -851,12 +1046,21 @@ export async function saveRoiToServer(camId, slotsIgnored = [], zonesOrPolygon =
     name: getCameraConfig(camId)?.name || camId,
     capacity: totalCap,
     slots: [],
+    frame_width: activeW,
+    frame_height: activeH,
+    resolution: [activeW, activeH],
     zones: activeZones.map((z) => ({
       id: z.id,
       name: z.name,
       type: z.type,
       capacity: Number(z.capacity) || defaultCap(z.type),
-      polygon: formatPolygonForServer(z.points)
+      polygon: formatPolygonForServer(z.points),
+      points_normalized: z.points_normalized || z.points.map((p) => ({
+        x: +(p.x / activeW).toFixed(4),
+        y: +(p.y / activeH).toFixed(4)
+      })),
+      frame_width: activeW,
+      frame_height: activeH
     })),
     polygon: formatPolygonForServer(firstZone)
   }
@@ -897,17 +1101,28 @@ export async function saveAllCamerasRoiToServer() {
     const zones = getSavedOrInitialZones(camId)
     const defaultCap = (zType) => (zType === 'car' ? 6 : (camId === 'cam1' ? 9 : (camId === 'cam2' ? 13 : 25)))
     const totalCap = zones.reduce((sum, z) => sum + (Number(z.capacity) || defaultCap(z.type)), 0)
+    const activeW = zones[0]?.frame_width || 1600
+    const activeH = zones[0]?.frame_height || 1200
     return {
       camera_id: camId,
       name: getCameraConfig(camId)?.name || camId,
       capacity: totalCap,
       slots: [],
+      frame_width: activeW,
+      frame_height: activeH,
+      resolution: [activeW, activeH],
       zones: zones.map((z) => ({
         id: z.id,
         name: z.name,
         type: z.type,
         capacity: Number(z.capacity) || defaultCap(z.type),
-        polygon: formatPolygonForServer(z.points)
+        polygon: formatPolygonForServer(z.points),
+        points_normalized: z.points_normalized || z.points.map((p) => ({
+          x: +(p.x / activeW).toFixed(4),
+          y: +(p.y / activeH).toFixed(4)
+        })),
+        frame_width: activeW,
+        frame_height: activeH
       })),
       polygon: formatPolygonForServer(zones[0]?.points || null)
     }
@@ -1083,15 +1298,30 @@ export function normalizeZones(rawZones) {
           const rawPts = z.points || z.polygon
           const parsedPts = parsePolygonFromServer(rawPts)
           if (!parsedPts || parsedPts.length < 3) return null
+          const frameW = z.frame_width || null
+          const frameH = z.frame_height || null
+          let rawNorm = Array.isArray(z.points_normalized) && z.points_normalized.length === parsedPts.length ? z.points_normalized : null
+          if (!rawNorm && parsedPts && parsedPts.length >= 3) {
+            const baseRes = frameW && frameH ? { width: frameW, height: frameH } : inferBaseResolution(parsedPts)
+            rawNorm = parsedPts.map((p) => ({
+              x: +(Math.max(0, Math.min(baseRes.width, p.x)) / baseRes.width).toFixed(4),
+              y: +(Math.max(0, Math.min(baseRes.height, p.y)) / baseRes.height).toFixed(4)
+            }))
+          }
+          const isBike = z.type === 'motorcycle' || z.type === 'bike'
           return {
             id: z.id || `zone_${idx + 1}`,
             name:
               z.name ||
-              (z.type === 'motorcycle' || z.type === 'bike'
+              (isBike
                 ? `โซนมอเตอร์ไซค์ ${idx + 1}`
                 : `โซนรถยนต์ ${idx + 1}`),
-            type: z.type === 'motorcycle' || z.type === 'bike' ? 'motorcycle' : 'car',
-            points: parsedPts
+            type: isBike ? 'motorcycle' : 'car',
+            capacity: Number(z.capacity) || (isBike ? 9 : 6),
+            points: parsedPts,
+            points_normalized: rawNorm,
+            frame_width: frameW,
+            frame_height: frameH
           }
         })
         .filter(Boolean)
@@ -1101,12 +1331,21 @@ export function normalizeZones(rawZones) {
     // Check if it's a single polygon array: [{x, y}, ...] or [[x, y], ...]
     const singlePts = parsePolygonFromServer(rawZones)
     if (singlePts && singlePts.length >= 3 && !isDummyTestZone(singlePts)) {
+      const baseRes = inferBaseResolution(singlePts)
+      const normPts = singlePts.map((p) => ({
+        x: +(Math.max(0, Math.min(baseRes.width, p.x)) / baseRes.width).toFixed(4),
+        y: +(Math.max(0, Math.min(baseRes.height, p.y)) / baseRes.height).toFixed(4)
+      }))
       return [
         {
           id: 'zone_1',
           name: 'โซนพื้นที่รวม 1',
           type: 'car',
-          points: singlePts
+          capacity: 6,
+          points: singlePts,
+          points_normalized: normPts,
+          frame_width: baseRes.width,
+          frame_height: baseRes.height
         }
       ]
     }
@@ -1114,27 +1353,31 @@ export function normalizeZones(rawZones) {
   return []
 }
 
-export function getSavedOrInitialZones(camId = 'cam1') {
-  if (typeof window === 'undefined') return []
+export function getSavedOrInitialZones(camId = 'cam1', targetWidth = 1280, targetHeight = 720) {
+  if (typeof window === 'undefined') return getDefaultZonesForCamera(camId, targetWidth, targetHeight)
   const storageKey = `cpe_parking_zones_${camId}`
   try {
     const raw = localStorage.getItem(storageKey)
     if (raw) {
       const parsed = JSON.parse(raw)
       const normalized = normalizeZones(parsed)
-      if (normalized.length > 0) return normalized
+      if (normalized.length > 0) {
+        return scaleZones(normalized, targetWidth, targetHeight)
+      }
     }
     // Fallback to legacy single zone key ONLY if multi-zones key has nothing
     const singleRaw = localStorage.getItem(`cpe_parking_zone_${camId}`)
     if (singleRaw) {
       const parsed = JSON.parse(singleRaw)
       const normalized = normalizeZones(parsed)
-      if (normalized.length > 0) return normalized
+      if (normalized.length > 0) {
+        return scaleZones(normalized, targetWidth, targetHeight)
+      }
     }
   } catch (e) {
     console.warn(`Error reading saved zones for ${camId}:`, e)
   }
-  return []
+  return getDefaultZonesForCamera(camId, targetWidth, targetHeight)
 }
 
 export function saveZonesToStorage(zones, camId = 'cam1', broadcast = true) {
@@ -1144,10 +1387,25 @@ export function saveZonesToStorage(zones, camId = 'cam1', broadcast = true) {
     const safeZones = Array.isArray(zones)
       ? zones.filter((z) => z && Array.isArray(z.points) && z.points.length >= 3)
       : []
-    if (safeZones.length > 0) {
-      localStorage.setItem(storageKey, JSON.stringify(safeZones))
-      // Keep legacy single key synced with first zone for backward compatibility
-      localStorage.setItem(`cpe_parking_zone_${camId}`, JSON.stringify(safeZones[0].points))
+    const finalized = safeZones.map((z) => {
+      const fW = z.frame_width || 1280
+      const fH = z.frame_height || 720
+      const norm = Array.isArray(z.points_normalized) && z.points_normalized.length === z.points.length
+        ? z.points_normalized
+        : z.points.map((p) => ({
+            x: +(Math.max(0, Math.min(fW, p.x)) / fW).toFixed(4),
+            y: +(Math.max(0, Math.min(fH, p.y)) / fH).toFixed(4)
+          }))
+      return {
+        ...z,
+        points_normalized: norm,
+        frame_width: fW,
+        frame_height: fH
+      }
+    })
+    if (finalized.length > 0) {
+      localStorage.setItem(storageKey, JSON.stringify(finalized))
+      localStorage.setItem(`cpe_parking_zone_${camId}`, JSON.stringify(finalized[0].points))
     } else {
       localStorage.removeItem(storageKey)
       localStorage.removeItem(`cpe_parking_zone_${camId}`)
@@ -1155,7 +1413,7 @@ export function saveZonesToStorage(zones, camId = 'cam1', broadcast = true) {
     if (broadcast) {
       window.dispatchEvent(
         new CustomEvent('cpe-zones-updated', {
-          detail: { cameraId: camId, zones: safeZones }
+          detail: { cameraId: camId, zones: finalized }
         })
       )
     }

@@ -5,10 +5,12 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, Header, HTTPException, Request
 
+from backend.app.core.config import settings
 from backend.app.services.line_bot_service import (
     CURRENT_PARKING_STATE,
     InvalidSignatureError,
     line_bot_service,
+    get_public_https_url,
 )
 
 logger = logging.getLogger(__name__)
@@ -63,6 +65,38 @@ def get_bot_status() -> Dict[str, Any]:
         "bot_id": "@422ubvyc",
         "mode": "rule_based_quick_reply",
         "current_state": CURRENT_PARKING_STATE,
+    }
+
+
+@router.get(
+    "/api/v1/line/config",
+    summary="Get LINE Bot Configuration & Connection Status",
+    description="Returns public webhook URL, channel tokens, bot profile and connection status for the setup UI.",
+)
+def get_line_config() -> Dict[str, Any]:
+    """Return LINE Messaging API credentials and webhook info for setup."""
+    public_base = get_public_https_url()
+    secret = settings.line_channel_secret or ""
+    token = settings.line_channel_access_token or ""
+    masked_secret = f"{secret[:6]}...{secret[-4:]}" if len(secret) > 10 else ("Configured" if secret else "Not configured")
+    masked_token = f"{token[:12]}...{token[-6:]}" if len(token) > 18 else ("Configured" if token else "Not configured")
+    
+    return {
+        "bot_name": "น้องจ๊อด หาที่จอดรถ",
+        "bot_id": "@422ubvyc",
+        "channel_id": settings.line_channel_id or "2011743452",
+        "channel_secret": secret,
+        "channel_secret_masked": masked_secret,
+        "channel_access_token": token,
+        "channel_access_token_masked": masked_token,
+        "public_base_url": public_base,
+        "webhook_url": f"{public_base}/api/v1/line/webhook",
+        "local_webhook_url": "http://172.30.228.51:8000/api/v1/line/webhook",
+        "is_connected": bool(secret and token),
+        "mode": "rule_based_quick_reply",
+        "rich_menu_active": True,
+        "rich_menu_id": "richmenu-e2c4a61d9f3b0b1246e4ce1ab834b52a",
+        "add_friend_url": "https://line.me/R/ti/p/@422ubvyc"
     }
 
 

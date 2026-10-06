@@ -46,9 +46,13 @@ export default function CameraDetailPage({
   // Real-time snapshot key: force refresh on mount and every 2.5s
   const [snapshotKey, setSnapshotKey] = useState(() => Date.now())
 
+  // Real dimensions auto-detected from live snapshot stream
+  const [imgDims, setImgDims] = useState({ width: 0, height: 0 })
+
   useEffect(() => {
     // Immediate refresh on camera switch / mount
     setSnapshotKey(Date.now())
+    setImgDims({ width: 0, height: 0 })
     const interval = setInterval(() => {
       setSnapshotKey(Date.now())
     }, 2500)
@@ -62,7 +66,7 @@ export default function CameraDetailPage({
     return cameras.find((c) => c.camId === normalizedCamId) || cam1 || cameras[0]
   }, [cameras, normalizedCamId, cam1])
 
-  const [showRoi, setShowRoi] = useState(true)
+  const [showRoi, setShowRoi] = useState(false)
   const [slotFilter, setSlotFilter] = useState('all') // 'all' | 'vacant' | 'occupied' | 'car' | 'bike'
   const playerRef = useRef(null)
 
@@ -167,7 +171,7 @@ export default function CameraDetailPage({
                 {currentCamera?.name || 'กล้องวงจรปิด'}
               </h1>
               <span className="font-sans text-[11px] text-neutral-400 hidden sm:block truncate">
-                {currentCamera?.subtitle || currentCamera?.device || 'ESP32-CAM Node'} · 1600 × 1200 Native
+                {currentCamera?.subtitle || currentCamera?.device || 'ESP32-CAM Node'} · {imgDims.width > 0 ? `${imgDims.width} × ${imgDims.height} px` : 'กำลังตรวจสอบความละเอียด...'}
               </span>
             </div>
           </div>
@@ -223,8 +227,17 @@ export default function CameraDetailPage({
                     src={liveImageUrl}
                     alt={currentCamera.name}
                     className="w-full h-full object-cover select-none"
+                    onLoad={(e) => {
+                      if (e.target.naturalWidth && e.target.naturalHeight) {
+                        setImgDims({
+                          width: e.target.naturalWidth,
+                          height: e.target.naturalHeight
+                        })
+                      }
+                    }}
                     onError={(e) => {
-                      e.currentTarget.src = `/data/snapshots/${currentCamera.camId}_detected.jpg?t=${snapshotKey}`
+                      const apiBase = getIngestionApiBase()
+                      e.currentTarget.src = `${apiBase}/api/latest?camera_id=${currentCamera.camId}&image=true`
                     }}
                   />
 
@@ -242,15 +255,20 @@ export default function CameraDetailPage({
                   {showRoi && slots.length > 0 && (
                     <svg
                       className="absolute inset-0 w-full h-full pointer-events-none"
-                      viewBox="0 0 1600 1200"
+                      viewBox={`0 0 ${imgDims.width || 1280} ${imgDims.height || 720}`}
                     >
                       {slots.map((slot) => {
                         if (!slot.points || slot.points.length === 0) return null
                         const isOccupied = Boolean(slot.occupied)
-                        const pointsString = slot.points.map((p) => `${p.x},${p.y}`).join(' ')
+                        const w = imgDims.width || 1280
+                        const h = imgDims.height || 720
+                        const sx = w / 1600
+                        const sy = h / 1200
+                        const scaledPoints = slot.points.map((p) => ({ x: p.x * sx, y: p.y * sy }))
+                        const pointsString = scaledPoints.map((p) => `${p.x},${p.y}`).join(' ')
                         const center = {
-                          x: slot.points.reduce((acc, p) => acc + p.x, 0) / slot.points.length,
-                          y: slot.points.reduce((acc, p) => acc + p.y, 0) / slot.points.length
+                          x: scaledPoints.reduce((acc, p) => acc + p.x, 0) / scaledPoints.length,
+                          y: scaledPoints.reduce((acc, p) => acc + p.y, 0) / scaledPoints.length
                         }
 
                         return (
@@ -292,7 +310,9 @@ export default function CameraDetailPage({
                         currentCamera.isOnline !== false ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'
                       }`}
                     />
-                    <span>1600 × 1200 · {currentCamera.slotCode}</span>
+                    <span>
+                      {imgDims.width > 0 ? `${imgDims.width} × ${imgDims.height} px` : 'กำลังเชื่อมต่อ...'} · {currentCamera.slotCode}
+                    </span>
                   </div>
 
                   {/* Bottom-Right Live Timestamp */}
@@ -655,7 +675,7 @@ export default function CameraDetailPage({
                   className="px-2.5 py-1 rounded-full bg-[#1C2027] hover:bg-[#252A34] text-neutral-200 hover:text-white border border-[#343A46] text-[11px] sm:text-xs font-medium hover:underline flex items-center gap-1.5 transition-colors shrink-0"
                 >
                   <Download className="w-3 h-3 text-neutral-400" />
-                  <span>โหลด HD</span>
+                  <span>โหลดภาพ {imgDims.width > 0 ? `(${imgDims.width}×${imgDims.height})` : 'HD'}</span>
                 </a>
               )}
             </div>

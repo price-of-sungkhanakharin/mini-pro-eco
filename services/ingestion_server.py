@@ -645,10 +645,18 @@ def upload():
     # Dynamically fetched from the camera's configuration (or defaults):
     # - framesize: loc_cfg.get("framesize", 9)
     # - quality: loc_cfg.get("quality", 10)
-    # - deep_sleep_sec: loc_cfg.get("deep_sleep_sec", 20)
+    # - deep_sleep_sec: Day (07:30 - 18:30) = 20s, Night = 1800s
     framesize = int(loc_cfg.get("framesize", 9))
     quality = int(loc_cfg.get("quality", 10))
-    deep_sleep_sec = int(loc_cfg.get("deep_sleep_sec", 20))
+
+    # Day / Night Sleep Schedule: 07:30 - 18:30 is Daytime (20s), Nighttime is 1800s
+    from datetime import time as dt_time
+    now_time = now.time()
+    is_daytime = dt_time(7, 30) <= now_time < dt_time(18, 30)
+    if is_daytime:
+        deep_sleep_sec = int(loc_cfg.get("deep_sleep_sec_day", loc_cfg.get("deep_sleep_sec", 20)))
+    else:
+        deep_sleep_sec = int(loc_cfg.get("deep_sleep_sec_night", 1800))
 
     # Time-Series ML models (Thermal & Traffic Dynamics) for predictive analytics
     ts_recommendation = None
@@ -806,13 +814,15 @@ def db_save_parking_template(cam_id, payload):
             capacity = int(payload.get("capacity", len(slots)))
             vehicle_type = payload.get("vehicle_type") or ("motorcycle" if cam_id == "cam3" or "bike" in name.lower() or "มอเตอร์ไซค์" in name else "car")
             polygon = payload.get("zones") if payload.get("zones") is not None else payload.get("polygon", [])
+            frame_w = int(payload.get("frame_width") or (payload.get("resolution") or [1600, 1200])[0] or 1600)
+            frame_h = int(payload.get("frame_height") or (payload.get("resolution") or [1600, 1200])[1] or 1200)
 
             cur.execute("""
                 INSERT INTO parking_templates (
                     camera_id, location_name, vehicle_type, total_capacity,
                     zone_polygon, slots, frame_width, frame_height, is_active, updated_at
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, 1600, 1200, TRUE, NOW())
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, TRUE, NOW())
                 ON CONFLICT (camera_id) DO UPDATE SET
                     location_name = EXCLUDED.location_name,
                     vehicle_type = EXCLUDED.vehicle_type,
@@ -823,7 +833,7 @@ def db_save_parking_template(cam_id, payload):
                     frame_height = EXCLUDED.frame_height,
                     is_active = EXCLUDED.is_active,
                     updated_at = NOW();
-            """, (cam_id, name, vehicle_type, capacity, Json(polygon), Json(slots)))
+            """, (cam_id, name, vehicle_type, capacity, Json(polygon), Json(slots), frame_w, frame_h))
 
             # Also initialize/update park_status
             occupied_slots = [s["id"] for s in slots if s.get("occupied")]
@@ -1234,6 +1244,20 @@ def settings():
                 except ValueError:
                     pass
 
+            ds_day_val = request.args.get("deep_sleep_sec_day") or req_data.get("deep_sleep_sec_day")
+            if ds_day_val is not None:
+                try:
+                    LOCATIONS[loc]["deep_sleep_sec_day"] = max(5, int(ds_day_val))
+                except ValueError:
+                    pass
+
+            ds_night_val = request.args.get("deep_sleep_sec_night") or req_data.get("deep_sleep_sec_night")
+            if ds_night_val is not None:
+                try:
+                    LOCATIONS[loc]["deep_sleep_sec_night"] = max(10, int(ds_night_val))
+                except ValueError:
+                    pass
+
             # Persist to config.json
             try:
                 CONFIG["locations"] = LOCATIONS
@@ -1252,6 +1276,8 @@ def settings():
             "framesize": LOCATIONS[loc_key].get("framesize", 9),
             "quality": LOCATIONS[loc_key].get("quality", 10),
             "deep_sleep_sec": LOCATIONS[loc_key].get("deep_sleep_sec", 20),
+            "deep_sleep_sec_day": LOCATIONS[loc_key].get("deep_sleep_sec_day", LOCATIONS[loc_key].get("deep_sleep_sec", 20)),
+            "deep_sleep_sec_night": LOCATIONS[loc_key].get("deep_sleep_sec_night", 1800),
             "interval_sec": LOCATIONS[loc_key].get("interval_sec", 15),
         }
         for loc_key in LOCATIONS

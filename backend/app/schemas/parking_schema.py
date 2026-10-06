@@ -82,9 +82,12 @@ class CameraSettingsSchema(BaseModel):
     brightness: float = 1.0
     contrast: float = 1.0
     rotation: int = 0
-    framesize: int = 13
+    framesize: int = 9
     quality: int = 10
-    interval_sec: int = 15
+    interval_sec: int = 20
+    deep_sleep_sec: int = 20
+    deep_sleep_sec_day: int = 20
+    deep_sleep_sec_night: int = 1800
 
 
 class ParkStatusResponse(BaseModel):

@@ -526,7 +526,7 @@
 .navbar-row-bottom-inner {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   height: 100%;
   width: 100%;
   max-width: 1440px;
@@ -535,64 +535,21 @@
   box-sizing: border-box;
 }
 
-/* Left Active View Tracker Badge */
-.navbar-active-view-context {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 10px;
-  border-radius: 100px;
-  background-color: var(--color-surface-muted, #EFEFEA);
-  border: 1px solid var(--color-border);
-  flex-shrink: 0;
-}
-
-.navbar-view-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: var(--radius-full);
-  background-color: var(--color-green-bright, #22C55E);
-  display: inline-block;
-  flex-shrink: 0;
-}
-
-.navbar-view-tag {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--color-ink-secondary, #85847E);
-  letter-spacing: 0.05em;
-}
-
-.navbar-view-name {
-  font-family: var(--font-sans);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-ink, #30312F);
-}
-
-@media (max-width: 1200px) {
-  .navbar-active-view-context {
-    display: none;
-  }
-}
-
-/* Right Navigation Links (Figma: 36px gap, right-aligned) */
+/* Desktop Navigation Links (Clean left-aligned row) */
 .navbar-links-group {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: flex-end;
-  gap: 36px;
+  justify-content: flex-start;
+  gap: 32px;
   height: 100%;
-  margin-left: auto;
   overflow-x: auto;
   scrollbar-width: none;
 }
 
 @media (min-width: 1024px) and (max-width: 1279px) {
   .navbar-links-group {
-    gap: 20px;
+    gap: 18px;
   }
 }
 

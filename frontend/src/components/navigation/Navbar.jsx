@@ -74,7 +74,9 @@ export default function Navbar({
     { name: 'Label Studio', port: ':8080', logo: LabelStudioLogo }
   ]
 
-  const currentItem = navItems.find((i) => i.id === currentView) || navItems[0]
+  const currentItem =
+    navItems.find((i) => i.id === currentView) ||
+    (currentView === 'camera_control' ? navItems.find((i) => i.id === 'setup') : navItems[0])
 
   return (
     <header className="cpe-navbar">
@@ -186,17 +188,15 @@ export default function Navbar({
       {/* Row 2: Desktop Navigation Links (>=1024px) Right-Aligned with Active Indicator */}
       <nav className="navbar-row-bottom" aria-label="Main Navigation">
         <div className="navbar-row-inner navbar-row-bottom-inner">
-          {/* Left Context: Active View Indicator Badge */}
-          <div className="navbar-active-view-context">
-            <span className="navbar-view-dot" />
-            <span className="navbar-view-tag">ACTIVE VIEW:</span>
-            <span className="navbar-view-name">{currentItem.label}</span>
-          </div>
-
-          {/* Right: Desktop Navigation items (Figma Spec: 36px gap, #85847E inactive, #30312F active + 22x2px indicator) */}
+          {/* Desktop Navigation items (Clean, left-aligned, no overlapping active view badge) */}
           <div className="navbar-links-group">
             {navItems.map((item) => {
-              const isActive = currentView === item.id
+              const isActive =
+                currentView === item.id ||
+                (item.id === 'setup' &&
+                  (currentView === 'camera_control' ||
+                    currentView === 'slot_map' ||
+                    currentView === 'label_studio'))
               return (
                 <button
                   key={item.id}

@@ -254,17 +254,28 @@ export default function CameraDetailPage({
                   {/* SVG ROI Vector Polygons Overlay */}
                   {showRoi && slots.length > 0 && (
                     <svg
-                      className="absolute inset-0 w-full h-full pointer-events-none"
+                      className="absolute inset-0 w-full h-full pointer-events-none overflow-hidden"
                       viewBox={`0 0 ${imgDims.width || 1280} ${imgDims.height || 720}`}
+                      style={{ overflow: 'hidden' }}
                     >
                       {slots.map((slot) => {
                         if (!slot.points || slot.points.length === 0) return null
                         const isOccupied = Boolean(slot.occupied)
                         const w = imgDims.width || 1280
                         const h = imgDims.height || 720
-                        const sx = w / 1600
-                        const sy = h / 1200
-                        const scaledPoints = slot.points.map((p) => ({ x: p.x * sx, y: p.y * sy }))
+                        let scaledPoints
+                        if (Array.isArray(slot.points_normalized) && slot.points_normalized.length === slot.points.length) {
+                          scaledPoints = slot.points_normalized.map((np) => ({
+                            x: Math.round(np.x * w),
+                            y: Math.round(np.y * h)
+                          }))
+                        } else {
+                          const sW = slot.frame_width || 1600
+                          const sH = slot.frame_height || 1200
+                          const sx = w / sW
+                          const sy = h / sH
+                          scaledPoints = slot.points.map((p) => ({ x: Math.round(p.x * sx), y: Math.round(p.y * sy) }))
+                        }
                         const pointsString = scaledPoints.map((p) => `${p.x},${p.y}`).join(' ')
                         const center = {
                           x: scaledPoints.reduce((acc, p) => acc + p.x, 0) / scaledPoints.length,

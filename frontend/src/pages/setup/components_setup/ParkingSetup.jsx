@@ -121,19 +121,19 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
       if (res.ok) {
         const data = await res.json()
         if (data && data[camId]) {
-          const fs = data[camId].framesize ?? 13
+          const fs = data[camId].framesize ?? 11
           setCamHardwareSettings({
             framesize: fs,
             quality: data[camId].quality ?? 10,
-            interval_sec: data[camId].interval_sec ?? 15
+            interval_sec: data[camId].interval_sec ?? 20
           })
           const defaultRes = FRAMESIZE_RESOLUTIONS[fs]
           if (defaultRes && defaultRes.width) {
-            setImgDimensions((prev) => {
-              if (prev.width === 1600 && prev.height === 1200 && fs !== 13) {
-                return defaultRes
-              }
-              return prev
+            setImgDimensions(defaultRes)
+            setZones((prev) => {
+              const scaled = scaleZones(prev, defaultRes.width, defaultRes.height)
+              saveZonesToStorage(scaled, camId, false)
+              return scaled
             })
           }
         }
@@ -148,11 +148,11 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
     try {
       setIsSyncingServer(true)
       const targetRes = FRAMESIZE_RESOLUTIONS[newSettings.framesize]
-      if (targetRes && (targetRes.width !== imgDimensions.width || targetRes.height !== imgDimensions.height)) {
-        // Adapt zones to the new target framesize resolution
-        const scaled = scaleZones(zones, targetRes.width, targetRes.height, imgDimensions.width, imgDimensions.height)
-        setZones(scaled)
+      if (targetRes) {
+        setCamHardwareSettings(newSettings)
         setImgDimensions(targetRes)
+        const scaled = scaleZones(zones, targetRes.width, targetRes.height)
+        setZones(scaled)
         saveZonesToStorage(scaled, selectedCamId)
         await saveRoiToServer(selectedCamId, [], scaled, targetRes.width, targetRes.height)
       }
@@ -192,20 +192,24 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
     const nw = e.target.naturalWidth
     const nh = e.target.naturalHeight
     if (nw > 0 && nh > 0) {
-      setImgDimensions((prev) => {
-        if (prev.width !== nw || prev.height !== nh) {
-          // Scale zones to match real image resolution
-          setZones((prevZones) => {
-            const scaled = scaleZones(prevZones, nw, nh, prev.width, prev.height)
-            saveZonesToStorage(scaled, selectedCamId, false)
-            saveRoiToServer(selectedCamId, [], scaled, nw, nh)
-            return scaled
-          })
-          return { width: nw, height: nh }
-        }
-        return prev
+      setImgDimensions({ width: nw, height: nh })
+      setZones((prevZones) => {
+        const scaled = scaleZones(prevZones, nw, nh)
+        saveZonesToStorage(scaled, selectedCamId, false)
+        return scaled
       })
     }
+  }
+
+  // Reset to canonical calibrated default zones for current camera at current resolution
+  const handleResetToDefaultZones = () => {
+    const currentW = imgDimensions.width || 1280
+    const currentH = imgDimensions.height || 720
+    const defaults = getDefaultZonesForCamera(selectedCamId, currentW, currentH)
+    setZones(defaults)
+    saveZonesToStorage(defaults, selectedCamId)
+    saveRoiToServer(selectedCamId, [], defaults, currentW, currentH)
+    showToast(`คืนค่าพิกัดโซนมาตรฐานของ ${activeCam.code} (${currentW}×${currentH}) เรียบร้อย!`)
   }
 
   // Load live camera feed on mount and when switching cameras
@@ -217,6 +221,8 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
     setZoneDraft([])
     setIsDrawingZone(false)
     setSelectedZoneId(null)
+    const initialZ = getSavedOrInitialZones(selectedCamId, imgDimensions.width, imgDimensions.height)
+    setZones(initialZ)
   }, [selectedCamId])
 
   // Real-time Auto-Polling (every 4 seconds for live snapshot updates)
@@ -248,9 +254,11 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
           const rawZones = serverCam.zones || serverCam.polygon
           const normalized = normalizeZones(rawZones)
           if (normalized.length > 0) {
+            const currentW = imgDimensions.width || 1280
+            const currentH = imgDimensions.height || 720
             const sW = serverCam.frame_width || (serverCam.resolution && serverCam.resolution[0]) || null
             const sH = serverCam.frame_height || (serverCam.resolution && serverCam.resolution[1]) || null
-            const scaled = scaleZones(normalized, imgDimensions.width, imgDimensions.height, sW, sH)
+            const scaled = scaleZones(normalized, currentW, currentH, sW, sH)
             setZones(scaled)
             saveZonesToStorage(scaled, selectedCamId, false)
           }
@@ -365,11 +373,13 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
 
     if (dragging && dragging.type === 'zone_point') {
       const { zoneId, pointIndex } = dragging
+      const clampedX = Math.max(0, Math.min(imgDimensions.width, coords.x))
+      const clampedY = Math.max(0, Math.min(imgDimensions.height, coords.y))
       setZones((prev) =>
         prev.map((z) => {
           if (z.id !== zoneId) return z
           const newPts = [...z.points]
-          newPts[pointIndex] = coords
+          newPts[pointIndex] = { x: clampedX, y: clampedY }
           const newNorm = newPts.map((p) => ({
             x: +(p.x / imgDimensions.width).toFixed(4),
             y: +(p.y / imgDimensions.height).toFixed(4)
@@ -655,6 +665,16 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
 
               <button
                 type="button"
+                className="tool-btn"
+                onClick={handleResetToDefaultZones}
+                title="คืนค่ากรอบพิกัดโซนมาตรฐานของกล้องนี้ที่ความละเอียดปัจจุบัน"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-[var(--color-green-text)]" strokeWidth={1.8} />
+                <span>พิกัดมาตรฐาน</span>
+              </button>
+
+              <button
+                type="button"
                 className={`icon-toggle-btn ${showZoneOverlay ? 'active' : ''}`}
                 onClick={() => setShowZoneOverlay(!showZoneOverlay)}
                 title="เปิด/ปิด การแสดงกรอบโซน"
@@ -677,125 +697,133 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
 
           {/* Interactive Canvas Viewport */}
           <div className="roi-viewport-wrapper" ref={containerRef}>
-            {/* Background Image for Active Camera */}
-            <img
-              src={activeImageUrl}
-              alt={`${activeCam.code} Background Feed`}
-              className="roi-bg-image"
-              onLoad={handleImageLoad}
-            />
+            <div className="roi-canvas-stage relative w-full overflow-hidden select-none bg-neutral-900 rounded-t-[18px]">
+              {/* Background Image for Active Camera */}
+              <img
+                src={activeImageUrl}
+                alt={`${activeCam.code} Background Feed`}
+                className="roi-bg-image w-full h-auto block select-none pointer-events-none"
+                onLoad={handleImageLoad}
+              />
 
-            {/* SVG Vector Drawing Layer */}
-            <svg
-              ref={svgRef}
-              className="roi-svg-overlay"
-              viewBox={`0 0 ${imgDimensions.width} ${imgDimensions.height}`}
-              onMouseMove={handleSvgMouseMove}
-              onMouseUp={handleSvgMouseUp}
-              onClick={handleSvgClick}
-            >
-              {/* 1. Render Confirmed Zone Area Polygons */}
-              {showZoneOverlay &&
-                zones.map((zone, zIdx) => {
-                  const isZoneSelected = zone.id === selectedZoneId
-                  const isBikeZone = zone.type === 'motorcycle' || zone.type === 'bike'
-                  const ptsStr = zone.points.map((p) => `${p.x},${p.y}`).join(' ')
-                  const minX = Math.min(...zone.points.map((p) => p.x))
-                  const minY = Math.min(...zone.points.map((p) => p.y))
+              {/* SVG Vector Drawing Layer */}
+              <svg
+                ref={svgRef}
+                className="roi-svg-overlay absolute inset-0 w-full h-full overflow-hidden"
+                viewBox={`0 0 ${imgDimensions.width} ${imgDimensions.height}`}
+                preserveAspectRatio="none"
+                style={{ overflow: 'hidden' }}
+                onMouseMove={handleSvgMouseMove}
+                onMouseUp={handleSvgMouseUp}
+                onClick={handleSvgClick}
+              >
+                {/* 1. Render Confirmed Zone Area Polygons */}
+                {showZoneOverlay &&
+                  zones.map((zone, zIdx) => {
+                    const isZoneSelected = zone.id === selectedZoneId
+                    const isBikeZone = zone.type === 'motorcycle' || zone.type === 'bike'
+                    const ptsStr = zone.points.map((p) => `${p.x},${p.y}`).join(' ')
+                    const minX = Math.min(...zone.points.map((p) => p.x))
+                    const minY = Math.min(...zone.points.map((p) => p.y))
 
-                  return (
-                    <g key={zone.id || zIdx} className="zone-polygon-group">
-                      <polygon
-                        points={ptsStr}
-                        className={`zone-area-polygon ${isBikeZone ? 'bike-zone' : 'car-zone'} ${
-                          isZoneSelected ? 'active' : ''
-                        }`}
-                        pointerEvents="auto"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setSelectedZoneId(zone.id)
-                        }}
-                      />
+                    return (
+                      <g key={zone.id || zIdx} className="zone-polygon-group">
+                        <polygon
+                          points={ptsStr}
+                          className={`zone-area-polygon ${isBikeZone ? 'bike-zone' : 'car-zone'} ${
+                            isZoneSelected ? 'active' : ''
+                          }`}
+                          pointerEvents="auto"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedZoneId(zone.id)
+                          }}
+                        />
 
-                      {/* Zone Label Badge */}
-                      {showLabels && (
-                        <g className="zone-label-group" pointerEvents="none">
-                          <rect
-                            x={minX + 8}
-                            y={minY + 8}
-                            width={labelW}
-                            height={labelH}
-                            rx={4}
-                            className={`zone-label-bg ${isBikeZone ? 'bike-badge' : ''}`}
-                          />
-                          <text
-                            x={minX + 8 + labelW / 2}
-                            y={minY + 8 + labelH * 0.68}
-                            textAnchor="middle"
-                            className={`zone-label-text ${isBikeZone ? 'bike-text' : ''}`}
-                            style={{ fontSize: `${labelFontSize}px` }}
-                          >
-                            {zone.name} (ความจุ {zone.capacity} {isBikeZone ? 'คัน' : 'ช่อง'})
-                          </text>
-                        </g>
-                      )}
-
-                      {/* Zone Vertex Drag Handles (for selected zone) */}
-                      {isZoneSelected &&
-                        zone.points.map((pt, pIdx) => (
-                          <g key={pIdx}>
-                            <circle
-                              cx={pt.x}
-                              cy={pt.y}
-                              r={vertexRadius}
-                              className={`zone-handle-vertex ${isBikeZone ? 'bike-handle' : ''}`}
-                              onMouseDown={(e) => handleZonePointMouseDown(e, zone.id, pIdx)}
+                        {/* Zone Label Badge */}
+                        {showLabels && (
+                          <g className="zone-label-group" pointerEvents="none">
+                            <rect
+                              x={Math.max(4, Math.min(imgDimensions.width - labelW - 4, minX + 8))}
+                              y={Math.max(4, Math.min(imgDimensions.height - labelH - 4, minY + 8))}
+                              width={labelW}
+                              height={labelH}
+                              rx={4}
+                              className={`zone-label-bg ${isBikeZone ? 'bike-badge' : ''}`}
                             />
                             <text
-                              x={pt.x}
-                              y={pt.y - vertexRadius - 4}
+                              x={Math.max(4, Math.min(imgDimensions.width - labelW - 4, minX + 8)) + labelW / 2}
+                              y={Math.max(4, Math.min(imgDimensions.height - labelH - 4, minY + 8)) + labelH * 0.68}
                               textAnchor="middle"
-                              className="fill-[var(--color-ink)] font-bold font-mono"
-                              style={{ fontSize: `${Math.max(10, vertexRadius)}px` }}
-                              pointerEvents="none"
+                              className={`zone-label-text ${isBikeZone ? 'bike-text' : ''}`}
+                              style={{ fontSize: `${labelFontSize}px` }}
                             >
-                              P{pIdx + 1}
+                              {zone.name} (ความจุ {zone.capacity} {isBikeZone ? 'คัน' : 'ช่อง'})
                             </text>
                           </g>
-                        ))}
-                    </g>
-                  )
-                })}
+                        )}
 
-              {/* 2. Zone In-Progress Drawing Draft Preview */}
-              {isDrawingZone && zoneDraft.length > 0 && (
-                <g className="zone-draft-group" pointerEvents="none">
-                  {zoneDraft.map((pt, pIdx) => (
-                    <circle
-                      key={pIdx}
-                      cx={pt.x}
-                      cy={pt.y}
-                      r={draftRadius}
-                      className={`draft-vertex ${zoneDrawType === 'motorcycle' ? 'bike' : 'car'}`}
+                        {/* Zone Vertex Drag Handles (for selected zone) */}
+                        {isZoneSelected &&
+                          zone.points.map((pt, pIdx) => {
+                            const px = Math.max(vertexRadius, Math.min(imgDimensions.width - vertexRadius, pt.x))
+                            const py = Math.max(vertexRadius, Math.min(imgDimensions.height - vertexRadius, pt.y))
+                            return (
+                              <g key={pIdx}>
+                                <circle
+                                  cx={px}
+                                  cy={py}
+                                  r={vertexRadius}
+                                  className={`zone-handle-vertex ${isBikeZone ? 'bike-handle' : ''}`}
+                                  onMouseDown={(e) => handleZonePointMouseDown(e, zone.id, pIdx)}
+                                />
+                                <text
+                                  x={px}
+                                  y={Math.max(vertexRadius + 10, py - vertexRadius - 4)}
+                                  textAnchor="middle"
+                                  className="fill-[var(--color-ink)] font-bold font-mono"
+                                  style={{ fontSize: `${Math.max(10, vertexRadius)}px` }}
+                                  pointerEvents="none"
+                                >
+                                  P{pIdx + 1}
+                                </text>
+                              </g>
+                            )
+                          })}
+                      </g>
+                    )
+                  })}
+
+                {/* 2. Zone In-Progress Drawing Draft Preview */}
+                {isDrawingZone && zoneDraft.length > 0 && (
+                  <g className="zone-draft-group" pointerEvents="none">
+                    {zoneDraft.map((pt, pIdx) => (
+                      <circle
+                        key={pIdx}
+                        cx={pt.x}
+                        cy={pt.y}
+                        r={draftRadius}
+                        className={`draft-vertex ${zoneDrawType === 'motorcycle' ? 'bike' : 'car'}`}
+                      />
+                    ))}
+                    {zoneDraft.length > 1 && (
+                      <polyline
+                        points={zoneDraft.map((p) => `${p.x},${p.y}`).join(' ')}
+                        className={`draft-line ${zoneDrawType === 'motorcycle' ? 'bike-line' : 'car-line'}`}
+                      />
+                    )}
+                    {/* Dynamic tracking line to cursor */}
+                    <line
+                      x1={zoneDraft[zoneDraft.length - 1].x}
+                      y1={zoneDraft[zoneDraft.length - 1].y}
+                      x2={cursorPos.x}
+                      y2={cursorPos.y}
+                      className="draft-cursor-line"
                     />
-                  ))}
-                  {zoneDraft.length > 1 && (
-                    <polyline
-                      points={zoneDraft.map((p) => `${p.x},${p.y}`).join(' ')}
-                      className={`draft-line ${zoneDrawType === 'motorcycle' ? 'bike-line' : 'car-line'}`}
-                    />
-                  )}
-                  {/* Dynamic tracking line to cursor */}
-                  <line
-                    x1={zoneDraft[zoneDraft.length - 1].x}
-                    y1={zoneDraft[zoneDraft.length - 1].y}
-                    x2={cursorPos.x}
-                    y2={cursorPos.y}
-                    className="draft-cursor-line"
-                  />
-                </g>
-              )}
-            </svg>
+                  </g>
+                )}
+              </svg>
+            </div>
 
             {/* Bottom Meta Status Bar inside Canvas */}
             <div className="viewport-status-footer">
@@ -839,16 +867,26 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                 <span>กำหนดโซนและจำนวนความจุ • {activeCam.code} ({zones.length} โซน)</span>
               </div>
 
-              {zones.length > 0 && (
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  className="btn-icon-action danger"
-                  onClick={handleClearAllZones}
-                  title="ล้างโซนทั้งหมดของกล้องนี้"
+                  className="btn-icon-action"
+                  onClick={handleResetToDefaultZones}
+                  title="คืนค่าพิกัดโซนมาตรฐานของกล้องนี้"
                 >
-                  <Trash2 className="w-3.5 h-3.5 text-[var(--color-status-full-text)]" strokeWidth={1.8} />
+                  <RotateCcw className="w-3.5 h-3.5 text-[var(--color-green-text)]" strokeWidth={1.8} />
                 </button>
-              )}
+                {zones.length > 0 && (
+                  <button
+                    type="button"
+                    className="btn-icon-action danger"
+                    onClick={handleClearAllZones}
+                    title="ล้างโซนทั้งหมดของกล้องนี้"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-[var(--color-status-full-text)]" strokeWidth={1.8} />
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Summary KPIs */}

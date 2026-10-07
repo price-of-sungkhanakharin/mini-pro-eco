@@ -1,6 +1,6 @@
 """Label Studio ML Backend Proxy Router.
 
-Bridges Label Studio instances with the Private GPU Compute Node (http://172.30.81.175:9000).
+Bridges Label Studio instances with the Private GPU Compute Node (http://172.30.81.160:9000).
 Key capabilities:
 1. Translates storage URIs (s3://parking-label-queue/..., s3://raw-datasets/...) to HTTP MinIO endpoints.
 2. Standard ML Backend interface (GET /health, POST /setup, POST /predict).
@@ -17,7 +17,7 @@ from backend.app.core.config import settings
 logger = logging.getLogger("MLBackendProxy")
 router = APIRouter(prefix="/api/v1/ml-backend", tags=["Label Studio ML Backend Proxy"])
 
-REMOTE_GPU_URL = (getattr(settings, "gpu_node_base_url", "http://172.30.81.175:9000") or "http://172.30.81.175:9000").rstrip("/")
+REMOTE_GPU_URL = (getattr(settings, "gpu_node_base_url", "http://172.30.81.160:9000") or "http://172.30.81.160:9000").rstrip("/")
 LOCAL_MINIO_HOST = "172.30.228.51"
 LOCAL_MINIO_PORT = 9000
 

@@ -19,22 +19,25 @@ import {
   HardDrive,
   Activity,
   Layers,
-  ChevronRight
+  ChevronRight,
+  ChevronDown,
+  Sparkles,
+  Brain,
 } from 'lucide-react'
 import { PillTag, PillButton } from '../../components/ui/FigmaCards'
 
 const FRAMESIZE_OPTIONS = [
-  { value: 13, name: 'UXGA', res: '1600x1200', desc: 'ความละเอียดสูงสุด (High Detail)' },
-  { value: 12, name: 'SXGA', res: '1280x1024', desc: 'สัดส่วน 5:4 เหมาะกับลานกว้าง' },
-  { value: 11, name: 'HD', res: '1280x720', desc: 'สัดส่วน Widescreen 16:9' },
-  { value: 10, name: 'XGA', res: '1024x768', desc: '4:3 มาตรฐานคมชัดสูง' },
-  { value: 9, name: 'SVGA', res: '800x600', desc: 'สมดุลความเร็วและขนาดไฟล์ (แนะนำ V4)' }
+  { value: 13, name: 'HD', res: '1280x720', desc: 'สัดส่วน Widescreen 16:9 คมชัดสูง (แนะนำสำหรับระบบจอดรถ)' },
+  { value: 12, name: 'XGA', res: '1024x768', desc: 'สัดส่วน 4:3 คมชัดสูง' },
+  { value: 11, name: 'SVGA', res: '800x600', desc: 'สัดส่วน 4:3 ความละเอียดปานกลาง' },
+  { value: 10, name: 'VGA', res: '640x480', desc: 'สัดส่วน 4:3 ความเร็วสูง' },
+  { value: 9, name: 'HVGA', res: '480x320', desc: 'สัดส่วน 3:2 ประหยัดแบนด์วิดท์สูงสุด' }
 ]
 
 const DAY_SLEEP_PRESETS = [
   { sec: 10, label: '10 วินาที (High Frequency)' },
   { sec: 15, label: '15 วินาที' },
-  { sec: 20, label: '20 วินาที (ค่าแนะนำ V4 ⭐)' },
+  { sec: 20, label: '20 วินาที (ค่าแนะนำ V4)' },
   { sec: 30, label: '30 วินาที' },
   { sec: 60, label: '60 วินาที (ประหยัดพลังงาน)' }
 ]
@@ -42,7 +45,7 @@ const DAY_SLEEP_PRESETS = [
 const NIGHT_SLEEP_PRESETS = [
   { sec: 300, label: '5 นาที (300s)' },
   { sec: 900, label: '15 นาที (900s)' },
-  { sec: 1800, label: '30 นาที (1800s - ค่าแนะนำ ⭐)' },
+  { sec: 1800, label: '30 นาที (1800s - ค่าแนะนำ)' },
   { sec: 3600, label: '1 ชั่วโมง (3600s)' }
 ]
 
@@ -101,6 +104,7 @@ export default function CameraControlPage({
       deep_sleep_sec: 20,
       deep_sleep_sec_day: 20,
       deep_sleep_sec_night: 1800,
+      day_sleep_mode: 'model',
       rotation: 180,
       brightness: 0.82,
       contrast: 1.15
@@ -111,6 +115,7 @@ export default function CameraControlPage({
       deep_sleep_sec: 20,
       deep_sleep_sec_day: 20,
       deep_sleep_sec_night: 1800,
+      day_sleep_mode: 'model',
       rotation: 180,
       brightness: 0.82,
       contrast: 1.15
@@ -121,6 +126,7 @@ export default function CameraControlPage({
       deep_sleep_sec: 20,
       deep_sleep_sec_day: 20,
       deep_sleep_sec_night: 1800,
+      day_sleep_mode: 'model',
       rotation: 180,
       brightness: 0.80,
       contrast: 1.15
@@ -143,6 +149,7 @@ export default function CameraControlPage({
             deep_sleep_sec: Number(val.deep_sleep_sec ?? 20),
             deep_sleep_sec_day: Number(val.deep_sleep_sec_day ?? val.deep_sleep_sec ?? 20),
             deep_sleep_sec_night: Number(val.deep_sleep_sec_night ?? 1800),
+            day_sleep_mode: String(val.day_sleep_mode || 'model').toLowerCase(),
             rotation: Number(val.rotation ?? 0),
             brightness: Number(val.brightness ?? 1.0),
             contrast: Number(val.contrast ?? 1.0)
@@ -187,6 +194,7 @@ export default function CameraControlPage({
     deep_sleep_sec: 20,
     deep_sleep_sec_day: 20,
     deep_sleep_sec_night: 1800,
+    day_sleep_mode: 'model',
     rotation: 180,
     brightness: 0.82,
     contrast: 1.15
@@ -222,6 +230,7 @@ export default function CameraControlPage({
         deep_sleep_sec: Number(cfg.deep_sleep_sec_day || cfg.deep_sleep_sec || 20),
         deep_sleep_sec_day: Number(cfg.deep_sleep_sec_day || 20),
         deep_sleep_sec_night: Number(cfg.deep_sleep_sec_night || 1800),
+        day_sleep_mode: cfg.day_sleep_mode || 'model',
         rotation: Number(cfg.rotation),
         brightness: Number(cfg.brightness),
         contrast: Number(cfg.contrast)
@@ -495,47 +504,84 @@ export default function CameraControlPage({
                 </div>
               </div>
               <span className="text-xs font-mono font-bold px-2.5 py-1 bg-[#E7F4D8] text-[#284E1A] rounded-full">
-                20s DAY / 1800s NIGHT
+                SCHEDULED SLEEP
               </span>
             </div>
 
             {/* Daytime Deep Sleep Configuration */}
-            <div className="p-4 bg-[#FAF8EF] border border-[#DEDED2] rounded-[18px] space-y-3">
-              <div className="flex items-center justify-between">
+            <div className={`p-4 rounded-[18px] border space-y-3 transition-all ${
+              (currentSettings.day_sleep_mode || 'model') === 'model'
+                ? 'bg-[#F4F9EE] border-[#C2E2A3]'
+                : 'bg-[#FAF8EF] border-[#DEDED2]'
+            }`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                 <label className="text-xs font-bold text-[#30312F] flex items-center gap-1.5">
                   <Sun className="w-4 h-4 text-amber-500" />
                   <span>เวลากลางวัน / เวลาทำการ (07:30 - 18:30 น.)</span>
                 </label>
-                <span className="text-xs font-mono font-bold text-[#284E1A] bg-white px-2 py-0.5 rounded border border-[#DEDED2]">
-                  {currentSettings.deep_sleep_sec_day || 20} วินาที
-                </span>
+                
+                {/* Mode Selector Dropdown (Inside Daytime Card) */}
+                <div className="flex items-center gap-2 self-start sm:self-auto">
+                  <div className="relative inline-block">
+                    <select
+                      value={currentSettings.day_sleep_mode || 'model'}
+                      onChange={(e) => handleFieldChange('day_sleep_mode', e.target.value)}
+                      className="appearance-none text-xs font-semibold bg-white hover:bg-[#FAF8EF] border border-[#DEDED2] rounded-full pl-3.5 pr-8 py-1.5 text-[#30312F] outline-none cursor-pointer focus:ring-2 focus:ring-[#284E1A]/20 transition-all shadow-2xs"
+                    >
+                      <option value="model">ใช้ AI Model (อัตโนมัติ 10s–45s)</option>
+                      <option value="manual">ตั้งค่าเวลาเอง (Manual Fixed)</option>
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-[#686962] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
               </div>
-              <p className="text-[11px] text-[#85847E] leading-relaxed m-0">
-                รอบเวลาที่กล้องจะหลับหลังจากส่งภาพสำเร็จ เพื่อลดความร้อนสะสมก่อนตื่นมาถ่ายภาพถัดไป
-              </p>
+
+              {/* Mode Description Banner */}
+              {(currentSettings.day_sleep_mode || 'model') === 'model' ? (
+                <div className="p-3 bg-white/80 rounded-[14px] border border-[#D7ECC0] flex items-start gap-2.5 text-xs text-[#284E1A]">
+                  <Brain className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <div className="leading-relaxed">
+                    <span className="font-semibold">โมเดล AI ควบคุมอัตโนมัติ: </span>
+                    <span>
+                      คำนวณและปรับเวลานอนแบบ Dynamic (10s–45s) ตามอัตราการเข้า-ออกของรถ (Traffic Flux), อุณหภูมิชิป ESP32 และช่วงเวลาคาบเรียนของมหาวิทยาลัย
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[11px] text-[#85847E] leading-relaxed m-0">
+                  โหมดกำหนดเวลาคงที่: กล้องจะหลับตามจำนวนวินาทีที่ท่านระบุไว้ด้านล่างนี้ตลอดช่วงเวลากลางวัน
+                </p>
+              )}
 
               {/* Preset Chips */}
-              <div className="flex items-center gap-2 flex-wrap">
-                {DAY_SLEEP_PRESETS.map((p) => {
-                  const active = (currentSettings.deep_sleep_sec_day || 20) === p.sec
-                  return (
-                    <button
-                      key={p.sec}
-                      type="button"
-                      onClick={() => {
-                        handleFieldChange('deep_sleep_sec_day', p.sec)
-                        handleFieldChange('deep_sleep_sec', p.sec)
-                      }}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
-                        active
-                          ? 'bg-[#30312F] text-white shadow-xs'
-                          : 'bg-[#FFFDF7] border border-[#DEDED2] text-[#686962] hover:border-[#B8B8A8]'
-                      }`}
-                    >
-                      {p.label}
-                    </button>
-                  )
-                })}
+              <div className="space-y-1.5 pt-1">
+                {(currentSettings.day_sleep_mode || 'model') === 'model' && (
+                  <span className="text-[11px] text-[#686962] font-medium block">
+                    กำหนดค่าสำรองกรณีออฟไลน์ (Offline Fallback Baseline):
+                  </span>
+                )}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {DAY_SLEEP_PRESETS.map((p) => {
+                    const active = (currentSettings.deep_sleep_sec_day || 20) === p.sec
+                    return (
+                      <button
+                        key={p.sec}
+                        type="button"
+                        onClick={() => {
+                          handleFieldChange('deep_sleep_sec_day', p.sec)
+                          handleFieldChange('deep_sleep_sec', p.sec)
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                          active
+                            ? 'bg-[#30312F] text-white shadow-xs'
+                            : 'bg-[#FFFDF7] border border-[#DEDED2] text-[#686962] hover:border-[#B8B8A8]'
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
 
               {/* Slider */}
@@ -564,17 +610,17 @@ export default function CameraControlPage({
 
             {/* Nighttime Deep Sleep Configuration */}
             <div className="p-4 bg-[#FAF8EF] border border-[#DEDED2] rounded-[18px] space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <label className="text-xs font-bold text-[#30312F] flex items-center gap-1.5">
                   <Moon className="w-4 h-4 text-indigo-500" />
                   <span>เวลากลางคืน / นอกเวลาทำการ (18:30 - 07:30 น.)</span>
                 </label>
-                <span className="text-xs font-mono font-bold text-[#284E1A] bg-white px-2 py-0.5 rounded border border-[#DEDED2]">
+                <span className="text-xs font-mono font-bold text-[#284E1A] bg-white px-2 py-0.5 rounded border border-[#DEDED2] self-start sm:self-auto">
                   {currentSettings.deep_sleep_sec_night || 1800} วินาที ({Math.round((currentSettings.deep_sleep_sec_night || 1800) / 60)} นาที)
                 </span>
               </div>
               <p className="text-[11px] text-[#85847E] leading-relaxed m-0">
-                เมื่อลานจอดรถปิดหรือเข้าสู่ช่วงดึก กล้องจะหลับยาวขึ้นเพื่อประหยัดไฟและยืดอายุการใช้งานเซนเซอร์
+                โหมด Standby ประหยัดพลังงานคงที่ (ค่าเริ่มต้น 30 นาที) เนื่องจากเวลากลางคืนลานจอดปิดและไม่มีแสงสว่าง ไม่ต้องใช้โมเดลประมวลผล
               </p>
 
               {/* Preset Chips */}

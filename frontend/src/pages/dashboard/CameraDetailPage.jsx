@@ -15,10 +15,11 @@ import {
   Wifi,
   Thermometer,
   HardDrive,
-  Download
+  Download,
+  Clock
 } from 'lucide-react'
 import { useDashboardData } from './useDashboardData'
-import { formatTimestampThai, formatUptime, getIngestionApiBase } from '../../utils/dumpData'
+import { formatTimestampThai, formatUptime, getIngestionApiBase, getSavedOrInitialZones } from '../../utils/dumpData'
 
 /**
  * CameraDetailPage (High-Contrast Obsidian Dark Theme)
@@ -102,12 +103,12 @@ export default function CameraDetailPage({
     }
   }
 
-  // Real-time image URL computation
+  // Real-time image URL computation (dynamic dashboard overlay vs raw camera feed)
   const liveImageUrl = useMemo(() => {
     if (!currentCamera?.camId) return ''
     const apiBase = getIngestionApiBase()
-    return `${apiBase}/api/v1/line/snapshot/${currentCamera.camId}?mode=dashboard&t=${snapshotKey}`
-  }, [currentCamera?.camId, snapshotKey])
+    return `${apiBase}/api/v1/line/snapshot/${currentCamera.camId}?mode=${showRoi ? 'dashboard' : 'raw'}&t=${snapshotKey}`
+  }, [currentCamera?.camId, showRoi, snapshotKey])
 
   // Telemetry computations
   const telemetry = currentCamera?.realTelemetry || {}
@@ -116,8 +117,13 @@ export default function CameraDetailPage({
   const freeHeap = parseInt(telemetry.free_heap || 154200, 10)
   const uptimeSec = parseInt(telemetry.uptime_sec || 2139, 10)
 
-  // Slots computation
+  // Slots & Zones computation
   const slots = currentCamera?.slots || []
+  const zones = useMemo(() => {
+    const w = imgDims.width || 1280
+    const h = imgDims.height || 720
+    return getSavedOrInitialZones(currentCamera?.camId || 'cam1', w, h)
+  }, [currentCamera?.camId, imgDims.width, imgDims.height])
   const filteredSlots = useMemo(() => {
     return slots.filter((s) => {
       const isBike = s.type === 'motorcycle' || s.type === 'bike'
@@ -251,7 +257,7 @@ export default function CameraDetailPage({
                     </div>
                   )}
 
-                  {/* SVG ROI Vector Polygons Overlay */}
+                  {/* SVG ROI Vector Polygons Overlay (Only for discrete custom slot boxes if configured) */}
                   {showRoi && slots.length > 0 && (
                     <svg
                       className="absolute inset-0 w-full h-full pointer-events-none overflow-hidden"
@@ -328,8 +334,12 @@ export default function CameraDetailPage({
 
                   {/* Bottom-Right Live Timestamp */}
                   {currentCamera.snapshotTimestamp && (
-                    <div className="absolute bottom-2.5 sm:bottom-3 right-2.5 sm:right-3 bg-black/85 backdrop-blur-md px-2.5 sm:px-3 py-1 rounded-full border border-neutral-700/70 text-[10px] sm:text-[11px] text-emerald-400 font-mono shadow-md">
-                      SYNC: {formatTimestampThai(currentCamera.snapshotTimestamp)}
+                    <div className="absolute bottom-2.5 sm:bottom-3 right-2.5 sm:right-3 bg-black/85 backdrop-blur-md px-2.5 sm:px-3 py-1 rounded-full border border-neutral-700/70 text-[10px] sm:text-[11px] text-emerald-400 font-mono shadow-md flex items-center gap-1.5 pointer-events-none">
+                      <Clock className="w-3 h-3 text-emerald-400" />
+                      <span>{formatTimestampThai(currentCamera.snapshotTimestamp)}</span>
+                      {currentCamera.snapshotRelative && (
+                        <span className="text-neutral-400 text-[10px]">({currentCamera.snapshotRelative})</span>
+                      )}
                     </div>
                   )}
                 </>
@@ -377,86 +387,192 @@ export default function CameraDetailPage({
             </div>
           </div>
 
-          {/* B. Interactive Slot Registry (Elevated Dark Surface & Mobile-Friendly Grid) */}
+          {/* B. Interactive Zone / Slot Registry (Elevated Dark Surface & Mobile-Friendly Grid) */}
           <section className="bg-[#121316] border border-[#262930] rounded-[22px] p-3.5 sm:p-4 lg:p-5 flex flex-col gap-3.5 sm:gap-4 shadow-xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2 sm:gap-2.5">
-                <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-white">
-                  ผังรายการช่องจอด (Slots Registry)
-                </h3>
-                <span className="text-xs text-neutral-400 font-mono">({slots.length} ช่อง)</span>
-              </div>
+            {slots.length === 0 ? (
+              <>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 sm:gap-2.5">
+                    <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-white">
+                      ผังโซนจอดรถ (ROI Parking Zones)
+                    </h3>
+                    <span className="text-xs text-neutral-400 font-mono">
+                      ({zones.length} โซน · Dynamic [0, 1] Grid)
+                    </span>
+                  </div>
 
-              {/* Dark Filter Pills with Clear High-Contrast Selection */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {[
-                  { id: 'all', label: `ทั้งหมด (${slots.length})` },
-                  { id: 'vacant', label: `ว่าง (${totalFree})` },
-                  { id: 'occupied', label: `มีรถ (${totalOccupied})` },
-                  { id: 'car', label: `รถยนต์ (${carTotal})` },
-                  { id: 'bike', label: `มอเตอร์ไซค์ (${bikeTotal})` }
-                ].map((item) => {
-                  const isActive = slotFilter === item.id
-                  return (
+                  <div className="flex items-center gap-2">
                     <button
-                      key={item.id}
                       type="button"
-                      className={`px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-medium transition-all cursor-pointer border ${
-                        isActive
-                          ? 'bg-emerald-500 text-black font-bold border-emerald-400 shadow-md'
-                          : 'bg-[#181B20] text-neutral-300 hover:text-white border-[#2A2E38] hover:bg-[#22262F]'
-                      }`}
-                      onClick={() => setSlotFilter(item.id)}
+                      onClick={() => {
+                        if (onNavigate) {
+                          onNavigate('setup')
+                        } else {
+                          window.location.href = '/setup?tab=slots'
+                        }
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#181B20] hover:bg-[#22262F] text-emerald-400 hover:text-emerald-300 border border-emerald-500/40 hover:border-emerald-500 rounded-full text-xs font-semibold cursor-pointer transition-all shadow-sm"
                     >
-                      {item.label}
+                      <Sliders className="w-3.5 h-3.5" />
+                      <span>วาดหรือปรับแต่งโซนใหม่</span>
                     </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Slots Grid: 2 columns on mobile, 3 on tablet, up to 6 on desktop */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-2.5">
-              {filteredSlots.length === 0 ? (
-                <div className="col-span-full py-6 text-center text-xs text-neutral-500">
-                  ไม่มีรายการช่องจอดตรงตามตัวกรองที่เลือก
+                  </div>
                 </div>
-              ) : (
-                filteredSlots.map((slot) => {
-                  const isBike = slot.type === 'motorcycle' || slot.type === 'bike'
-                  const isOccupied = Boolean(slot.occupied)
-                  return (
-                    <div
-                      key={slot.id}
-                      className={`p-2 sm:p-2.5 rounded-xl border flex items-center justify-between text-xs transition-colors ${
-                        isOccupied
-                          ? 'bg-[#241317] border-[#4F1921] text-neutral-200'
-                          : 'bg-[#0E241B] border-[#18533B] text-neutral-200'
-                      }`}
-                    >
-                      <span className="font-mono font-bold text-white flex items-center gap-1.5">
-                        {isBike ? (
-                          <Bike className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        ) : (
-                          <Car className="w-3.5 h-3.5 text-neutral-300 shrink-0" />
-                        )}
-                        <span>{slot.id}</span>
-                      </span>
 
-                      <span
-                        className={`text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded font-mono shrink-0 ${
-                          isOccupied
-                            ? 'bg-rose-950 text-rose-300 border border-rose-700/80'
-                            : 'bg-emerald-950 text-emerald-300 border border-emerald-700/80'
-                        }`}
-                      >
-                        {isOccupied ? 'มีรถ' : 'ว่าง'}
-                      </span>
+                {/* Zone Cards Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {zones.length === 0 ? (
+                    <div className="col-span-full py-6 text-center text-xs text-neutral-500">
+                      ยังไม่ได้กำหนดโซนจอดรถสำหรับกล้องนี้ (สามารถเข้าไปกำหนดได้ที่หน้าตั้งค่าระบบ)
                     </div>
-                  )
-                })
-              )}
-            </div>
+                  ) : (
+                    zones.map((zone) => {
+                      const isBike = zone.type === 'motorcycle' || zone.type === 'bike'
+                      const typeStats = isBike ? currentCamera?.bike : currentCamera?.car
+                      const cap = Number(zone.capacity) || (isBike ? (currentCamera?.camId === 'cam3' ? 25 : (currentCamera?.camId === 'cam2' ? 13 : 9)) : 6)
+                      const free = typeStats?.free ?? cap
+                      const occ = Math.max(0, cap - free)
+                      const occPct = cap > 0 ? Math.round((occ / cap) * 100) : 0
+
+                      return (
+                        <div
+                          key={zone.id}
+                          className="p-3.5 sm:p-4 rounded-2xl border bg-[#181B20]/80 border-[#2A2E38] flex flex-col gap-3 relative overflow-hidden"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                              <div
+                                className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
+                                  isBike
+                                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                                    : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                                }`}
+                              >
+                                {isBike ? <Bike className="w-4 h-4" /> : <Car className="w-4 h-4" />}
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-sm text-white">{zone.name}</h4>
+                                <span className="text-[11px] text-neutral-400 font-mono">
+                                  {isBike ? 'โหมดรถมอเตอร์ไซค์' : 'โหมดรถยนต์'} · {zone.points?.length || 4} จุดพิกัด
+                                </span>
+                              </div>
+                            </div>
+
+                            <span
+                              className={`text-xs font-bold px-2.5 py-1 rounded-full font-mono border ${
+                                free > 0
+                                  ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60'
+                                  : 'bg-rose-950/80 text-rose-300 border-rose-700/60'
+                              }`}
+                            >
+                              ว่าง {free} / {cap} คัน
+                            </span>
+                          </div>
+
+                          {/* Progress Bar */}
+                          <div className="w-full bg-[#121316] rounded-full h-2 overflow-hidden border border-[#262930]">
+                            <div
+                              className={`h-full transition-all duration-500 ${
+                                isBike ? 'bg-amber-500' : 'bg-emerald-500'
+                              }`}
+                              style={{ width: `${occPct}%` }}
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-between text-[11px] text-neutral-400">
+                            <span>อัตราการจอด {occPct}% ({occ} คัน)</span>
+                            <span className="font-mono text-emerald-400/80 text-[10px]">
+                              ROI Calibrated ✓
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 sm:gap-2.5">
+                    <h3 className="font-semibold text-xs sm:text-sm lg:text-base text-white">
+                      ผังรายการช่องจอด (Slots Registry)
+                    </h3>
+                    <span className="text-xs text-neutral-400 font-mono">({slots.length} ช่อง)</span>
+                  </div>
+
+                  {/* Dark Filter Pills with Clear High-Contrast Selection */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {[
+                      { id: 'all', label: `ทั้งหมด (${slots.length})` },
+                      { id: 'vacant', label: `ว่าง (${totalFree})` },
+                      { id: 'occupied', label: `มีรถ (${totalOccupied})` },
+                      { id: 'car', label: `รถยนต์ (${carTotal})` },
+                      { id: 'bike', label: `มอเตอร์ไซค์ (${bikeTotal})` }
+                    ].map((item) => {
+                      const isActive = slotFilter === item.id
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className={`px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-medium transition-all cursor-pointer border ${
+                            isActive
+                              ? 'bg-emerald-500 text-black font-bold border-emerald-400 shadow-md'
+                              : 'bg-[#181B20] text-neutral-300 hover:text-white border-[#2A2E38] hover:bg-[#22262F]'
+                          }`}
+                          onClick={() => setSlotFilter(item.id)}
+                        >
+                          {item.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Slots Grid: 2 columns on mobile, 3 on tablet, up to 6 on desktop */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-2.5">
+                  {filteredSlots.length === 0 ? (
+                    <div className="col-span-full py-6 text-center text-xs text-neutral-500">
+                      ไม่มีรายการช่องจอดตรงตามตัวกรองที่เลือก
+                    </div>
+                  ) : (
+                    filteredSlots.map((slot) => {
+                      const isBike = slot.type === 'motorcycle' || slot.type === 'bike'
+                      const isOccupied = Boolean(slot.occupied)
+                      return (
+                        <div
+                          key={slot.id}
+                          className={`p-2 sm:p-2.5 rounded-xl border flex items-center justify-between text-xs transition-colors ${
+                            isOccupied
+                              ? 'bg-[#241317] border-[#4F1921] text-neutral-200'
+                              : 'bg-[#0E241B] border-[#18533B] text-neutral-200'
+                          }`}
+                        >
+                          <span className="font-mono font-bold text-white flex items-center gap-1.5">
+                            {isBike ? (
+                              <Bike className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            ) : (
+                              <Car className="w-3.5 h-3.5 text-neutral-300 shrink-0" />
+                            )}
+                            <span>{slot.id}</span>
+                          </span>
+
+                          <span
+                            className={`text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded font-mono shrink-0 ${
+                              isOccupied
+                                ? 'bg-rose-950 text-rose-300 border border-rose-700/80'
+                                : 'bg-emerald-950 text-emerald-300 border border-emerald-700/80'
+                            }`}
+                          >
+                            {isOccupied ? 'มีรถ' : 'ว่าง'}
+                          </span>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              </>
+            )}
           </section>
 
           {/* C. Bottom Previous / Next Camera Navigation */}

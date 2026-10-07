@@ -1,5 +1,5 @@
 import React from 'react'
-import { Maximize2, AlertTriangle, Car, Bike, Video } from 'lucide-react'
+import { Maximize2, AlertTriangle, Car, Bike, Video, Clock } from 'lucide-react'
 import { getIngestionApiBase } from '../../../utils/dumpData'
 
 export default function CameraMapCard({
@@ -16,7 +16,7 @@ export default function CameraMapCard({
             แผนที่กล้องและความหนาแน่น
           </h2>
           <p className="font-sans font-normal text-[13px] text-[#85847E] mt-0.5">
-            แสดงสถานะกล้อง (Online / Offline), การตรวจจับ YOLO และมุมมองภาพแบบเรียลไทม์
+            แสดงสถานะกล้อง (Online / Offline), เวลา Snapshot ล่าสุด, การตรวจจับ YOLO และมุมมองภาพแบบเรียลไทม์
           </p>
         </div>
 
@@ -106,6 +106,20 @@ export default function CameraMapCard({
                   <Maximize2 className="w-4 h-4" />
                   <span>เปิดดูรูปขยาย</span>
                 </div>
+              </div>
+
+              {/* Snapshot Time Info Bar (prominent metadata row) */}
+              <div className="flex items-center justify-between px-2.5 py-1.5 rounded-[10px] bg-[#FAF8EF] border border-[#EFECE0] text-[11px]">
+                <div className="flex items-center gap-1.5 text-[#5F5E5B] min-w-0">
+                  <Clock className="w-3.5 h-3.5 text-[#4F6B4A] shrink-0" />
+                  <span className="text-[#85847E]">เวลาภาพ:</span>
+                  <span className="font-mono font-bold text-[#30312F] truncate">
+                    {cam.snapshotTime || cam.timeInfo?.formattedTime || '—'}
+                  </span>
+                </div>
+                <span className="text-[10px] font-medium text-[#85847E] shrink-0" title={cam.snapshotFullDate || cam.snapshotTimestamp}>
+                  {cam.snapshotRelative || cam.statusInfo?.diffText || ''}
+                </span>
               </div>
 
               {/* Footer info: Counts & Quick Action */}

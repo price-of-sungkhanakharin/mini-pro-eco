@@ -434,6 +434,26 @@ def train_models(df: pd.DataFrame):
         json.dump(metadata, f, indent=2, ensure_ascii=False)
 
     logger.info("Successfully exported models and metadata to %s", ML_DIR)
+
+    # Sync to MinIO 'timeseries' bucket and 'models/timeseries/' prefix
+    try:
+        from minio import Minio
+        client = Minio(
+            "localhost:9000",
+            access_key=os.getenv("MINIO_ROOT_USER", "minioadmin"),
+            secret_key=os.getenv("MINIO_ROOT_PASSWORD", "minioadmin"),
+            secure=False
+        )
+        if not client.bucket_exists("timeseries"):
+            client.make_bucket("timeseries")
+        for p in [thermal_path, sleep_path, occ_15m_path, occ_30m_path, meta_path]:
+            client.fput_object("timeseries", p.name, str(p))
+            if client.bucket_exists("models"):
+                client.fput_object("models", f"timeseries/{p.name}", str(p))
+        logger.info("Successfully synchronized all Time-Series models to MinIO ('timeseries' bucket and 'models/timeseries/')")
+    except Exception as minio_err:
+        logger.warning("Could not sync models to MinIO: %s", minio_err)
+
     return metadata
 
 

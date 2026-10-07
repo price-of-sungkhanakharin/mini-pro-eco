@@ -55,6 +55,7 @@ def get_camera_settings():
             deep_sleep_sec=int(loc_val.get("deep_sleep_sec", 20)),
             deep_sleep_sec_day=int(loc_val.get("deep_sleep_sec_day", loc_val.get("deep_sleep_sec", 20))),
             deep_sleep_sec_night=int(loc_val.get("deep_sleep_sec_night", 1800)),
+            day_sleep_mode=str(loc_val.get("day_sleep_mode", "model")),
         ))
     return results
 
@@ -89,6 +90,8 @@ def update_camera_settings(settings_payload: CameraSettingsSchema):
         locations[target_key]["deep_sleep_sec"] = settings_payload.deep_sleep_sec
         locations[target_key]["deep_sleep_sec_day"] = settings_payload.deep_sleep_sec_day
         locations[target_key]["deep_sleep_sec_night"] = settings_payload.deep_sleep_sec_night
+        if settings_payload.day_sleep_mode:
+            locations[target_key]["day_sleep_mode"] = settings_payload.day_sleep_mode
         config_data["locations"] = locations
         for p in CONFIG_PATHS:
             if p.exists() or str(p).startswith("/home/r211admin") or str(p).startswith("/app/"):

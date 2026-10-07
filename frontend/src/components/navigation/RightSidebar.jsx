@@ -8,6 +8,7 @@ import {
   BarChart2,
   FileText,
   Sliders,
+  Scale,
   X
 } from 'lucide-react'
 
@@ -53,6 +54,12 @@ export default function RightSidebar({
       label: 'Analytics / Plots',
       sub: 'Model benchmarks, telemetry & occupancy',
       icon: BarChart2
+    },
+    {
+      id: 'linear_models',
+      label: 'Linear & ARIMAX/SARIMAX',
+      sub: 'Linear models benchmark vs Production ML',
+      icon: Scale
     },
     {
       id: 'details',

@@ -30,7 +30,7 @@ logger = logging.getLogger("AutoLabelStreamer")
 LOCAL_MINIO_HOST = "172.30.228.51"
 LOCAL_MINIO_PORT = 9000
 LABEL_STUDIO_URL = (getattr(settings, "label_studio_url", "http://localhost:8080") or "http://localhost:8080").rstrip("/")
-GPU_NODE_URL = (getattr(settings, "gpu_node_base_url", "http://172.30.81.175:9000") or "http://172.30.81.175:9000").rstrip("/")
+GPU_NODE_URL = (getattr(settings, "gpu_node_base_url", "http://172.30.81.160:9000") or "http://172.30.81.160:9000").rstrip("/")
 
 
 class AutoLabelStreamManager:

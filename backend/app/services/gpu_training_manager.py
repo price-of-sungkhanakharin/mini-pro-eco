@@ -374,7 +374,7 @@ class GPUTrainingManager:
 
         session.started_at = datetime.now(timezone.utc).isoformat()
         session.status = "INITIALIZING"
-        session.add_log(f"🚀 Initializing connection to Private GPU Compute Node (172.30.81.175:9000)...")
+        session.add_log(f"🚀 Initializing connection to Private GPU Compute Node ({gpu_node_client.base_url})...")
         session.add_log(f"🔍 Pre-flight AST Validation: PASSED in 2.1ms (Zero syntax errors)")
         session.add_log(f"📦 Dataset Target: '{session.config.get('dataset_id')}' (Zero-Copy Local NVMe Cache)")
         session.add_log(f"🎮 Target Hardware: NVIDIA GeForce GTX 1660 SUPER (6,144 MB VRAM, CUDA 12.x/13.x)")

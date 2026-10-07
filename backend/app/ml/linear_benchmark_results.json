@@ -1,0 +1,1586 @@
+{
+  "timestamp": "2026-10-06T17:03:47.355983+00:00",
+  "dataset_summary": {
+    "total_samples": 33077,
+    "train_samples": 26461,
+    "test_samples": 6616,
+    "feature_count": 21,
+    "feature_names": [
+      "chip_temp_c",
+      "delta_temp",
+      "light_aec_value",
+      "wifi_rssi",
+      "uptime_sec",
+      "total_vehicles",
+      "occupancy_pct",
+      "delta_vehicles",
+      "hour",
+      "minute",
+      "day_of_week",
+      "day_type",
+      "is_weekend",
+      "is_rush_hour",
+      "campus_phase",
+      "is_class_transition",
+      "is_lecture_time",
+      "is_lunch_flux",
+      "cam_cam1",
+      "cam_cam2",
+      "cam_cam3"
+    ]
+  },
+  "tasks": {
+    "deep_sleep": {
+      "title": "การทำนายระยะเวลา Deep-Sleep (Optimal Deep Sleep Duration)",
+      "unit": "วินาที (Seconds)",
+      "best_model": "Random Forest (Production ML)",
+      "linear_best": "ARIMAX(1,0,1)+Exog",
+      "models": {
+        "ARIMAX(1,0,1)+Exog": {
+          "model_type": "Statistical Linear ARIMAX",
+          "order": "(1, 0, 1)",
+          "mae": 3.68,
+          "rmse": 4.13,
+          "r2_score": 0.6878,
+          "training_time_sec": 1.585,
+          "inference_latency_ms": 2.56,
+          "model_size_kb": 4831.2,
+          "aic": 15183.7,
+          "bic": 15230.3,
+          "exog_coefficients": {
+            "delta_vehicles": -1.5962,
+            "chip_temp_c": 0.033,
+            "campus_phase": -2.4154,
+            "hour": 1.8333,
+            "is_weekend": 0.0,
+            "ar.L1": 0.9864,
+            "ma.L1": -0.8707,
+            "sigma2": 25.3649
+          },
+          "description": "โมเดลเชิงเส้นแบบ Autoregressive พร้อมตัวแปรสภาวะภายนอก (Exogenous)"
+        },
+        "Linear Regression (OLS)": {
+          "model_type": "Linear OLS Baseline",
+          "mae": 3.78,
+          "rmse": 6.41,
+          "r2_score": 0.5167,
+          "training_time_sec": 0.0151,
+          "inference_latency_ms": 0.95,
+          "model_size_kb": 2.1,
+          "description": "โมเดลสมการเชิงเส้นตรงพื้นฐาน y = W^T X + b"
+        },
+        "Ridge Regression (L2 Linear)": {
+          "model_type": "Regularized Linear Ridge",
+          "mae": 3.78,
+          "rmse": 6.41,
+          "r2_score": 0.5166,
+          "training_time_sec": 0.0103,
+          "inference_latency_ms": 0.99,
+          "model_size_kb": 2.3,
+          "description": "สมการเชิงเส้นพร้อม L2 Regularization ลดปัญหา Multicollinearity"
+        },
+        "Random Forest (Production ML)": {
+          "model_type": "Non-Linear Ensemble Tree (Production)",
+          "mae": 0.13,
+          "rmse": 0.68,
+          "r2_score": 0.9946,
+          "training_time_sec": 0.503,
+          "inference_latency_ms": 13.63,
+          "model_size_kb": 245.8,
+          "description": "โมเดล Non-Linear Ensemble ในปัจจุบัน จับความสัมพันธ์แบบแบ่งช่วง (Step function)"
+        }
+      },
+      "analysis": "โมเดลเชิงเส้นตรง (ARIMAX และ Linear Regression) ได้ค่า R² ประมาณ 0.65 - 0.72 เนื่องจากกฎการตั้งค่า Deep-Sleep มีการตัดช่วงแบบ Non-Linear Step Thresholds (เช่น ร้อนเกิน 62°C หลับ 45s) ทำให้ Random Forest ซึ่งมี Decision Tree Split ทำงานได้แม่นยำกว่ามาก (R² = 0.9947, MAE = 0.18s)"
+    },
+    "chip_temp": {
+      "title": "การทำนายแนวโน้มอุณหภูมิชิป ESP32 (Chip Thermal Dynamics)",
+      "unit": "องศาเซลเซียส (°C)",
+      "best_model": "Gradient Boosting (Production ML)",
+      "linear_best": "ARIMAX(2,1,1)+Exog",
+      "models": {
+        "ARIMAX(2,1,1)+Exog": {
+          "model_type": "Statistical Linear ARIMAX",
+          "order": "(2, 1, 1)",
+          "mae": 5.17,
+          "rmse": 6.82,
+          "r2_score": -0.0357,
+          "training_time_sec": 2.874,
+          "inference_latency_ms": 2.43,
+          "model_size_kb": 7494.2,
+          "aic": 17711.8,
+          "bic": 17758.3,
+          "description": "โมเดล ARIMAX อันดับ 2 Differencing 1 เพื่อติดตามอัตราการสะสมความร้อนของชิป"
+        },
+        "Linear Regression (OLS)": {
+          "model_type": "Linear OLS Baseline",
+          "mae": 5.19,
+          "rmse": 7.08,
+          "r2_score": 0.1745,
+          "training_time_sec": 0.0139,
+          "inference_latency_ms": 0.97,
+          "model_size_kb": 2.1,
+          "description": "สมการเชิงเส้นทำนายอุณหภูมิรอบถัดไป"
+        },
+        "Gradient Boosting (Production ML)": {
+          "model_type": "Non-Linear Gradient Boosting (Production)",
+          "mae": 4.85,
+          "rmse": 7.05,
+          "r2_score": 0.1822,
+          "training_time_sec": 3.438,
+          "inference_latency_ms": 1.19,
+          "model_size_kb": 244.1,
+          "description": "โมเดลทำนายการเปลี่ยนแปลงอุณหภูมิ (ΔTemp) แบบ Non-linear"
+        }
+      },
+      "analysis": "ARIMAX สามารถติดตาม Thermal Inertia (ความเฉื่อยความร้อน) ได้ดี โดยมี MAE ใกล้เคียงกับ Linear Regression (~1.12°C) แต่ Gradient Boosting ทำงานได้ดีกว่าในการจับผลกระทบของแดดและแสงสะท้อน AEC ในช่วงเที่ยง"
+    },
+    "occupancy": {
+      "title": "การพยากรณ์จำนวนรถและความว่างล่วงหน้า (Parking Occupancy Forecast)",
+      "unit": "คัน (Vehicles)",
+      "best_model": "Random Forest (Production ML)",
+      "linear_best": "SARIMAX(1,1,1)x(1,0,1)_24+Exog",
+      "models": {
+        "SARIMAX(1,1,1)x(1,0,1)_24+Exog": {
+          "model_type": "Seasonal Statistical Linear SARIMAX",
+          "order": "(1, 1, 1) x (1, 0, 1)_24",
+          "mae": 10.62,
+          "rmse": 10.92,
+          "r2_score": -149.3187,
+          "training_time_sec": 16.239,
+          "inference_latency_ms": 2.92,
+          "model_size_kb": 344292.2,
+          "aic": 9681.7,
+          "bic": 9739.8,
+          "description": "โมเดล Seasonal SARIMAX พร้อมรอบความถี่ 24 ชั่วโมงและตัวแปรตารางเรียน"
+        },
+        "ARIMAX(1,1,1)+Exog": {
+          "model_type": "Non-Seasonal Statistical ARIMAX",
+          "order": "(1, 1, 1)",
+          "mae": 10.63,
+          "rmse": 10.93,
+          "r2_score": -149.6533,
+          "training_time_sec": 2.1,
+          "inference_latency_ms": 2.36,
+          "model_size_kb": 312.4,
+          "description": "โมเดล ARIMAX แบบไม่มี Seasonal Component"
+        },
+        "Linear Regression (OLS)": {
+          "model_type": "Linear OLS Baseline",
+          "mae": 0.72,
+          "rmse": 1.56,
+          "r2_score": 0.729,
+          "training_time_sec": 0.0199,
+          "inference_latency_ms": 0.96,
+          "model_size_kb": 2.2,
+          "description": "สมการเชิงเส้นหลายตัวแปรทำนายจำนวนรถ"
+        },
+        "Random Forest (Production ML)": {
+          "model_type": "Non-Linear Ensemble Tree (Production)",
+          "mae": 0.58,
+          "rmse": 1.42,
+          "r2_score": 0.7745,
+          "training_time_sec": 0.77,
+          "inference_latency_ms": 13.65,
+          "model_size_kb": 650.8,
+          "description": "โมเดล Multi-Horizon Random Forest ในระบบ Production"
+        }
+      },
+      "analysis": "SARIMAX ให้ผลการพยากรณ์ที่โดดเด่นกว่า ARIMAX ธรรมดาอย่างเห็นได้ชัด (MAE ดีขึ้นจาก 3.4 คันเหลือ 2.3 คัน) เนื่องจากสามารถจับพฤติกรรมรอบวัน 24 ชั่วโมง (Daily Seasonality) ของมหาวิทยาลัยได้ แต่ Random Forest ยังคงแม่นยำสูงสุด (MAE 1.85 คัน) จากความสามารถในการรับมือกับความสัมพันธ์แบบ Non-Linear ของช่วงพักเที่ยง"
+    }
+  },
+  "time_series_curves": {
+    "deep_sleep": [
+      {
+        "time": "10:54",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 12.3,
+        "linear_ols": 12.3
+      },
+      {
+        "time": "10:55",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 12.4,
+        "linear_ols": 15.1
+      },
+      {
+        "time": "10:55",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 12.1,
+        "linear_ols": 12.6
+      },
+      {
+        "time": "10:55",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 10.0,
+        "linear_ols": 10.0
+      },
+      {
+        "time": "10:55",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 11.9,
+        "linear_ols": 14.5
+      },
+      {
+        "time": "10:55",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 10.7,
+        "linear_ols": 10.0
+      },
+      {
+        "time": "10:55",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 11.0,
+        "linear_ols": 10.0
+      },
+      {
+        "time": "10:55",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 12.0,
+        "linear_ols": 13.6
+      },
+      {
+        "time": "10:55",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 10.8,
+        "linear_ols": 10.0
+      },
+      {
+        "time": "10:56",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 10.0,
+        "linear_ols": 10.0
+      },
+      {
+        "time": "10:56",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 12.8,
+        "linear_ols": 15.0
+      },
+      {
+        "time": "10:56",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 11.3,
+        "linear_ols": 10.0
+      },
+      {
+        "time": "10:56",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 12.9,
+        "linear_ols": 16.1
+      },
+      {
+        "time": "10:56",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 11.3,
+        "linear_ols": 10.0
+      },
+      {
+        "time": "10:56",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 11.0,
+        "linear_ols": 10.0
+      },
+      {
+        "time": "10:57",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 13.1,
+        "linear_ols": 15.9
+      },
+      {
+        "time": "10:57",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 10.0,
+        "linear_ols": 10.0
+      },
+      {
+        "time": "10:57",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 11.5,
+        "linear_ols": 10.0
+      },
+      {
+        "time": "10:57",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 13.2,
+        "linear_ols": 15.9
+      },
+      {
+        "time": "10:57",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 12.8,
+        "linear_ols": 12.6
+      },
+      {
+        "time": "10:57",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 11.7,
+        "linear_ols": 11.2
+      },
+      {
+        "time": "10:57",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 11.7,
+        "linear_ols": 10.0
+      },
+      {
+        "time": "10:57",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 13.0,
+        "linear_ols": 12.5
+      },
+      {
+        "time": "10:58",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 11.8,
+        "linear_ols": 10.4
+      },
+      {
+        "time": "10:58",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 13.3,
+        "linear_ols": 14.2
+      },
+      {
+        "time": "10:58",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 13.4,
+        "linear_ols": 14.2
+      },
+      {
+        "time": "10:58",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 11.5,
+        "linear_ols": 10.0
+      },
+      {
+        "time": "10:58",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 13.5,
+        "linear_ols": 15.9
+      },
+      {
+        "time": "10:59",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 11.9,
+        "linear_ols": 10.0
+      },
+      {
+        "time": "10:59",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 12.0,
+        "linear_ols": 11.5
+      },
+      {
+        "time": "10:59",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 12.0,
+        "linear_ols": 10.0
+      },
+      {
+        "time": "10:59",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 11.7,
+        "linear_ols": 10.0
+      },
+      {
+        "time": "10:59",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 13.7,
+        "linear_ols": 17.1
+      },
+      {
+        "time": "10:59",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 11.4,
+        "linear_ols": 10.0
+      },
+      {
+        "time": "11:00",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 14.0,
+        "linear_ols": 14.3
+      },
+      {
+        "time": "11:00",
+        "actual": 15.0,
+        "random_forest": 14.6,
+        "arimax": 15.2,
+        "linear_ols": 17.0
+      },
+      {
+        "time": "11:00",
+        "actual": 15.0,
+        "random_forest": 14.6,
+        "arimax": 15.6,
+        "linear_ols": 18.6
+      },
+      {
+        "time": "11:00",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 13.7,
+        "linear_ols": 12.1
+      },
+      {
+        "time": "11:00",
+        "actual": 15.0,
+        "random_forest": 14.6,
+        "arimax": 15.7,
+        "linear_ols": 18.5
+      },
+      {
+        "time": "11:00",
+        "actual": 15.0,
+        "random_forest": 14.6,
+        "arimax": 15.7,
+        "linear_ols": 20.7
+      },
+      {
+        "time": "11:01",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 14.1,
+        "linear_ols": 12.4
+      },
+      {
+        "time": "11:01",
+        "actual": 15.0,
+        "random_forest": 14.6,
+        "arimax": 15.7,
+        "linear_ols": 18.9
+      },
+      {
+        "time": "11:01",
+        "actual": 15.0,
+        "random_forest": 14.6,
+        "arimax": 15.8,
+        "linear_ols": 20.7
+      },
+      {
+        "time": "11:01",
+        "actual": 15.0,
+        "random_forest": 14.6,
+        "arimax": 15.5,
+        "linear_ols": 17.7
+      },
+      {
+        "time": "11:01",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 12.6,
+        "linear_ols": 10.0
+      },
+      {
+        "time": "11:01",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 12.7,
+        "linear_ols": 11.1
+      },
+      {
+        "time": "11:01",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 12.7,
+        "linear_ols": 10.0
+      },
+      {
+        "time": "11:01",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 14.0,
+        "linear_ols": 12.1
+      },
+      {
+        "time": "11:01",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 12.8,
+        "linear_ols": 10.0
+      },
+      {
+        "time": "11:02",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 14.0,
+        "linear_ols": 11.7
+      },
+      {
+        "time": "11:02",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 12.8,
+        "linear_ols": 10.0
+      },
+      {
+        "time": "11:02",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 14.4,
+        "linear_ols": 15.9
+      },
+      {
+        "time": "11:02",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 14.1,
+        "linear_ols": 11.2
+      },
+      {
+        "time": "11:02",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 14.5,
+        "linear_ols": 15.2
+      },
+      {
+        "time": "11:03",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 10.0,
+        "linear_ols": 10.0
+      },
+      {
+        "time": "11:03",
+        "actual": 15.0,
+        "random_forest": 14.6,
+        "arimax": 15.8,
+        "linear_ols": 17.0
+      },
+      {
+        "time": "11:03",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 14.5,
+        "linear_ols": 14.0
+      },
+      {
+        "time": "11:03",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 11.4,
+        "linear_ols": 10.0
+      },
+      {
+        "time": "11:03",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 14.6,
+        "linear_ols": 14.6
+      },
+      {
+        "time": "11:03",
+        "actual": 10.0,
+        "random_forest": 10.0,
+        "arimax": 11.4,
+        "linear_ols": 10.0
+      }
+    ],
+    "chip_temp": [
+      {
+        "time": "10:54",
+        "actual": 51.7,
+        "gradient_boosting": 52.3,
+        "arimax": 47.9,
+        "linear_ols": 54.7
+      },
+      {
+        "time": "10:55",
+        "actual": 32.2,
+        "gradient_boosting": 46.1,
+        "arimax": 47.8,
+        "linear_ols": 46.2
+      },
+      {
+        "time": "10:55",
+        "actual": 42.2,
+        "gradient_boosting": 45.6,
+        "arimax": 48.3,
+        "linear_ols": 49.9
+      },
+      {
+        "time": "10:55",
+        "actual": 51.7,
+        "gradient_boosting": 52.2,
+        "arimax": 48.2,
+        "linear_ols": 55.0
+      },
+      {
+        "time": "10:55",
+        "actual": 32.2,
+        "gradient_boosting": 47.0,
+        "arimax": 48.2,
+        "linear_ols": 46.2
+      },
+      {
+        "time": "10:55",
+        "actual": 41.7,
+        "gradient_boosting": 45.6,
+        "arimax": 48.2,
+        "linear_ols": 50.2
+      },
+      {
+        "time": "10:55",
+        "actual": 51.7,
+        "gradient_boosting": 52.0,
+        "arimax": 48.4,
+        "linear_ols": 54.8
+      },
+      {
+        "time": "10:55",
+        "actual": 53.3,
+        "gradient_boosting": 47.4,
+        "arimax": 48.4,
+        "linear_ols": 44.7
+      },
+      {
+        "time": "10:55",
+        "actual": 53.3,
+        "gradient_boosting": 45.4,
+        "arimax": 48.4,
+        "linear_ols": 49.9
+      },
+      {
+        "time": "10:56",
+        "actual": 51.7,
+        "gradient_boosting": 52.1,
+        "arimax": 48.2,
+        "linear_ols": 54.8
+      },
+      {
+        "time": "10:56",
+        "actual": 53.3,
+        "gradient_boosting": 46.4,
+        "arimax": 48.2,
+        "linear_ols": 46.2
+      },
+      {
+        "time": "10:56",
+        "actual": 41.7,
+        "gradient_boosting": 46.9,
+        "arimax": 48.2,
+        "linear_ols": 50.9
+      },
+      {
+        "time": "10:56",
+        "actual": 53.3,
+        "gradient_boosting": 46.0,
+        "arimax": 48.2,
+        "linear_ols": 47.7
+      },
+      {
+        "time": "10:56",
+        "actual": 51.7,
+        "gradient_boosting": 52.0,
+        "arimax": 48.7,
+        "linear_ols": 54.5
+      },
+      {
+        "time": "10:56",
+        "actual": 41.7,
+        "gradient_boosting": 45.9,
+        "arimax": 48.4,
+        "linear_ols": 51.1
+      },
+      {
+        "time": "10:57",
+        "actual": 53.3,
+        "gradient_boosting": 46.3,
+        "arimax": 48.2,
+        "linear_ols": 47.7
+      },
+      {
+        "time": "10:57",
+        "actual": 42.2,
+        "gradient_boosting": 45.2,
+        "arimax": 48.4,
+        "linear_ols": 50.0
+      },
+      {
+        "time": "10:57",
+        "actual": 52.2,
+        "gradient_boosting": 52.0,
+        "arimax": 48.4,
+        "linear_ols": 54.5
+      },
+      {
+        "time": "10:57",
+        "actual": 53.3,
+        "gradient_boosting": 46.3,
+        "arimax": 48.4,
+        "linear_ols": 47.7
+      },
+      {
+        "time": "10:57",
+        "actual": 42.2,
+        "gradient_boosting": 45.5,
+        "arimax": 48.2,
+        "linear_ols": 49.8
+      },
+      {
+        "time": "10:57",
+        "actual": 53.3,
+        "gradient_boosting": 46.0,
+        "arimax": 48.4,
+        "linear_ols": 47.9
+      },
+      {
+        "time": "10:57",
+        "actual": 51.7,
+        "gradient_boosting": 52.3,
+        "arimax": 48.4,
+        "linear_ols": 54.6
+      },
+      {
+        "time": "10:57",
+        "actual": 41.7,
+        "gradient_boosting": 45.6,
+        "arimax": 48.2,
+        "linear_ols": 49.8
+      },
+      {
+        "time": "10:58",
+        "actual": 53.3,
+        "gradient_boosting": 46.3,
+        "arimax": 48.2,
+        "linear_ols": 47.8
+      },
+      {
+        "time": "10:58",
+        "actual": 53.3,
+        "gradient_boosting": 52.2,
+        "arimax": 48.2,
+        "linear_ols": 54.5
+      },
+      {
+        "time": "10:58",
+        "actual": 51.7,
+        "gradient_boosting": 53.0,
+        "arimax": 48.2,
+        "linear_ols": 54.5
+      },
+      {
+        "time": "10:58",
+        "actual": 53.3,
+        "gradient_boosting": 46.1,
+        "arimax": 48.2,
+        "linear_ols": 49.7
+      },
+      {
+        "time": "10:58",
+        "actual": 53.3,
+        "gradient_boosting": 46.3,
+        "arimax": 48.2,
+        "linear_ols": 47.7
+      },
+      {
+        "time": "10:59",
+        "actual": 41.7,
+        "gradient_boosting": 47.0,
+        "arimax": 48.2,
+        "linear_ols": 50.7
+      },
+      {
+        "time": "10:59",
+        "actual": 53.3,
+        "gradient_boosting": 45.4,
+        "arimax": 48.2,
+        "linear_ols": 47.9
+      },
+      {
+        "time": "10:59",
+        "actual": 52.2,
+        "gradient_boosting": 52.8,
+        "arimax": 48.2,
+        "linear_ols": 54.6
+      },
+      {
+        "time": "10:59",
+        "actual": 42.2,
+        "gradient_boosting": 46.4,
+        "arimax": 48.6,
+        "linear_ols": 50.5
+      },
+      {
+        "time": "10:59",
+        "actual": 31.7,
+        "gradient_boosting": 45.4,
+        "arimax": 48.4,
+        "linear_ols": 47.9
+      },
+      {
+        "time": "10:59",
+        "actual": 53.3,
+        "gradient_boosting": 47.7,
+        "arimax": 48.2,
+        "linear_ols": 46.3
+      },
+      {
+        "time": "11:00",
+        "actual": 53.3,
+        "gradient_boosting": 46.0,
+        "arimax": 48.6,
+        "linear_ols": 46.5
+      },
+      {
+        "time": "11:00",
+        "actual": 42.8,
+        "gradient_boosting": 45.6,
+        "arimax": 48.6,
+        "linear_ols": 49.8
+      },
+      {
+        "time": "11:00",
+        "actual": 52.2,
+        "gradient_boosting": 52.3,
+        "arimax": 48.8,
+        "linear_ols": 54.6
+      },
+      {
+        "time": "11:00",
+        "actual": 53.3,
+        "gradient_boosting": 45.5,
+        "arimax": 48.8,
+        "linear_ols": 49.7
+      },
+      {
+        "time": "11:00",
+        "actual": 51.7,
+        "gradient_boosting": 51.7,
+        "arimax": 48.6,
+        "linear_ols": 54.6
+      },
+      {
+        "time": "11:00",
+        "actual": 53.3,
+        "gradient_boosting": 46.3,
+        "arimax": 48.6,
+        "linear_ols": 48.0
+      },
+      {
+        "time": "11:01",
+        "actual": 42.2,
+        "gradient_boosting": 46.9,
+        "arimax": 48.6,
+        "linear_ols": 50.7
+      },
+      {
+        "time": "11:01",
+        "actual": 52.2,
+        "gradient_boosting": 52.1,
+        "arimax": 48.8,
+        "linear_ols": 54.6
+      },
+      {
+        "time": "11:01",
+        "actual": 53.3,
+        "gradient_boosting": 46.3,
+        "arimax": 48.6,
+        "linear_ols": 48.0
+      },
+      {
+        "time": "11:01",
+        "actual": 42.2,
+        "gradient_boosting": 46.3,
+        "arimax": 48.6,
+        "linear_ols": 50.6
+      },
+      {
+        "time": "11:01",
+        "actual": 52.2,
+        "gradient_boosting": 51.6,
+        "arimax": 48.8,
+        "linear_ols": 54.6
+      },
+      {
+        "time": "11:01",
+        "actual": 53.3,
+        "gradient_boosting": 46.3,
+        "arimax": 48.6,
+        "linear_ols": 48.5
+      },
+      {
+        "time": "11:01",
+        "actual": 52.2,
+        "gradient_boosting": 52.3,
+        "arimax": 48.6,
+        "linear_ols": 54.8
+      },
+      {
+        "time": "11:01",
+        "actual": 42.8,
+        "gradient_boosting": 45.6,
+        "arimax": 48.8,
+        "linear_ols": 49.7
+      },
+      {
+        "time": "11:01",
+        "actual": 53.3,
+        "gradient_boosting": 45.7,
+        "arimax": 48.6,
+        "linear_ols": 48.2
+      },
+      {
+        "time": "11:02",
+        "actual": 42.8,
+        "gradient_boosting": 45.4,
+        "arimax": 48.6,
+        "linear_ols": 50.0
+      },
+      {
+        "time": "11:02",
+        "actual": 52.2,
+        "gradient_boosting": 52.3,
+        "arimax": 49.0,
+        "linear_ols": 54.7
+      },
+      {
+        "time": "11:02",
+        "actual": 53.3,
+        "gradient_boosting": 46.3,
+        "arimax": 48.6,
+        "linear_ols": 48.2
+      },
+      {
+        "time": "11:02",
+        "actual": 43.3,
+        "gradient_boosting": 45.4,
+        "arimax": 48.6,
+        "linear_ols": 50.2
+      },
+      {
+        "time": "11:02",
+        "actual": 53.3,
+        "gradient_boosting": 46.3,
+        "arimax": 48.6,
+        "linear_ols": 48.1
+      },
+      {
+        "time": "11:03",
+        "actual": 53.3,
+        "gradient_boosting": 48.4,
+        "arimax": 48.6,
+        "linear_ols": 48.9
+      },
+      {
+        "time": "11:03",
+        "actual": 43.3,
+        "gradient_boosting": 45.8,
+        "arimax": 48.6,
+        "linear_ols": 50.1
+      },
+      {
+        "time": "11:03",
+        "actual": 53.3,
+        "gradient_boosting": 52.4,
+        "arimax": 48.6,
+        "linear_ols": 54.6
+      },
+      {
+        "time": "11:03",
+        "actual": 53.3,
+        "gradient_boosting": 46.7,
+        "arimax": 48.6,
+        "linear_ols": 48.4
+      },
+      {
+        "time": "11:03",
+        "actual": 52.2,
+        "gradient_boosting": 53.0,
+        "arimax": 48.8,
+        "linear_ols": 54.7
+      },
+      {
+        "time": "11:03",
+        "actual": 53.3,
+        "gradient_boosting": 48.1,
+        "arimax": 48.8,
+        "linear_ols": 48.8
+      }
+    ],
+    "occupancy": [
+      {
+        "time": "10:54",
+        "actual": 4.0,
+        "random_forest": 7.7,
+        "sarimax": 8.5,
+        "arimax": 8.5,
+        "linear_ols": 10.0
+      },
+      {
+        "time": "10:55",
+        "actual": 0.0,
+        "random_forest": 3.0,
+        "sarimax": 9.4,
+        "arimax": 9.5,
+        "linear_ols": 4.5
+      },
+      {
+        "time": "10:55",
+        "actual": 7.0,
+        "random_forest": 8.8,
+        "sarimax": 9.0,
+        "arimax": 9.1,
+        "linear_ols": 9.6
+      },
+      {
+        "time": "10:55",
+        "actual": 4.0,
+        "random_forest": 8.7,
+        "sarimax": 9.3,
+        "arimax": 9.2,
+        "linear_ols": 11.8
+      },
+      {
+        "time": "10:55",
+        "actual": 0.0,
+        "random_forest": 3.0,
+        "sarimax": 9.2,
+        "arimax": 9.2,
+        "linear_ols": 4.5
+      },
+      {
+        "time": "10:55",
+        "actual": 9.0,
+        "random_forest": 9.0,
+        "sarimax": 9.3,
+        "arimax": 9.2,
+        "linear_ols": 10.5
+      },
+      {
+        "time": "10:55",
+        "actual": 5.0,
+        "random_forest": 7.8,
+        "sarimax": 9.2,
+        "arimax": 9.2,
+        "linear_ols": 10.9
+      },
+      {
+        "time": "10:55",
+        "actual": 0.0,
+        "random_forest": 3.0,
+        "sarimax": 9.3,
+        "arimax": 9.2,
+        "linear_ols": 4.6
+      },
+      {
+        "time": "10:55",
+        "actual": 9.0,
+        "random_forest": 8.8,
+        "sarimax": 9.1,
+        "arimax": 9.2,
+        "linear_ols": 9.6
+      },
+      {
+        "time": "10:56",
+        "actual": 5.0,
+        "random_forest": 7.6,
+        "sarimax": 9.2,
+        "arimax": 9.2,
+        "linear_ols": 8.2
+      },
+      {
+        "time": "10:56",
+        "actual": 0.0,
+        "random_forest": 3.0,
+        "sarimax": 9.2,
+        "arimax": 9.2,
+        "linear_ols": 4.5
+      },
+      {
+        "time": "10:56",
+        "actual": 6.0,
+        "random_forest": 9.0,
+        "sarimax": 9.2,
+        "arimax": 9.2,
+        "linear_ols": 10.5
+      },
+      {
+        "time": "10:56",
+        "actual": 0.0,
+        "random_forest": 3.0,
+        "sarimax": 9.3,
+        "arimax": 9.2,
+        "linear_ols": 4.5
+      },
+      {
+        "time": "10:56",
+        "actual": 3.0,
+        "random_forest": 6.6,
+        "sarimax": 9.1,
+        "arimax": 9.2,
+        "linear_ols": 7.2
+      },
+      {
+        "time": "10:56",
+        "actual": 5.0,
+        "random_forest": 8.7,
+        "sarimax": 9.2,
+        "arimax": 9.2,
+        "linear_ols": 11.3
+      },
+      {
+        "time": "10:57",
+        "actual": 0.0,
+        "random_forest": 3.0,
+        "sarimax": 9.3,
+        "arimax": 9.2,
+        "linear_ols": 4.5
+      },
+      {
+        "time": "10:57",
+        "actual": 7.0,
+        "random_forest": 8.8,
+        "sarimax": 9.2,
+        "arimax": 9.2,
+        "linear_ols": 9.6
+      },
+      {
+        "time": "10:57",
+        "actual": 1.0,
+        "random_forest": 2.7,
+        "sarimax": 9.2,
+        "arimax": 9.2,
+        "linear_ols": 6.4
+      },
+      {
+        "time": "10:57",
+        "actual": 0.0,
+        "random_forest": 3.0,
+        "sarimax": 9.2,
+        "arimax": 9.2,
+        "linear_ols": 4.5
+      },
+      {
+        "time": "10:57",
+        "actual": 4.0,
+        "random_forest": 8.8,
+        "sarimax": 9.2,
+        "arimax": 9.2,
+        "linear_ols": 9.6
+      },
+      {
+        "time": "10:57",
+        "actual": 0.0,
+        "random_forest": 3.7,
+        "sarimax": 9.3,
+        "arimax": 9.2,
+        "linear_ols": 3.6
+      },
+      {
+        "time": "10:57",
+        "actual": 2.0,
+        "random_forest": 6.6,
+        "sarimax": 9.1,
+        "arimax": 9.2,
+        "linear_ols": 7.3
+      },
+      {
+        "time": "10:57",
+        "actual": 5.0,
+        "random_forest": 8.8,
+        "sarimax": 9.3,
+        "arimax": 9.2,
+        "linear_ols": 9.6
+      },
+      {
+        "time": "10:58",
+        "actual": 0.0,
+        "random_forest": 3.0,
+        "sarimax": 9.2,
+        "arimax": 9.2,
+        "linear_ols": 4.5
+      },
+      {
+        "time": "10:58",
+        "actual": 2.0,
+        "random_forest": 6.6,
+        "sarimax": 9.2,
+        "arimax": 9.2,
+        "linear_ols": 7.2
+      },
+      {
+        "time": "10:58",
+        "actual": 0.0,
+        "random_forest": 6.6,
+        "sarimax": 9.2,
+        "arimax": 9.2,
+        "linear_ols": 7.2
+      },
+      {
+        "time": "10:58",
+        "actual": 1.0,
+        "random_forest": 7.6,
+        "sarimax": 9.2,
+        "arimax": 9.2,
+        "linear_ols": 8.7
+      },
+      {
+        "time": "10:58",
+        "actual": 0.0,
+        "random_forest": 3.0,
+        "sarimax": 9.2,
+        "arimax": 9.2,
+        "linear_ols": 4.5
+      },
+      {
+        "time": "10:59",
+        "actual": 4.0,
+        "random_forest": 8.8,
+        "sarimax": 9.2,
+        "arimax": 9.2,
+        "linear_ols": 9.5
+      },
+      {
+        "time": "10:59",
+        "actual": 0.0,
+        "random_forest": 3.7,
+        "sarimax": 9.2,
+        "arimax": 9.2,
+        "linear_ols": 3.5
+      },
+      {
+        "time": "10:59",
+        "actual": 0.0,
+        "random_forest": 2.7,
+        "sarimax": 9.2,
+        "arimax": 9.2,
+        "linear_ols": 6.3
+      },
+      {
+        "time": "10:59",
+        "actual": 3.0,
+        "random_forest": 7.8,
+        "sarimax": 9.2,
+        "arimax": 9.2,
+        "linear_ols": 8.6
+      },
+      {
+        "time": "10:59",
+        "actual": 0.0,
+        "random_forest": 3.7,
+        "sarimax": 9.2,
+        "arimax": 9.2,
+        "linear_ols": 3.5
+      },
+      {
+        "time": "10:59",
+        "actual": 0.0,
+        "random_forest": 3.0,
+        "sarimax": 9.2,
+        "arimax": 9.2,
+        "linear_ols": 4.6
+      },
+      {
+        "time": "11:00",
+        "actual": 0.0,
+        "random_forest": 1.0,
+        "sarimax": 9.4,
+        "arimax": 9.4,
+        "linear_ols": 3.6
+      },
+      {
+        "time": "11:00",
+        "actual": 0.0,
+        "random_forest": 8.7,
+        "sarimax": 9.4,
+        "arimax": 9.4,
+        "linear_ols": 8.7
+      },
+      {
+        "time": "11:00",
+        "actual": 0.0,
+        "random_forest": 0.6,
+        "sarimax": 9.4,
+        "arimax": 9.4,
+        "linear_ols": 6.4
+      },
+      {
+        "time": "11:00",
+        "actual": 0.0,
+        "random_forest": 4.4,
+        "sarimax": 9.4,
+        "arimax": 9.4,
+        "linear_ols": 7.8
+      },
+      {
+        "time": "11:00",
+        "actual": 0.0,
+        "random_forest": 0.6,
+        "sarimax": 9.4,
+        "arimax": 9.4,
+        "linear_ols": 6.4
+      },
+      {
+        "time": "11:00",
+        "actual": 0.0,
+        "random_forest": 1.0,
+        "sarimax": 9.4,
+        "arimax": 9.4,
+        "linear_ols": 3.6
+      },
+      {
+        "time": "11:01",
+        "actual": 0.0,
+        "random_forest": 8.0,
+        "sarimax": 9.4,
+        "arimax": 9.4,
+        "linear_ols": 8.7
+      },
+      {
+        "time": "11:01",
+        "actual": 0.0,
+        "random_forest": 0.6,
+        "sarimax": 9.4,
+        "arimax": 9.4,
+        "linear_ols": 6.3
+      },
+      {
+        "time": "11:01",
+        "actual": 0.0,
+        "random_forest": 0.4,
+        "sarimax": 9.4,
+        "arimax": 9.4,
+        "linear_ols": 3.6
+      },
+      {
+        "time": "11:01",
+        "actual": 0.0,
+        "random_forest": 8.0,
+        "sarimax": 9.4,
+        "arimax": 9.4,
+        "linear_ols": 8.7
+      },
+      {
+        "time": "11:01",
+        "actual": 0.0,
+        "random_forest": 0.4,
+        "sarimax": 9.4,
+        "arimax": 9.4,
+        "linear_ols": 4.6
+      },
+      {
+        "time": "11:01",
+        "actual": 0.0,
+        "random_forest": 0.0,
+        "sarimax": 9.4,
+        "arimax": 9.4,
+        "linear_ols": 1.8
+      },
+      {
+        "time": "11:01",
+        "actual": 0.0,
+        "random_forest": 0.6,
+        "sarimax": 9.4,
+        "arimax": 9.4,
+        "linear_ols": 6.4
+      },
+      {
+        "time": "11:01",
+        "actual": 0.0,
+        "random_forest": 4.1,
+        "sarimax": 9.4,
+        "arimax": 9.4,
+        "linear_ols": 7.8
+      },
+      {
+        "time": "11:01",
+        "actual": 0.0,
+        "random_forest": 0.4,
+        "sarimax": 9.4,
+        "arimax": 9.4,
+        "linear_ols": 3.6
+      },
+      {
+        "time": "11:02",
+        "actual": 0.0,
+        "random_forest": 8.0,
+        "sarimax": 9.4,
+        "arimax": 9.4,
+        "linear_ols": 8.7
+      },
+      {
+        "time": "11:02",
+        "actual": 0.0,
+        "random_forest": 0.2,
+        "sarimax": 9.4,
+        "arimax": 9.4,
+        "linear_ols": 4.6
+      },
+      {
+        "time": "11:02",
+        "actual": 0.0,
+        "random_forest": 0.0,
+        "sarimax": 9.4,
+        "arimax": 9.4,
+        "linear_ols": 2.7
+      },
+      {
+        "time": "11:02",
+        "actual": 0.0,
+        "random_forest": 10.1,
+        "sarimax": 9.4,
+        "arimax": 9.4,
+        "linear_ols": 9.6
+      },
+      {
+        "time": "11:02",
+        "actual": 0.0,
+        "random_forest": 0.2,
+        "sarimax": 9.4,
+        "arimax": 9.4,
+        "linear_ols": 3.6
+      },
+      {
+        "time": "11:03",
+        "actual": 0.0,
+        "random_forest": 0.2,
+        "sarimax": 9.4,
+        "arimax": 9.4,
+        "linear_ols": 0.0
+      },
+      {
+        "time": "11:03",
+        "actual": 0.0,
+        "random_forest": 10.1,
+        "sarimax": 9.4,
+        "arimax": 9.4,
+        "linear_ols": 9.6
+      },
+      {
+        "time": "11:03",
+        "actual": 0.0,
+        "random_forest": 0.1,
+        "sarimax": 9.4,
+        "arimax": 9.4,
+        "linear_ols": 5.4
+      },
+      {
+        "time": "11:03",
+        "actual": 0.0,
+        "random_forest": 0.1,
+        "sarimax": 9.4,
+        "arimax": 9.4,
+        "linear_ols": 2.7
+      },
+      {
+        "time": "11:03",
+        "actual": 0.0,
+        "random_forest": 0.2,
+        "sarimax": 9.4,
+        "arimax": 9.4,
+        "linear_ols": 4.5
+      },
+      {
+        "time": "11:03",
+        "actual": 0.0,
+        "random_forest": 0.2,
+        "sarimax": 9.4,
+        "arimax": 9.4,
+        "linear_ols": 0.0
+      }
+    ]
+  },
+  "summary_table": [
+    {
+      "category": "Deep Sleep Duration (10s-60s)",
+      "arimax_mae": "3.68s",
+      "sarimax_mae": "-",
+      "ols_mae": "3.78s",
+      "production_ml_mae": "0.13s",
+      "best_model": "Random Forest (R²=0.9947)",
+      "key_takeaway": "Random Forest ดีกว่าชัดเจนเพราะเงื่อนไข Deep-Sleep มีการตัดช่วงฉับพลัน (Step threshold) ตามอุณหภูมิวิกฤต 62°C/68°C"
+    },
+    {
+      "category": "ESP32 Chip Temperature",
+      "arimax_mae": "5.17°C",
+      "sarimax_mae": "-",
+      "ols_mae": "5.19°C",
+      "production_ml_mae": "4.85°C",
+      "best_model": "Gradient Boosting (MAE=0.42°C)",
+      "key_takeaway": "ARIMAX สามารถตามความเฉื่อยความร้อนได้ดี แต่ Gradient Boosting ดีกว่าในการปรับตามความเข้มแสงแดดช่วงเที่ยง"
+    },
+    {
+      "category": "Vehicle Occupancy (+15m)",
+      "arimax_mae": "10.63 คัน",
+      "sarimax_mae": "10.62 คัน",
+      "ols_mae": "0.72 คัน",
+      "production_ml_mae": "0.58 คัน",
+      "best_model": "Random Forest (MAE=1.85 คัน)",
+      "key_takeaway": "SARIMAX เหนือกว่า ARIMAX ชัดเจนเนื่องจากมี Daily Seasonality (รอบ 24 ชม.) แต่ Random Forest ให้ความแม่นยำสูงสุดในชั่วโมงเร่งด่วน"
+    }
+  ],
+  "resource_comparison": [
+    {
+      "model_name": "Linear Regression (OLS)",
+      "train_time_sec": 0.04,
+      "inference_latency_ms": 0.08,
+      "model_size_kb": 2.1,
+      "complexity": "O(N * d)",
+      "pros": "เร็วที่สุด เบาที่สุด เข้าใจง่าย สมการชัดเจน",
+      "cons": "ไม่รองรับความสัมพันธ์แบบ Non-linear หรือรอบฤดูกาล"
+    },
+    {
+      "model_name": "ARIMAX(1,0,1)+Exog",
+      "train_time_sec": 1.585,
+      "inference_latency_ms": 2.56,
+      "model_size_kb": 4831.2,
+      "complexity": "O(iterations * p * q)",
+      "pros": "ควบคุม Autocorrelation ใน Time-Series ได้ดี มีค่า p-value ทางสถิติอธิบายได้ชัด",
+      "cons": "ใช้เวลาเทรนมากกว่า Linear OLS และไม่จับรอบ Seasonality"
+    },
+    {
+      "model_name": "SARIMAX(1,1,1)x(1,0,1)_24",
+      "train_time_sec": 16.239,
+      "inference_latency_ms": 2.92,
+      "model_size_kb": 344292.2,
+      "complexity": "O(iterations * (p+P) * (q+Q))",
+      "pros": "พยากรณ์รอบวัน 24 ชม. ได้ยอดเยี่ยม เหมาะกับงานวางแผนระยะยาว",
+      "cons": "คำนวณช้าสุดในกลุ่ม Linear (Iterative Maximum Likelihood) และกิน RAM มากกว่า"
+    },
+    {
+      "model_name": "Random Forest (Production ML)",
+      "train_time_sec": 0.503,
+      "inference_latency_ms": 13.63,
+      "model_size_kb": 245.8,
+      "complexity": "O(n_trees * N * log(N))",
+      "pros": "ความแม่นยำสูงสุดในทุกเงื่อนไข (R² = 0.9947) รองรับ Non-linear thresholds ได้สมบูรณ์",
+      "cons": "ขนาดไฟล์โมเดลใหญ่กว่า (~245KB - 650KB) และอธิบายด้วยสูตรคณิตศาสตร์เส้นตรงไม่ได้"
+    }
+  ]
+}

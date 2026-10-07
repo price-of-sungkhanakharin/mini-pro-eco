@@ -41,6 +41,23 @@ class TimeseriesService:
             occ_30m_path = ML_DIR / "occupancy_forecaster_30m.joblib"
             meta_path = ML_DIR / "timeseries_metadata.json"
 
+            # If local files missing, attempt pull from MinIO 'timeseries' bucket
+            if not sleep_path.exists() or not thermal_path.exists():
+                try:
+                    from minio import Minio
+                    from backend.app.core.config import settings
+                    client = Minio(
+                        settings.minio_endpoint,
+                        access_key=settings.minio_root_user,
+                        secret_key=settings.minio_root_password,
+                        secure=False
+                    )
+                    if client.bucket_exists("timeseries"):
+                        for f in ["adaptive_sleep_model.joblib", "thermal_forecaster.joblib", "occupancy_forecaster_15m.joblib", "occupancy_forecaster_30m.joblib", "timeseries_metadata.json"]:
+                            client.fget_object("timeseries", f, str(ML_DIR / f))
+                except Exception as minio_err:
+                    logger.debug("MinIO pull fallback error: %s", minio_err)
+
             if sleep_path.exists():
                 self.sleep_model = joblib.load(sleep_path)
             if thermal_path.exists():
@@ -61,6 +78,7 @@ class TimeseriesService:
         camera_id: str,
         current_telemetry: Optional[Dict[str, Any]] = None,
         occupancy_info: Optional[Dict[str, Any]] = None,
+        target_dt: Optional[datetime] = None,
     ) -> Dict[str, Any]:
         """
         Evaluate current thermal and traffic environment to recommend optimal deep sleep.
@@ -68,7 +86,13 @@ class TimeseriesService:
             dict containing recommended_sleep_sec, thermal_status, predicted_temp_c, reason.
         """
         # Time features
-        now_bkk = datetime.now(BKK_TZ)
+        if target_dt:
+            if target_dt.tzinfo is None:
+                now_bkk = target_dt.replace(tzinfo=BKK_TZ)
+            else:
+                now_bkk = target_dt.astimezone(BKK_TZ)
+        else:
+            now_bkk = datetime.now(BKK_TZ)
         hour = now_bkk.hour
         minute = now_bkk.minute
         day_of_week = now_bkk.weekday()

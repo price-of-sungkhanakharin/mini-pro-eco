@@ -245,6 +245,9 @@ export async function loadDumpMetadata() {
 
 export function formatTimestampThai(localTimeStr) {
   if (!localTimeStr) return '22 ก.ย. 2026, 18:00:00 น.'
+  if (localTimeStr.includes('T')) {
+    localTimeStr = localTimeStr.replace('T', ' ').substring(0, 19)
+  }
   // Accepts "2026-09-22 18:02:28"
   const parts = localTimeStr.split(' ')
   if (parts.length === 2) {
@@ -258,6 +261,65 @@ export function formatTimestampThai(localTimeStr) {
     return `${parseInt(d, 10)} ${monthName} ${y}, ${parts[1]} น.`
   }
   return localTimeStr
+}
+
+export function formatSnapshotTimeInfo(timestampStr) {
+  if (!timestampStr || timestampStr === 'ไม่มีสัญญาณภาพ') {
+    return {
+      formattedFull: 'ไม่มีสัญญาณภาพ',
+      formattedTime: '—',
+      relativeText: 'ออฟไลน์',
+      raw: null
+    }
+  }
+  let dateObj = null
+  try {
+    const cleanStr = timestampStr.includes('T') ? timestampStr : timestampStr.replace(' ', 'T')
+    dateObj = new Date(cleanStr)
+    if (isNaN(dateObj.getTime())) {
+      dateObj = new Date(timestampStr)
+    }
+  } catch {
+    dateObj = null
+  }
+
+  if (!dateObj || isNaN(dateObj.getTime())) {
+    return {
+      formattedFull: timestampStr,
+      formattedTime: timestampStr,
+      relativeText: '',
+      raw: timestampStr
+    }
+  }
+
+  const hours = String(dateObj.getHours()).padStart(2, '0')
+  const mins = String(dateObj.getMinutes()).padStart(2, '0')
+  const secs = String(dateObj.getSeconds()).padStart(2, '0')
+  const timeStr = `${hours}:${mins}:${secs} น.`
+
+  const thaiMonths = [
+    '', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+    'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'
+  ]
+  const day = dateObj.getDate()
+  const month = thaiMonths[dateObj.getMonth() + 1] || (dateObj.getMonth() + 1)
+  const year = dateObj.getFullYear()
+  const fullStr = `${day} ${month} ${year}, ${timeStr}`
+
+  const now = new Date()
+  const diffSec = Math.floor((now.getTime() - dateObj.getTime()) / 1000)
+  let rel = ''
+  if (diffSec < 5) rel = 'เมื่อสักครู่'
+  else if (diffSec < 60) rel = `${diffSec} วินาทีที่แล้ว`
+  else if (diffSec < 3600) rel = `${Math.floor(diffSec / 60)} นาทีที่แล้ว`
+  else rel = `${Math.floor(diffSec / 3600)} ชม. ที่แล้ว`
+
+  return {
+    formattedFull: fullStr,
+    formattedTime: timeStr,
+    relativeText: rel,
+    raw: timestampStr
+  }
 }
 
 /**
@@ -370,324 +432,10 @@ export function formatHeapKb(bytes) {
 /**
  * Recommended realistic parking slots ROI for the 1600x1200 front_dept camera view
  */
-export const DEFAULT_CAM1_SLOTS = [
-  {
-    id: 'A01',
-    type: 'car',
-    shape: 'polygon',
-    occupied: true,
-    vehicle_name: 'Sedan ดำ (กข-1234)',
-    points: [
-      { x: 605, y: 440 },
-      { x: 830, y: 445 },
-      { x: 820, y: 550 },
-      { x: 595, y: 545 }
-    ],
-    bbox: { x: 595, y: 440, width: 235, height: 110 }
-  },
-  {
-    id: 'A02',
-    type: 'car',
-    shape: 'polygon',
-    occupied: true,
-    vehicle_name: 'SUV ดำ (ขข-5544)',
-    points: [
-      { x: 445, y: 535 },
-      { x: 740, y: 540 },
-      { x: 710, y: 765 },
-      { x: 420, y: 755 }
-    ],
-    bbox: { x: 420, y: 535, width: 320, height: 230 }
-  },
-  {
-    id: 'A03',
-    type: 'car',
-    shape: 'polygon',
-    occupied: false,
-    vehicle_name: 'ว่างพร้อมจอด',
-    points: [
-      { x: 780, y: 460 },
-      { x: 1000, y: 465 },
-      { x: 975, y: 630 },
-      { x: 755, y: 620 }
-    ],
-    bbox: { x: 755, y: 460, width: 245, height: 170 }
-  },
-  {
-    id: 'A04',
-    type: 'car',
-    shape: 'polygon',
-    occupied: true,
-    vehicle_name: 'Sedan ขาว (ฮฮ-9988)',
-    points: [
-      { x: 140, y: 575 },
-      { x: 390, y: 580 },
-      { x: 375, y: 720 },
-      { x: 125, y: 710 }
-    ],
-    bbox: { x: 125, y: 575, width: 265, height: 145 }
-  },
-  {
-    id: 'A05',
-    type: 'car',
-    shape: 'polygon',
-    occupied: false,
-    vehicle_name: 'ว่างพร้อมจอด',
-    points: [
-      { x: 10, y: 700 },
-      { x: 370, y: 710 },
-      { x: 345, y: 975 },
-      { x: 10, y: 960 }
-    ],
-    bbox: { x: 10, y: 700, width: 360, height: 275 }
-  },
-  {
-    id: 'M01',
-    type: 'motorcycle',
-    shape: 'polygon',
-    occupied: true,
-    vehicle_name: 'Honda Wave แดง',
-    points: [
-      { x: 1060, y: 470 },
-      { x: 1140, y: 472 },
-      { x: 1130, y: 550 },
-      { x: 1050, y: 548 }
-    ],
-    bbox: { x: 1050, y: 470, width: 90, height: 80 }
-  },
-  {
-    id: 'M02',
-    type: 'motorcycle',
-    shape: 'polygon',
-    occupied: false,
-    vehicle_name: 'ว่างพร้อมจอด',
-    points: [
-      { x: 1150, y: 472 },
-      { x: 1230, y: 475 },
-      { x: 1220, y: 552 },
-      { x: 1140, y: 550 }
-    ],
-    bbox: { x: 1140, y: 472, width: 90, height: 80 }
-  }
-]
-
+export const DEFAULT_CAM1_SLOTS = []
 export const SLOTS_STORAGE_KEY = 'cpe_parking_slots_cam1'
-
-export const DEFAULT_CAM2_SLOTS = [
-  {
-    id: 'B01',
-    type: 'car',
-    shape: 'polygon',
-    occupied: true,
-    vehicle_name: 'Sedan ดำ (1กค-2020)',
-    points: [
-      { x: 180, y: 520 },
-      { x: 380, y: 520 },
-      { x: 360, y: 720 },
-      { x: 150, y: 720 }
-    ],
-    bbox: { x: 150, y: 520, width: 230, height: 200 }
-  },
-  {
-    id: 'B02',
-    type: 'car',
-    shape: 'polygon',
-    occupied: true,
-    vehicle_name: 'Sedan ขาว (2ขพ-4433)',
-    points: [
-      { x: 410, y: 520 },
-      { x: 610, y: 520 },
-      { x: 590, y: 720 },
-      { x: 390, y: 720 }
-    ],
-    bbox: { x: 390, y: 520, width: 220, height: 200 }
-  },
-  {
-    id: 'B03',
-    type: 'car',
-    shape: 'polygon',
-    occupied: true,
-    vehicle_name: 'SUV บรอนซ์ (5กษ-8811)',
-    points: [
-      { x: 640, y: 520 },
-      { x: 840, y: 520 },
-      { x: 820, y: 720 },
-      { x: 620, y: 720 }
-    ],
-    bbox: { x: 620, y: 520, width: 220, height: 200 }
-  },
-  {
-    id: 'B04',
-    type: 'car',
-    shape: 'polygon',
-    occupied: false,
-    vehicle_name: 'ว่างพร้อมจอด',
-    points: [
-      { x: 870, y: 520 },
-      { x: 1070, y: 520 },
-      { x: 1050, y: 720 },
-      { x: 850, y: 720 }
-    ],
-    bbox: { x: 850, y: 520, width: 220, height: 200 }
-  },
-  {
-    id: 'B05',
-    type: 'car',
-    shape: 'polygon',
-    occupied: true,
-    vehicle_name: 'กระบะ ขาว (3ฒณ-9090)',
-    points: [
-      { x: 1100, y: 520 },
-      { x: 1300, y: 520 },
-      { x: 1280, y: 720 },
-      { x: 1080, y: 720 }
-    ],
-    bbox: { x: 1080, y: 520, width: 220, height: 200 }
-  },
-  {
-    id: 'B06',
-    type: 'car',
-    shape: 'polygon',
-    occupied: false,
-    vehicle_name: 'ว่างพร้อมจอด',
-    points: [
-      { x: 1330, y: 520 },
-      { x: 1530, y: 520 },
-      { x: 1510, y: 720 },
-      { x: 1310, y: 720 }
-    ],
-    bbox: { x: 1310, y: 520, width: 220, height: 200 }
-  },
-  {
-    id: 'MB01',
-    type: 'motorcycle',
-    shape: 'polygon',
-    occupied: false,
-    vehicle_name: 'ว่างพร้อมจอด',
-    points: [
-      { x: 180, y: 780 },
-      { x: 280, y: 780 },
-      { x: 270, y: 880 },
-      { x: 170, y: 880 }
-    ],
-    bbox: { x: 170, y: 780, width: 110, height: 100 }
-  },
-  {
-    id: 'MB02',
-    type: 'motorcycle',
-    shape: 'polygon',
-    occupied: true,
-    vehicle_name: 'Yamaha Fazzio',
-    points: [
-      { x: 300, y: 780 },
-      { x: 400, y: 780 },
-      { x: 390, y: 880 },
-      { x: 290, y: 880 }
-    ],
-    bbox: { x: 290, y: 780, width: 110, height: 100 }
-  }
-]
-
-export const DEFAULT_CAM3_SLOTS = [
-  {
-    id: 'C01',
-    type: 'car',
-    shape: 'polygon',
-    occupied: true,
-    vehicle_name: 'Sedan น้ำเงิน (อาจารย์ 1)',
-    points: [
-      { x: 250, y: 480 },
-      { x: 480, y: 480 },
-      { x: 460, y: 700 },
-      { x: 230, y: 700 }
-    ],
-    bbox: { x: 230, y: 480, width: 250, height: 220 }
-  },
-  {
-    id: 'C02',
-    type: 'car',
-    shape: 'polygon',
-    occupied: true,
-    vehicle_name: 'SUV ขาว (อาจารย์ 2)',
-    points: [
-      { x: 520, y: 480 },
-      { x: 750, y: 480 },
-      { x: 730, y: 700 },
-      { x: 500, y: 700 }
-    ],
-    bbox: { x: 500, y: 480, width: 250, height: 220 }
-  },
-  {
-    id: 'C03',
-    type: 'car',
-    shape: 'polygon',
-    occupied: true,
-    vehicle_name: 'Sedan เทา (เจ้าหน้าที่)',
-    points: [
-      { x: 790, y: 480 },
-      { x: 1020, y: 480 },
-      { x: 1000, y: 700 },
-      { x: 770, y: 700 }
-    ],
-    bbox: { x: 770, y: 480, width: 250, height: 220 }
-  },
-  {
-    id: 'C04',
-    type: 'car',
-    shape: 'polygon',
-    occupied: false,
-    vehicle_name: 'ว่างพร้อมจอด',
-    points: [
-      { x: 1060, y: 480 },
-      { x: 1290, y: 480 },
-      { x: 1270, y: 700 },
-      { x: 1040, y: 700 }
-    ],
-    bbox: { x: 1040, y: 480, width: 250, height: 220 }
-  },
-  {
-    id: 'C05',
-    type: 'car',
-    shape: 'polygon',
-    occupied: false,
-    vehicle_name: 'ว่างพร้อมจอด',
-    points: [
-      { x: 1330, y: 480 },
-      { x: 1560, y: 480 },
-      { x: 1540, y: 700 },
-      { x: 1310, y: 700 }
-    ],
-    bbox: { x: 1310, y: 480, width: 250, height: 220 }
-  },
-  {
-    id: 'MC01',
-    type: 'motorcycle',
-    shape: 'polygon',
-    occupied: true,
-    vehicle_name: 'Honda Click ดำ',
-    points: [
-      { x: 100, y: 500 },
-      { x: 200, y: 500 },
-      { x: 190, y: 620 },
-      { x: 90, y: 620 }
-    ],
-    bbox: { x: 90, y: 500, width: 110, height: 120 }
-  },
-  {
-    id: 'MC02',
-    type: 'motorcycle',
-    shape: 'polygon',
-    occupied: false,
-    vehicle_name: 'ว่างพร้อมจอด',
-    points: [
-      { x: 100, y: 650 },
-      { x: 200, y: 650 },
-      { x: 190, y: 770 },
-      { x: 90, y: 770 }
-    ],
-    bbox: { x: 90, y: 650, width: 110, height: 120 }
-  }
-]
+export const DEFAULT_CAM2_SLOTS = []
+export const DEFAULT_CAM3_SLOTS = []
 
 export const SYSTEM_CAMERAS = [
   {
@@ -796,12 +544,7 @@ export async function fetchRoiFromServer(camId = null) {
  */
 export function formatPolygonForServer(points) {
   if (!points || !Array.isArray(points) || points.length === 0) {
-    return [
-      [0, 0],
-      [1600, 0],
-      [1600, 1200],
-      [0, 1200]
-    ]
+    return []
   }
   if (Array.isArray(points[0])) return points
   return points.map((p) => [Math.round(p.x), Math.round(p.y)])
@@ -832,11 +575,11 @@ export function parsePolygonFromServer(serverPolygon) {
 }
 
 export const FRAMESIZE_RESOLUTIONS = {
-  13: { width: 1600, height: 1200 },
-  12: { width: 1280, height: 1024 },
-  11: { width: 1280, height: 720 },
-  10: { width: 1024, height: 768 },
-  9:  { width: 800,  height: 600 }
+  13: { width: 1280, height: 720 },
+  12: { width: 1024, height: 768 },
+  11: { width: 800,  height: 600 },
+  10: { width: 640,  height: 480 },
+  9:  { width: 480,  height: 320 }
 }
 
 /**
@@ -1027,7 +770,7 @@ export function scaleZones(zones, targetWidth, targetHeight, sourceWidth = null,
  */
 export async function saveRoiToServer(camId, slotsIgnored = [], zonesOrPolygon = null, frameWidth = null, frameHeight = null) {
   let activeZones = []
-  if (Array.isArray(zonesOrPolygon) && zonesOrPolygon.length > 0) {
+  if (Array.isArray(zonesOrPolygon)) {
     activeZones = normalizeZones(zonesOrPolygon)
   } else {
     activeZones = getSavedOrInitialZones(camId)
@@ -1233,8 +976,8 @@ export async function syncAllSlotsFromServer() {
         saveSlotsToStorage(mergedSlots, camId, false)
         anyUpdated = true
       } else {
-        const localSlots = getSavedOrInitialSlots(camId)
-        results[camId] = localSlots
+        results[camId] = []
+        saveSlotsToStorage([], camId, false)
       }
 
       // Sync Multi-Zone Area Masks & Polygons safely
@@ -1358,20 +1101,17 @@ export function getSavedOrInitialZones(camId = 'cam1', targetWidth = 1280, targe
   const storageKey = `cpe_parking_zones_${camId}`
   try {
     const raw = localStorage.getItem(storageKey)
-    if (raw) {
+    if (raw !== null) {
       const parsed = JSON.parse(raw)
-      const normalized = normalizeZones(parsed)
-      if (normalized.length > 0) {
-        return scaleZones(normalized, targetWidth, targetHeight)
-      }
-    }
-    // Fallback to legacy single zone key ONLY if multi-zones key has nothing
-    const singleRaw = localStorage.getItem(`cpe_parking_zone_${camId}`)
-    if (singleRaw) {
-      const parsed = JSON.parse(singleRaw)
-      const normalized = normalizeZones(parsed)
-      if (normalized.length > 0) {
-        return scaleZones(normalized, targetWidth, targetHeight)
+      if (Array.isArray(parsed)) {
+        if (parsed.length === 0) {
+          return [] // Explicitly empty/cleared by user! Do not resurrect defaults!
+        }
+        const normalized = normalizeZones(parsed)
+        if (normalized.length > 0) {
+          return scaleZones(normalized, targetWidth, targetHeight)
+        }
+        return []
       }
     }
   } catch (e) {
@@ -1403,12 +1143,12 @@ export function saveZonesToStorage(zones, camId = 'cam1', broadcast = true) {
         frame_height: fH
       }
     })
+    // Explicitly persist empty array [] so it is not treated as missing
+    localStorage.setItem(storageKey, JSON.stringify(finalized))
     if (finalized.length > 0) {
-      localStorage.setItem(storageKey, JSON.stringify(finalized))
       localStorage.setItem(`cpe_parking_zone_${camId}`, JSON.stringify(finalized[0].points))
     } else {
-      localStorage.removeItem(storageKey)
-      localStorage.removeItem(`cpe_parking_zone_${camId}`)
+      localStorage.setItem(`cpe_parking_zone_${camId}`, JSON.stringify([]))
     }
     if (broadcast) {
       window.dispatchEvent(

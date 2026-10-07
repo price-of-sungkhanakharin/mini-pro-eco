@@ -609,10 +609,21 @@ class LineBotService:
             ev_type = event.get("type")
             reply_token = event.get("replyToken")
 
-            if ev_type == "message" and event.get("message", {}).get("type") == "text":
-                user_msg = event["message"]["text"].strip()
+            user_msg = ""
+            if ev_type == "message":
+                msg_obj = event.get("message", {})
+                if msg_obj.get("type") == "text":
+                    user_msg = msg_obj.get("text", "").strip()
+                else:
+                    # Non-text message (sticker, image, etc.) -> default to greeting
+                    user_msg = "สวัสดี"
+            elif ev_type == "postback":
+                pb = event.get("postback", {})
+                user_msg = (pb.get("data") or "").strip() or (pb.get("params", {}).get("datetime") or "").strip()
+
+            if user_msg:
                 user_id = event.get("source", {}).get("userId", "unknown")
-                logger.info("Received LINE message: '%s' from user: %s (token: %s)", user_msg, user_id, reply_token)
+                logger.info("Received LINE %s event: '%s' from user: %s (token: %s)", ev_type, user_msg, user_id, reply_token)
 
                 if not reply_token or reply_token == "00000000000000000000000000000000" or reply_token.startswith("ffffffff"):
                     logger.info("Skipping verify/dummy replyToken: %s", reply_token)

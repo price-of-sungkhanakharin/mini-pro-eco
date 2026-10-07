@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   loadDumpMetadata,
   formatTimestampThai,
+  formatSnapshotTimeInfo,
   getSavedOrInitialSlots,
   calculateSlotCounts,
   getCameraImage,
@@ -296,10 +297,20 @@ export function useDashboardData() {
   const cam2Live = liveData?.front_dept_2 || liveData?.cam2
   const cam3Live = liveData?.side_dept || liveData?.cam3
 
+  // Extract raw timestamps
+  const cam1RawTime = cam1Live?.timestamp || liveParkStatus?.cam1?.timestamp || liveParkStatus?.cam1?.created_at || null
+  const cam2RawTime = cam2Live?.timestamp || liveParkStatus?.cam2?.timestamp || liveParkStatus?.cam2?.created_at || null
+  const cam3RawTime = cam3Live?.timestamp || liveParkStatus?.cam3?.timestamp || liveParkStatus?.cam3?.created_at || null
+
   // Evaluate Online/Offline status based on 15-minute frame age threshold
-  const cam1Status = checkCameraOnlineStatus(cam1Live?.timestamp, 15)
-  const cam2Status = checkCameraOnlineStatus(cam2Live?.timestamp, 15)
-  const cam3Status = checkCameraOnlineStatus(cam3Live?.timestamp, 15)
+  const cam1Status = checkCameraOnlineStatus(cam1RawTime, 15)
+  const cam2Status = checkCameraOnlineStatus(cam2RawTime, 15)
+  const cam3Status = checkCameraOnlineStatus(cam3RawTime, 15)
+
+  // Compute detailed formatted snapshot time info
+  const cam1TimeInfo = formatSnapshotTimeInfo(cam1RawTime)
+  const cam2TimeInfo = formatSnapshotTimeInfo(cam2RawTime)
+  const cam3TimeInfo = formatSnapshotTimeInfo(cam3RawTime)
 
   const cam1Image = cam1CustomImage || `${INGESTION_API}/api/v1/line/snapshot/cam1?mode=${showRoiOverlay ? 'dashboard' : 'raw'}&t=${imgKey}`
   const cam2Image = cam2CustomImage || `${INGESTION_API}/api/v1/line/snapshot/cam2?mode=${showRoiOverlay ? 'dashboard' : 'raw'}&t=${imgKey}`
@@ -318,9 +329,13 @@ export function useDashboardData() {
     status: cam1Status.status,
     isOnline: cam1Status.isOnline,
     statusInfo: cam1Status,
+    timeInfo: cam1TimeInfo,
+    snapshotTime: cam1TimeInfo.formattedTime,
+    snapshotFullDate: cam1TimeInfo.formattedFull,
+    snapshotRelative: cam1TimeInfo.relativeText,
     latency: cam1Status.isOnline ? '28ms' : 'No Signal',
     imageUrl: cam1Image,
-    snapshotTimestamp: cam1Live?.timestamp ? cam1Live.timestamp.replace('T', ' ').substring(0, 19) : 'ไม่มีสัญญาณภาพ',
+    snapshotTimestamp: cam1RawTime ? cam1RawTime.replace('T', ' ').substring(0, 19) : 'ไม่มีสัญญาณภาพ',
     realTelemetry: {
       chip_temp_c: cam1Live?.telemetry?.chip_temp_c ?? cam1Live?.chip_temp_c ?? 53.3,
       uptime_sec: cam1Live?.telemetry?.uptime_sec ?? 2139,
@@ -351,9 +366,13 @@ export function useDashboardData() {
     status: cam2Status.status,
     isOnline: cam2Status.isOnline,
     statusInfo: cam2Status,
+    timeInfo: cam2TimeInfo,
+    snapshotTime: cam2TimeInfo.formattedTime,
+    snapshotFullDate: cam2TimeInfo.formattedFull,
+    snapshotRelative: cam2TimeInfo.relativeText,
     latency: cam2Status.isOnline ? '31ms' : 'No Signal',
     imageUrl: cam2Image,
-    snapshotTimestamp: cam2Live?.timestamp ? cam2Live.timestamp.replace('T', ' ').substring(0, 19) : 'ไม่มีสัญญาณภาพ',
+    snapshotTimestamp: cam2RawTime ? cam2RawTime.replace('T', ' ').substring(0, 19) : 'ไม่มีสัญญาณภาพ',
     realTelemetry: {
       chip_temp_c: cam2Live?.telemetry?.chip_temp_c ?? cam2Live?.chip_temp_c ?? 54.1,
       uptime_sec: cam2Live?.telemetry?.uptime_sec ?? 1840,
@@ -384,9 +403,13 @@ export function useDashboardData() {
     status: cam3Status.status,
     isOnline: cam3Status.isOnline,
     statusInfo: cam3Status,
+    timeInfo: cam3TimeInfo,
+    snapshotTime: cam3TimeInfo.formattedTime,
+    snapshotFullDate: cam3TimeInfo.formattedFull,
+    snapshotRelative: cam3TimeInfo.relativeText,
     latency: cam3Status.isOnline ? '36ms' : 'No Signal',
     imageUrl: cam3Image,
-    snapshotTimestamp: cam3Live?.timestamp ? cam3Live.timestamp.replace('T', ' ').substring(0, 19) : 'ไม่มีสัญญาณภาพ',
+    snapshotTimestamp: cam3RawTime ? cam3RawTime.replace('T', ' ').substring(0, 19) : 'ไม่มีสัญญาณภาพ',
     realTelemetry: {
       chip_temp_c: cam3Live?.telemetry?.chip_temp_c ?? cam3Live?.chip_temp_c ?? 51.7,
       uptime_sec: cam3Live?.telemetry?.uptime_sec ?? 1920,

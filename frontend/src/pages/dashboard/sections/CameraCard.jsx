@@ -5,7 +5,8 @@ import {
   Layers,
   AlertTriangle,
   Car,
-  Bike
+  Bike,
+  Clock
 } from 'lucide-react'
 import ProgressBar from '../../../components/ui/ProgressBar.jsx'
 import { PillTag } from '../../../components/ui/FigmaCards'
@@ -67,13 +68,6 @@ export default function CameraCard({
           {camera.slotCode || 'CAM'}{camera.ip ? ` · ${camera.ip}` : ''}
         </div>
 
-        {/* Bottom Timestamp HUD */}
-        <div className="absolute bottom-2.5 left-2.5 px-2.5 py-1 rounded-full bg-[#1E1F1D]/80 text-white text-[10px] font-mono">
-          {camera.isOnline
-            ? (formatTimestampThai(camera.snapshotTimestamp) || 'เรียลไทม์')
-            : `ล่าสุด: ${camera.snapshotTimestamp || 'ออฟไลน์'}`}
-        </div>
-
         {/* Zoom Button */}
         <button
           type="button"
@@ -86,6 +80,20 @@ export default function CameraCard({
         >
           <Maximize2 className="w-3.5 h-3.5" />
         </button>
+      </div>
+
+      {/* Snapshot Time Info Bar */}
+      <div className="flex items-center justify-between px-3 py-2 rounded-[12px] bg-[#FAF8EF] border border-[#DEDED2] text-xs">
+        <div className="flex items-center gap-1.5 text-[#5F5E5B] min-w-0">
+          <Clock className="w-3.5 h-3.5 text-[#36612D] shrink-0" />
+          <span className="text-[#85847E]">ภาพ Snapshot:</span>
+          <span className="font-mono font-semibold text-[#30312F] truncate">
+            {camera.snapshotTime || camera.timeInfo?.formattedTime || '—'}
+          </span>
+        </div>
+        <span className="text-[11px] font-medium text-[#85847E] shrink-0" title={camera.snapshotFullDate || camera.snapshotTimestamp}>
+          {camera.snapshotRelative || camera.statusInfo?.diffText || 'เมื่อสักครู่'}
+        </span>
       </div>
 
       {/* 2-row Capacity Availability Block */}

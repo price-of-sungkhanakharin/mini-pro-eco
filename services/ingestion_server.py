@@ -648,15 +648,11 @@ def upload():
     # - deep_sleep_sec: Day (07:30 - 18:30) = 20s, Night = 1800s
     framesize = int(loc_cfg.get("framesize", 9))
     quality = int(loc_cfg.get("quality", 10))
-
-    # Day / Night Sleep Schedule: 07:30 - 18:30 is Daytime (20s), Nighttime is 1800s
+    # Day / Night Sleep Schedule: 07:30 - 18:30 is Daytime, Nighttime is 1800s
     from datetime import time as dt_time
     now_time = now.time()
     is_daytime = dt_time(7, 30) <= now_time < dt_time(18, 30)
-    if is_daytime:
-        deep_sleep_sec = int(loc_cfg.get("deep_sleep_sec_day", loc_cfg.get("deep_sleep_sec", 20)))
-    else:
-        deep_sleep_sec = int(loc_cfg.get("deep_sleep_sec_night", 1800))
+    day_sleep_mode = loc_cfg.get("day_sleep_mode", "model")
 
     # Time-Series ML models (Thermal & Traffic Dynamics) for predictive analytics
     ts_recommendation = None
@@ -668,6 +664,14 @@ def upload():
             )
         except Exception as _ts_err:
             logger.debug("Timeseries sleep calc error: %s", _ts_err)
+
+    if is_daytime:
+        if day_sleep_mode == "model" and ts_recommendation and "recommended_sleep_sec" in ts_recommendation:
+            deep_sleep_sec = int(ts_recommendation["recommended_sleep_sec"])
+        else:
+            deep_sleep_sec = int(loc_cfg.get("deep_sleep_sec_day", loc_cfg.get("deep_sleep_sec", 20)))
+    else:
+        deep_sleep_sec = int(loc_cfg.get("deep_sleep_sec_night", 1800))
 
     interval_sec = deep_sleep_sec
     interval_ms = interval_sec * 1000
@@ -1028,6 +1032,42 @@ def manage_roi(cam_id=None):
                 logger.warning("Could not sync to external roi.json: %s", ex)
 
         logger.info("Saved updated ROI configuration to PostgreSQL & JSON successfully")
+
+        # Trigger background snapshot regeneration so overlays are updated immediately
+        try:
+            import subprocess
+            py_bin = "/home/r211admin/parking-detect/venv/bin/python"
+            if os.path.exists(py_bin):
+                c_cam = c_key if target_cam else "cam1"
+                regen_cmd = f"""
+import sys; sys.path.insert(0, '/home/r211admin/parking-detect')
+import json, os, shutil
+from overlay_generator import generate_chatbot_overlay, generate_dashboard_overlay
+from detect_worker import latest_image
+
+target = '{c_cam}'
+ROI_FILE = '/home/r211admin/parking-detect/roi.json'
+try:
+    with open(ROI_FILE, 'r', encoding='utf-8') as f:
+        raw_roi = json.load(f)
+    img_path = latest_image(target)
+    if img_path:
+        ws_snapshots_dir = '/home/r211admin/project-eco/ai-ecosystem-workspace/data/snapshots'
+        so_dir = '/home/r211admin/parking-detect/status_overlay'
+        detected_out = os.path.join(ws_snapshots_dir, f'{{target}}_detected.jpg')
+        generate_dashboard_overlay(img_path, raw_roi, output_path=detected_out, cam_id=target, draw_header=False)
+        shutil.copy2(detected_out, os.path.join(so_dir, f'{{target}}_dashboard_latest.jpg'))
+        shutil.copy2(detected_out, os.path.join(ws_snapshots_dir, f'{{target}}_dashboard_latest.jpg'))
+        cb_path = os.path.join(ws_snapshots_dir, f'{{target}}_chatbot_latest.jpg')
+        generate_chatbot_overlay(img_path, raw_roi, output_path=cb_path, cam_id=target, draw_header=False, draw_boxes=False)
+        shutil.copy2(cb_path, os.path.join(so_dir, f'{{target}}_chatbot_latest.jpg'))
+except Exception as e:
+    pass
+"""
+                subprocess.Popen([py_bin, "-c", regen_cmd])
+        except Exception as reg_err:
+            logger.warning("Could not trigger background overlay regeneration: %s", reg_err)
+
         return jsonify({"status": "success", "message": "ROI template stored to PostgreSQL", "data": payload})
 
 
@@ -1258,6 +1298,10 @@ def settings():
                 except ValueError:
                     pass
 
+            ds_mode_val = request.args.get("day_sleep_mode") or req_data.get("day_sleep_mode")
+            if ds_mode_val is not None and str(ds_mode_val).lower() in ("model", "manual"):
+                LOCATIONS[loc]["day_sleep_mode"] = str(ds_mode_val).lower()
+
             # Persist to config.json
             try:
                 CONFIG["locations"] = LOCATIONS
@@ -1278,6 +1322,7 @@ def settings():
             "deep_sleep_sec": LOCATIONS[loc_key].get("deep_sleep_sec", 20),
             "deep_sleep_sec_day": LOCATIONS[loc_key].get("deep_sleep_sec_day", LOCATIONS[loc_key].get("deep_sleep_sec", 20)),
             "deep_sleep_sec_night": LOCATIONS[loc_key].get("deep_sleep_sec_night", 1800),
+            "day_sleep_mode": LOCATIONS[loc_key].get("day_sleep_mode", "model"),
             "interval_sec": LOCATIONS[loc_key].get("interval_sec", 15),
         }
         for loc_key in LOCATIONS

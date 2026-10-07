@@ -12,6 +12,7 @@ import AnalyticsPage from './pages/analytics/AnalyticsPage.jsx'
 import ProjectDetailsPage from './pages/details/ProjectDetailsPage.jsx'
 import LiveCamerasPage from './pages/dashboard/LiveCamerasPage.jsx'
 import CameraDetailPage from './pages/dashboard/CameraDetailPage.jsx'
+import LinearBenchmarkPage from './pages/linear_benchmark/LinearBenchmarkPage.jsx'
 
 import {
   getSavedOrInitialSlots,
@@ -71,6 +72,10 @@ const pathToViewMap = {
   '/services': 'ecosystem',
   '/analytics': 'analytics',
   '/plots': 'analytics',
+  '/linear-models': 'linear_models',
+  '/linear-benchmark': 'linear_models',
+  '/arimax-sarimax': 'linear_models',
+  '/linear': 'linear_models',
   '/details': 'details',
   '/project-details': 'details'
 }
@@ -85,6 +90,7 @@ const viewToPathMap = {
   camera_control: '/setup?tab=camera_control',
   ecosystem: '/ecosystem',
   analytics: '/analytics',
+  linear_models: '/linear-models',
   details: '/details'
 }
 
@@ -471,6 +477,9 @@ function App() {
           )}
           {currentView === 'analytics' && (
             <AnalyticsPage apiBase={API_BASE_URL} />
+          )}
+          {(currentView === 'linear_models' || currentView === 'linear_benchmark') && (
+            <LinearBenchmarkPage apiBase={API_BASE_URL} />
           )}
           {currentView === 'details' && (
             <ProjectDetailsPage onNavigate={handleNavigate} />

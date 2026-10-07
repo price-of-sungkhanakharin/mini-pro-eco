@@ -88,6 +88,7 @@ class CameraSettingsSchema(BaseModel):
     deep_sleep_sec: int = 20
     deep_sleep_sec_day: int = 20
     deep_sleep_sec_night: int = 1800
+    day_sleep_mode: Optional[str] = "model"
 
 
 class ParkStatusResponse(BaseModel):

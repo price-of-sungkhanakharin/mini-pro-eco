@@ -144,14 +144,48 @@ except Exception as _e:
     get_parking_snapshot = None
 
 
-@router.get(
+def find_latest_raw_image(cam_id: str):
+    """Find latest unprocessed camera JPEG from dataset directory."""
+    for base in [Path("/app/data/dataset"), Path("/home/r211admin/project-eco/ai-ecosystem-workspace/data/dataset")]:
+        cam_dir = base / cam_id
+        if not cam_dir.exists():
+            continue
+        try:
+            date_dirs = sorted([d for d in cam_dir.iterdir() if d.is_dir() and not d.name.startswith(".")], reverse=True)
+            for d in date_dirs[:2]:
+                hour_dirs = sorted([h for h in d.iterdir() if h.is_dir()], reverse=True)
+                for h in hour_dirs[:2]:
+                    img_dir = h / "images"
+                    target_dir = img_dir if img_dir.exists() else h
+                    imgs = sorted([f for f in target_dir.glob("*.jpg")], reverse=True)
+                    if imgs:
+                        return imgs[0]
+        except Exception as e:
+            logger.warning("Error searching raw image for %s: %s", cam_id, e)
+    return None
+
+
+@router.api_route(
     "/api/v1/line/snapshot/{cam_id}",
+    methods=["GET", "HEAD"],
     summary="Get real-time parking overlay image for camera",
     description="Generates and serves the latest parking overlay image (chatbot, dashboard, or raw) for the camera."
 )
 def get_camera_snapshot(cam_id: str, mode: str = "chatbot", vehicle_type: str = None, type: str = None):
     """Serve fresh real-time parking overlay image for LINE / web consumers."""
     cam_clean = cam_id.lower().strip()
+    cache_headers = {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+    }
+
+    # 0. Pure RAW Camera Frame mode (Clean camera image for setup / calibration canvas)
+    if mode == "raw":
+        raw_img = find_latest_raw_image(cam_clean)
+        if raw_img and raw_img.exists():
+            return FileResponse(str(raw_img), media_type="image/jpeg", headers=cache_headers)
+
     v_type = vehicle_type or type
     if v_type:
         v_type = v_type.lower().strip()

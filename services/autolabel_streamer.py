@@ -2,7 +2,7 @@
 """Standalone CLI Auto-Label Continuous Streamer Service.
 
 Continuously processes unlabeled CCTV images in micro-batches (e.g. 20 images at a time)
-- Sends to Private GPU Node (http://172.30.81.175:9000) for YOLO26x CPU inference
+- Sends to Private GPU Node (http://172.30.81.160:9000) for YOLO26x CPU inference
 - Ingests into Label Studio (http://localhost:8080) with pre-drawn bounding boxes
 - Loops continuously until the queue is drained, then re-scans MinIO
 - Strictly requires human review (no auto-approval)

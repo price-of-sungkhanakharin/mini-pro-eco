@@ -36,7 +36,7 @@ router = APIRouter(prefix="/api/v1/auto-label", tags=["Human-in-the-Loop Auto-La
 LOCAL_MINIO_HOST = "172.30.228.51"
 LOCAL_MINIO_PORT = 9000
 LABEL_STUDIO_URL = (getattr(settings, "label_studio_url", "http://localhost:8080") or "http://localhost:8080").rstrip("/")
-GPU_NODE_URL = (getattr(settings, "gpu_node_base_url", "http://172.30.81.175:9000") or "http://172.30.81.175:9000").rstrip("/")
+GPU_NODE_URL = (getattr(settings, "gpu_node_base_url", "http://172.30.81.160:9000") or "http://172.30.81.160:9000").rstrip("/")
 
 
 def _get_minio_client() -> Minio:
@@ -415,7 +415,7 @@ def get_auto_label_stats(db: Session = Depends(get_db)):
         "camera_breakdown": camera_breakdown,
         "human_review_mode": "STRICT_MANUAL_SUBMIT",
         "gpu_inference_device": "CPU (yolo26x.pt)",
-        "gpu_training_device": "NVIDIA GTX 1660 SUPER 6GB (172.30.81.175)",
+        "gpu_training_device": "NVIDIA GTX 1660 SUPER 6GB (172.30.81.160)",
     }
 
 

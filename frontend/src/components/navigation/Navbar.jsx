@@ -62,6 +62,7 @@ export default function Navbar({
     { id: 'setup', label: 'Setup & ROI' },
     { id: 'ecosystem', label: 'บริการระบบ (Ecosystem)' },
     { id: 'analytics', label: 'Analytics / Plots' },
+    { id: 'linear_models', label: 'Linear & ARIMAX/SARIMAX' },
     { id: 'details', label: 'Architecture & Flowchart' }
   ]
 

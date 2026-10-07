@@ -4,7 +4,8 @@ import {
   Maximize2,
   Car,
   Bike,
-  AlertTriangle
+  AlertTriangle,
+  Clock
 } from 'lucide-react'
 import { useDashboardData } from './useDashboardData'
 
@@ -121,6 +122,15 @@ export default function LiveCamerasPage({ onOpenModal, onNavigate }) {
                 <div className="absolute top-2.5 left-2.5 bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-mono font-medium text-white flex items-center gap-1.5 z-10 border border-white/10">
                   <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-[#83F04C] animate-pulse' : 'bg-neutral-500'}`} />
                   <span>LIVE STREAM</span>
+                </div>
+
+                {/* Corner Snapshot Time Tag */}
+                <div className="absolute bottom-2.5 left-2.5 bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-full text-[11px] font-mono text-neutral-200 flex items-center gap-1.5 z-10 border border-white/15 shadow-md pointer-events-none">
+                  <Clock className="w-3 h-3 text-emerald-400" />
+                  <span>{cam.snapshotTime || cam.timeInfo?.formattedTime || '—'}</span>
+                  {cam.snapshotRelative && (
+                    <span className="text-neutral-400 text-[10px]">({cam.snapshotRelative})</span>
+                  )}
                 </div>
 
                 {/* Hover Overlay Hint (No buttons, just clear click instruction) */}

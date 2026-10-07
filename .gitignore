@@ -48,6 +48,8 @@ datasets/
 models/*.pt
 models/*.bin
 models/*.safetensors
+*.joblib
+*.pkl
 
 # Project Task Notes
 task-graph.md

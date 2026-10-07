@@ -6,7 +6,6 @@ import {
   Save,
   CheckCircle2,
   Layers,
-  Cpu,
   Sliders,
   Tag,
   ChevronRight,
@@ -15,7 +14,6 @@ import {
 import ParkingSetup from './components_setup/ParkingSetup.jsx'
 import LineChatbotSetup from './components_setup/LineChatbotSetup.jsx'
 import LabelStudioManager from '../trainer/components_trainer/LabelStudioManager.jsx'
-import AutoTrainerStudio from '../trainer/AutoTrainerPage.jsx'
 import CameraControlPage from '../camera_control/CameraControlPage.jsx'
 import { PillTag, PillButton } from '../../components/ui/FigmaCards'
 
@@ -37,9 +35,9 @@ export default function SetupPage({
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
       const tabParam = params.get('tab')
-      if (tabParam && !['storage'].includes(tabParam)) return tabParam
+      if (tabParam && !['storage', 'trainer'].includes(tabParam)) return tabParam
     }
-    return ['storage'].includes(initialTab) ? 'cameras' : initialTab
+    return ['storage', 'trainer'].includes(initialTab) ? 'cameras' : initialTab
   })
   const [selectedSlotCam, setSelectedSlotCam] = useState(initialCameraId)
   const [saved, setSaved] = useState(false)
@@ -47,7 +45,7 @@ export default function SetupPage({
 
   useEffect(() => {
     if (initialTab) {
-      setActiveTab(['storage'].includes(initialTab) ? 'cameras' : initialTab)
+      setActiveTab(['storage', 'trainer'].includes(initialTab) ? 'cameras' : initialTab)
     }
   }, [initialTab])
 
@@ -225,7 +223,6 @@ export default function SetupPage({
           { id: 'cameras', label: '3x Phone / ESP32 Cameras', icon: Smartphone },
           { id: 'slots', label: 'Parking Zone ROI Setup', icon: MapPin },
           { id: 'line', label: 'LINE Chatbot Webhook', icon: MessageSquare },
-          { id: 'trainer', label: 'Auto-Trainer & Model Hub', icon: Cpu },
           { id: 'label_studio', label: 'Label Studio Annotation', icon: Tag },
           { id: 'camera_control', label: 'Camera & Deep Sleep Control', icon: Sliders }
         ].map((tab) => {
@@ -394,13 +391,6 @@ export default function SetupPage({
         {activeTab === 'line' && (
           <div className="w-full">
             <LineChatbotSetup apiBase={apiBase} />
-          </div>
-        )}
-
-
-        {activeTab === 'trainer' && (
-          <div className="w-full">
-            <AutoTrainerStudio apiBase={apiBase} />
           </div>
         )}
 

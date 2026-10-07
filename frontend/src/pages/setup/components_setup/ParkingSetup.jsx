@@ -250,10 +250,10 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
         const roiData = await fetchRoiFromServer(selectedCamId)
         if (!isMounted) return
         const serverCam = roiData ? (roiData[selectedCamId] || roiData[activeCam.location]) : null
-        if (serverCam && (serverCam.zones || serverCam.polygon)) {
-          const rawZones = serverCam.zones || serverCam.polygon
-          const normalized = normalizeZones(rawZones)
-          if (normalized.length > 0) {
+        if (serverCam) {
+          const rawZones = serverCam.zones ?? serverCam.polygon ?? []
+          if (Array.isArray(rawZones)) {
+            const normalized = normalizeZones(rawZones)
             const currentW = imgDimensions.width || 1280
             const currentH = imgDimensions.height || 720
             const sW = serverCam.frame_width || (serverCam.resolution && serverCam.resolution[0]) || null
@@ -279,12 +279,10 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
       saveZonesToStorage(zones, selectedCamId)
 
       // Debounced auto-sync to central server (1.5s after editing)
-      if (zones.length > 0) {
-        const timer = setTimeout(() => {
-          saveRoiToServer(selectedCamId, [], zones, imgDimensions.width, imgDimensions.height)
-        }, 1500)
-        return () => clearTimeout(timer)
-      }
+      const timer = setTimeout(() => {
+        saveRoiToServer(selectedCamId, [], zones, imgDimensions.width, imgDimensions.height)
+      }, 1500)
+      return () => clearTimeout(timer)
     } else {
       prevCamIdRef.current = selectedCamId
     }
@@ -297,10 +295,10 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
     }, 3500)
   }
 
-  // Active Background Image URL
+  // Active Background Image URL: Always use clean raw camera image without overlays
   const activeImageUrl =
     customCamImage ||
-    `${getIngestionApiBase()}/api/v1/line/snapshot/${selectedCamId}?mode=raw&t=${liveSnapshotKey}`
+    `${getIngestionApiBase()}/api/latest?camera_id=${selectedCamId}&image=true&t=${liveSnapshotKey}`
 
   // Convert Mouse Event coords to SVG coordinate system (matching active image resolution)
   const getSvgCoordinates = (e) => {
@@ -410,23 +408,23 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
     setDragging({ type: 'zone_point', zoneId, pointIndex })
   }
 
-  const handleDeleteZone = (zoneId) => {
+  const handleDeleteZone = async (zoneId) => {
     const updated = zones.filter((z) => z.id !== zoneId)
     setZones(updated)
     if (selectedZoneId === zoneId) setSelectedZoneId(null)
     saveZonesToStorage(updated, selectedCamId)
-    saveRoiToServer(selectedCamId, [], updated, imgDimensions.width, imgDimensions.height)
+    await saveRoiToServer(selectedCamId, [], updated, imgDimensions.width, imgDimensions.height)
     showToast('ลบโซนเรียบร้อยแล้ว', 'info')
   }
 
-  const handleClearAllZones = () => {
+  const handleClearAllZones = async () => {
     if (window.confirm(`ต้องการล้างโซนทั้งหมดของกล้อง ${activeCam.code} หรือไม่?`)) {
       setZones([])
       setSelectedZoneId(null)
       setZoneDraft([])
       setIsDrawingZone(false)
       saveZonesToStorage([], selectedCamId)
-      saveRoiToServer(selectedCamId, [], [], imgDimensions.width, imgDimensions.height)
+      await saveRoiToServer(selectedCamId, [], [], imgDimensions.width, imgDimensions.height)
       showToast(`ล้างโซนทั้งหมดของ ${activeCam.code} เรียบร้อย`, 'info')
     }
   }
@@ -704,6 +702,12 @@ export default function ParkingSetup({ onNavigate, embedded = false, initialCame
                 alt={`${activeCam.code} Background Feed`}
                 className="roi-bg-image w-full h-auto block select-none pointer-events-none"
                 onLoad={handleImageLoad}
+                onError={(e) => {
+                  const fallback = `${getIngestionApiBase()}/api/v1/line/snapshot/${selectedCamId}?mode=raw&t=${Date.now()}`
+                  if (e.currentTarget.src !== fallback) {
+                    e.currentTarget.src = fallback
+                  }
+                }}
               />
 
               {/* SVG Vector Drawing Layer */}

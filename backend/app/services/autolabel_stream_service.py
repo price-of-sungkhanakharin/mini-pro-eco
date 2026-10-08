@@ -150,6 +150,40 @@ class AutoLabelStreamManager:
             logger.error(f"[AutoLabelStreamer] Error scanning MinIO {bucket}: {exc}")
             return 0
 
+    async def _fetch_predictions_with_retry(self, predict_payload: Dict[str, Any], max_retries: int = 3) -> Dict[int, List[Dict[str, Any]]]:
+        """Fetch AI predictions with automatic retry and exponential backoff."""
+        ai_predictions_map = {}
+        for attempt in range(1, max_retries + 1):
+            try:
+                async with httpx.AsyncClient(timeout=45.0) as client:
+                    resp = await client.post(
+                        f"{GPU_NODE_URL}/predict?conf=0.25",
+                        json=predict_payload,
+                    )
+                    if resp.status_code == 200:
+                        results = resp.json().get("results", [])
+                        target_classes = {"car", "motorcycle"}
+                        for idx, r in enumerate(results):
+                            tasks_list = predict_payload.get("tasks", [])
+                            img_id = tasks_list[idx]["id"] if idx < len(tasks_list) else None
+                            if img_id:
+                                boxes = r.get("result", [])
+                                filtered_boxes = [
+                                    b for b in boxes
+                                    if any(lbl in target_classes for lbl in b.get("value", {}).get("rectanglelabels", []))
+                                ]
+                                ai_predictions_map[img_id] = filtered_boxes if filtered_boxes else boxes
+                        return ai_predictions_map
+                    else:
+                        logger.warning(f"[AutoLabelStreamer] GPU Node returned HTTP {resp.status_code} (attempt {attempt}/{max_retries})")
+            except Exception as exc:
+                logger.warning(f"[AutoLabelStreamer] Connection attempt {attempt}/{max_retries} to GPU node failed: {exc}")
+
+            if attempt < max_retries:
+                await asyncio.sleep(2.0 * attempt)
+
+        return ai_predictions_map
+
     async def _dispatch_next_batch(self, db: Session, project_id: int = 1) -> int:
         """Fetch next batch of DISCOVERED images, predict on CPU, and upload to Label Studio asynchronously."""
         images = (
@@ -165,35 +199,20 @@ class AutoLabelStreamManager:
 
         batch_id = f"stream_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
 
-        # 1. Fetch AI predictions from GPU Node (running on CPU) asynchronously
+        # 1. Fetch AI predictions from GPU Node with retry
         predict_payload = {
             "tasks": [{"id": img.id, "data": {"image": img.image_url}} for img in images]
         }
-        ai_predictions_map = {}
-        try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                resp = await client.post(
-                    f"{GPU_NODE_URL}/predict?conf=0.25",
-                    json=predict_payload,
-                )
-                if resp.status_code == 200:
-                    results = resp.json().get("results", [])
-                    target_classes = {"car", "motorcycle"}
-                    for idx, r in enumerate(results):
-                        img_id = images[idx].id if idx < len(images) else None
-                        if img_id:
-                            boxes = r.get("result", [])
-                            filtered_boxes = [
-                                b for b in boxes
-                                if any(lbl in target_classes for lbl in b.get("value", {}).get("rectanglelabels", []))
-                            ]
-                            ai_predictions_map[img_id] = filtered_boxes if filtered_boxes else boxes
-        except Exception as exc:
-            logger.warning(f"[AutoLabelStreamer] Prediction upstream warning: {exc}")
+        ai_predictions_map = await self._fetch_predictions_with_retry(predict_payload, max_retries=3)
 
-        # 2. Push to Label Studio using async client
+        if not ai_predictions_map:
+            logger.warning("[AutoLabelStreamer] GPU Node unreachable or returned empty predictions. Retrying batch next cycle...")
+            self._status_message = "Retrying GPU Node connection..."
+            return 0
+
+        # 2. Push to Label Studio using async client with login retry
         success_count = 0
-        async with httpx.AsyncClient(timeout=15.0) as ls_client:
+        async with httpx.AsyncClient(timeout=20.0) as ls_client:
             headers = await self._login_label_studio(ls_client)
             headers["Referer"] = f"{LABEL_STUDIO_URL}/projects/{project_id}/data"
 
@@ -255,9 +274,10 @@ class AutoLabelStreamManager:
         return success_count
 
     async def _stream_loop(self):
-        """Infinite loop: continuously dispatches micro-batches until queue is drained, then re-scans."""
+        """Infinite loop: continuously dispatches micro-batches with persistent reconnect."""
         logger.info("[AutoLabelStreamer] Streaming worker loop initiated.")
         self._status_message = "Starting stream..."
+        consecutive_errors = 0
 
         while self._is_running:
             db = SessionLocal()
@@ -266,7 +286,7 @@ class AutoLabelStreamManager:
                 count_dispatched = await self._dispatch_next_batch(db)
 
                 if count_dispatched > 0:
-                    # More images were processed; pause briefly between micro-batches and continue
+                    consecutive_errors = 0
                     await asyncio.sleep(self.batch_interval_sec)
                     continue
 
@@ -282,8 +302,7 @@ class AutoLabelStreamManager:
                 )
 
                 if remaining == 0:
-                    self._status_message = "All images processed. Idle, waiting for new snapshots."
-                    logger.info("[AutoLabelStreamer] Queue drained. Sleeping before next MinIO scan...")
+                    self._status_message = "All indexed images processed. Polling MinIO for new camera frames..."
                     await asyncio.sleep(self.idle_interval_sec)
                 else:
                     await asyncio.sleep(self.batch_interval_sec)
@@ -292,8 +311,11 @@ class AutoLabelStreamManager:
                 logger.info("[AutoLabelStreamer] Streaming worker received cancellation request.")
                 break
             except Exception as exc:
-                logger.error(f"[AutoLabelStreamer] Unexpected error in streaming loop: {exc}")
-                await asyncio.sleep(5.0)
+                consecutive_errors += 1
+                backoff_sec = min(30.0, 3.0 * consecutive_errors)
+                logger.error(f"[AutoLabelStreamer] Error in streaming loop (retrying in {backoff_sec}s): {exc}")
+                self._status_message = f"Reconnecting to queue / GPU Node in {backoff_sec}s..."
+                await asyncio.sleep(backoff_sec)
             finally:
                 db.close()
 

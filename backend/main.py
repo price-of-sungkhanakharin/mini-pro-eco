@@ -205,6 +205,14 @@ def startup_event():
             extra={"operation": "startup", "status": "WARNING"},
         )
 
+    # Automatically start continuous auto-label streaming worker with persistent reconnect
+    try:
+        from backend.app.services.autolabel_stream_service import autolabel_stream_manager
+        autolabel_stream_manager.start_background_worker()
+        logger.info("Auto-Label Continuous Streamer worker initiated on server startup", extra={"operation": "startup", "status": "SUCCESS"})
+    except Exception as exc:
+        logger.warning(f"Could not start Auto-Label Streamer on startup: {exc}", extra={"operation": "startup", "status": "WARNING"})
+
 
 # Include API Routers
 app.include_router(auth.router)

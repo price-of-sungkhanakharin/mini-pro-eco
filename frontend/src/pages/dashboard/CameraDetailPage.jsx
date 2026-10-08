@@ -67,7 +67,7 @@ export default function CameraDetailPage({
     return cameras.find((c) => c.camId === normalizedCamId) || cam1 || cameras[0]
   }, [cameras, normalizedCamId, cam1])
 
-  const [showRoi, setShowRoi] = useState(false)
+  const [showRoi, setShowRoi] = useState(true)
   const [slotFilter, setSlotFilter] = useState('all') // 'all' | 'vacant' | 'occupied' | 'car' | 'bike'
   const playerRef = useRef(null)
 
@@ -257,66 +257,137 @@ export default function CameraDetailPage({
                     </div>
                   )}
 
-                  {/* SVG ROI Vector Polygons Overlay (Only for discrete custom slot boxes if configured) */}
-                  {showRoi && slots.length > 0 && (
+                  {/* SVG ROI Vector Polygons Overlay (Discrete custom slot boxes or Parking Zones) */}
+                  {showRoi && (slots.length > 0 || zones.length > 0) && (
                     <svg
                       className="absolute inset-0 w-full h-full pointer-events-none overflow-hidden"
                       viewBox={`0 0 ${imgDims.width || 1280} ${imgDims.height || 720}`}
                       style={{ overflow: 'hidden' }}
                     >
-                      {slots.map((slot) => {
-                        if (!slot.points || slot.points.length === 0) return null
-                        const isOccupied = Boolean(slot.occupied)
-                        const w = imgDims.width || 1280
-                        const h = imgDims.height || 720
-                        let scaledPoints
-                        if (Array.isArray(slot.points_normalized) && slot.points_normalized.length === slot.points.length) {
-                          scaledPoints = slot.points_normalized.map((np) => ({
-                            x: Math.round(np.x * w),
-                            y: Math.round(np.y * h)
-                          }))
-                        } else {
-                          const sW = slot.frame_width || 1600
-                          const sH = slot.frame_height || 1200
-                          const sx = w / sW
-                          const sy = h / sH
-                          scaledPoints = slot.points.map((p) => ({ x: Math.round(p.x * sx), y: Math.round(p.y * sy) }))
-                        }
-                        const pointsString = scaledPoints.map((p) => `${p.x},${p.y}`).join(' ')
-                        const center = {
-                          x: scaledPoints.reduce((acc, p) => acc + p.x, 0) / scaledPoints.length,
-                          y: scaledPoints.reduce((acc, p) => acc + p.y, 0) / scaledPoints.length
-                        }
+                      {/* 1. Discrete Slots Overlay */}
+                      {slots.length > 0 &&
+                        slots.map((slot) => {
+                          if (!slot.points || slot.points.length === 0) return null
+                          const isOccupied = Boolean(slot.occupied)
+                          const w = imgDims.width || 1280
+                          const h = imgDims.height || 720
+                          let scaledPoints
+                          if (Array.isArray(slot.points_normalized) && slot.points_normalized.length === slot.points.length) {
+                            scaledPoints = slot.points_normalized.map((np) => ({
+                              x: Math.round(np.x * w),
+                              y: Math.round(np.y * h)
+                            }))
+                          } else {
+                            const sW = slot.frame_width || 1600
+                            const sH = slot.frame_height || 1200
+                            const sx = w / sW
+                            const sy = h / sH
+                            scaledPoints = slot.points.map((p) => ({ x: Math.round(p.x * sx), y: Math.round(p.y * sy) }))
+                          }
+                          const pointsString = scaledPoints.map((p) => `${p.x},${p.y}`).join(' ')
+                          const center = {
+                            x: scaledPoints.reduce((acc, p) => acc + p.x, 0) / scaledPoints.length,
+                            y: scaledPoints.reduce((acc, p) => acc + p.y, 0) / scaledPoints.length
+                          }
 
-                        return (
-                          <g key={slot.id}>
-                            <polygon
-                              points={pointsString}
-                              className={`transition-all duration-300 ${
-                                isOccupied
-                                  ? 'fill-rose-500/35 stroke-rose-400 stroke-2'
-                                  : 'fill-emerald-500/35 stroke-emerald-400 stroke-2'
-                              }`}
-                            />
-                            <rect
-                              x={center.x - 36}
-                              y={center.y - 14}
-                              width={72}
-                              height={28}
-                              rx={6}
-                              className={isOccupied ? 'fill-rose-600/95' : 'fill-emerald-600/95'}
-                            />
-                            <text
-                              x={center.x}
-                              y={center.y + 5}
-                              textAnchor="middle"
-                              className="fill-white text-[13px] font-bold font-mono"
-                            >
-                              {slot.id}
-                            </text>
-                          </g>
-                        )
-                      })}
+                          return (
+                            <g key={slot.id}>
+                              <polygon
+                                points={pointsString}
+                                className={`transition-all duration-300 ${
+                                  isOccupied
+                                    ? 'fill-rose-500/35 stroke-rose-400 stroke-2'
+                                    : 'fill-emerald-500/35 stroke-emerald-400 stroke-2'
+                                }`}
+                              />
+                              <rect
+                                x={center.x - 36}
+                                y={center.y - 14}
+                                width={72}
+                                height={28}
+                                rx={6}
+                                className={isOccupied ? 'fill-rose-600/95' : 'fill-emerald-600/95'}
+                              />
+                              <text
+                                x={center.x}
+                                y={center.y + 5}
+                                textAnchor="middle"
+                                className="fill-white text-[13px] font-bold font-mono"
+                              >
+                                {slot.id}
+                              </text>
+                            </g>
+                          )
+                        })}
+
+                      {/* 2. Zone Areas Overlay (when discrete slots are not configured) */}
+                      {slots.length === 0 &&
+                        zones.map((zone) => {
+                          if (!zone.points || zone.points.length === 0) return null
+                          const isBike = zone.type === 'motorcycle' || zone.type === 'bike'
+                          const typeStats = isBike ? currentCamera?.bike : currentCamera?.car
+                          const cap = Number(zone.capacity) || (isBike ? (currentCamera?.camId === 'cam3' ? 25 : (currentCamera?.camId === 'cam2' ? 13 : 9)) : 6)
+                          const free = typeStats?.free ?? cap
+                          const isFull = free === 0
+                          const w = imgDims.width || 1280
+                          const h = imgDims.height || 720
+                          let scaledPoints
+                          if (Array.isArray(zone.points_normalized) && zone.points_normalized.length === zone.points.length) {
+                            scaledPoints = zone.points_normalized.map((np) => ({
+                              x: Math.round(np.x * w),
+                              y: Math.round(np.y * h)
+                            }))
+                          } else {
+                            const sW = zone.frame_width || 1280
+                            const sH = zone.frame_height || 720
+                            const sx = w / sW
+                            const sy = h / sH
+                            scaledPoints = zone.points.map((p) => ({ x: Math.round(p.x * sx), y: Math.round(p.y * sy) }))
+                          }
+                          const pointsString = scaledPoints.map((p) => `${p.x},${p.y}`).join(' ')
+                          const center = {
+                            x: scaledPoints.reduce((acc, p) => acc + p.x, 0) / scaledPoints.length,
+                            y: scaledPoints.reduce((acc, p) => acc + p.y, 0) / scaledPoints.length
+                          }
+
+                          return (
+                            <g key={zone.id}>
+                              <polygon
+                                points={pointsString}
+                                className={`transition-all duration-300 ${
+                                  isFull
+                                    ? 'fill-rose-500/20 stroke-rose-400 stroke-2'
+                                    : 'fill-emerald-500/20 stroke-emerald-400 stroke-2'
+                                }`}
+                                strokeDasharray="6 4"
+                              />
+                              <rect
+                                x={center.x - 70}
+                                y={center.y - 18}
+                                width={140}
+                                height={36}
+                                rx={8}
+                                className={isFull ? 'fill-rose-950/90 stroke stroke-rose-500' : 'fill-emerald-950/90 stroke stroke-emerald-500'}
+                              />
+                              <text
+                                x={center.x}
+                                y={center.y - 2}
+                                textAnchor="middle"
+                                className="fill-white text-[12px] font-semibold font-sans"
+                              >
+                                {zone.name || (isBike ? 'โซนมอเตอร์ไซค์' : 'โซนรถยนต์')}
+                              </text>
+                              <text
+                                x={center.x}
+                                y={center.y + 12}
+                                textAnchor="middle"
+                                className={`text-[11px] font-bold font-mono ${isFull ? 'fill-rose-300' : 'fill-emerald-300'}`}
+                              >
+                                ว่าง {free}/{cap} คัน
+                              </text>
+                            </g>
+                          )
+                        })}
                     </svg>
                   )}
 

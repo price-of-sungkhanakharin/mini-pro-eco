@@ -1131,10 +1131,15 @@ export default function AnalyticsPage({ apiBase = '' }) {
                   <h3 className="font-sans font-semibold text-[18px] text-[#30312F] m-0">
                     กราฟเปรียบเทียบระยะเวลา Deep-Sleep ทั้ง 3 กล้อง (Multi-Camera Measured Telemetry Logs)
                   </h3>
-                  {isSleepLoading && (
+                  {isSleepLoading ? (
                     <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full animate-pulse">
                       <RefreshCw className="w-3 h-3 animate-spin text-emerald-600" />
                       กำลังโหลดข้อมูล...
+                    </span>
+                  ) : sleepChartData?.length > 0 && (
+                    <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium text-[#52524C] bg-[#FAF8EF] border border-[#DEDED2] px-2.5 py-0.5 rounded-full">
+                      <Activity className="w-3 h-3 text-[#10B981]" />
+                      {sleepChartData.length} จุดข้อมูล (ทุก {sleepChartInterval < 60 ? `${sleepChartInterval} นาที` : `${sleepChartInterval / 60} ชม.`})
                     </span>
                   )}
                 </div>
@@ -1311,6 +1316,8 @@ export default function AnalyticsPage({ apiBase = '' }) {
                     dataKey="display_time"
                     stroke="#85847E"
                     tick={{ fontSize: 11, fill: '#85847E' }}
+                    minTickGap={25}
+                    interval="preserveStartEnd"
                     dy={5}
                   />
 
@@ -1396,9 +1403,9 @@ export default function AnalyticsPage({ apiBase = '' }) {
                     dataKey="plot_cam1"
                     name="CAM-01: หน้าภาค 1 (Log จริง)"
                     stroke="#10B981"
-                    strokeWidth={2.5}
-                    dot={{ r: 3, fill: '#10B981' }}
-                    activeDot={{ r: 6 }}
+                    strokeWidth={2}
+                    dot={sleepChartData.length > 60 ? false : { r: 3, fill: '#10B981' }}
+                    activeDot={{ r: 5 }}
                     connectNulls={false}
                   />
 
@@ -1408,9 +1415,9 @@ export default function AnalyticsPage({ apiBase = '' }) {
                     dataKey="plot_cam2"
                     name="CAM-02: หน้าภาค 2 (Log จริง)"
                     stroke="#2563EB"
-                    strokeWidth={2.5}
-                    dot={{ r: 3, fill: '#2563EB' }}
-                    activeDot={{ r: 6 }}
+                    strokeWidth={2}
+                    dot={sleepChartData.length > 60 ? false : { r: 3, fill: '#2563EB' }}
+                    activeDot={{ r: 5 }}
                     connectNulls={false}
                   />
 
@@ -1420,9 +1427,9 @@ export default function AnalyticsPage({ apiBase = '' }) {
                     dataKey="plot_cam3"
                     name="CAM-03: ข้างภาคคอม (Log จริง)"
                     stroke="#F59E0B"
-                    strokeWidth={2.5}
-                    dot={{ r: 3, fill: '#F59E0B' }}
-                    activeDot={{ r: 6 }}
+                    strokeWidth={2}
+                    dot={sleepChartData.length > 60 ? false : { r: 3, fill: '#F59E0B' }}
+                    activeDot={{ r: 5 }}
                     connectNulls={false}
                   />
 

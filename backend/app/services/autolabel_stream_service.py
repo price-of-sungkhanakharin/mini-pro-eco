@@ -96,54 +96,58 @@ class AutoLabelStreamManager:
             logger.warning(f"Label Studio async login error: {exc}")
             return {}
 
-    def scan_minio_unlabeled(self, db: Session, bucket: str = "parking-label-queue", limit: int = 500) -> int:
-        """Scan MinIO bucket for images not yet in PostgreSQL."""
+    def scan_minio_unlabeled(self, db: Session, bucket: str = "raw-datasets", limit: int = 500) -> int:
+        """Scan MinIO bucket for live camera images from today onwards."""
+        from datetime import timezone, timedelta
+        bkk_tz = timezone(timedelta(hours=7))
+        today_str = datetime.now(bkk_tz).strftime("%Y-%m-%d")
         try:
             minio_client = self._get_minio_client()
             if not minio_client.bucket_exists(bucket):
                 return 0
 
-            objects = minio_client.list_objects(bucket, recursive=True)
             discovered_count = 0
+            # Scan only active cameras with today's date prefix
+            cams = ["cam1", "cam2", "cam3"]
+            for cam in cams:
+                prefix = f"dataset/{cam}/{today_str}/"
+                objects = minio_client.list_objects(bucket, prefix=prefix, recursive=True)
 
-            for obj in objects:
-                if obj.is_dir or not obj.object_name:
-                    continue
-                name_lower = obj.object_name.lower()
-                if not (name_lower.endswith(".jpg") or name_lower.endswith(".jpeg") or name_lower.endswith(".png")):
-                    continue
+                for obj in objects:
+                    if obj.is_dir or not obj.object_name:
+                        continue
+                    name_lower = obj.object_name.lower()
+                    if not (name_lower.endswith(".jpg") or name_lower.endswith(".jpeg") or name_lower.endswith(".png")):
+                        continue
 
-                existing = db.query(AutoLabelImageModel.id).filter(AutoLabelImageModel.s3_key == obj.object_name).first()
-                if existing:
-                    continue
+                    # Deduplication check
+                    existing = db.query(AutoLabelImageModel.id).filter(AutoLabelImageModel.s3_key == obj.object_name).first()
+                    if existing:
+                        continue
 
-                parts = obj.object_name.split("/")
-                camera = "cam1"
-                for p in parts:
-                    if p.startswith("cam") or p.startswith("camera"):
-                        camera = p
+                    img_url = f"http://{LOCAL_MINIO_HOST}:{LOCAL_MINIO_PORT}/{bucket}/{obj.object_name}"
+                    new_record = AutoLabelImageModel(
+                        camera_id=cam,
+                        s3_bucket=bucket,
+                        s3_key=obj.object_name,
+                        file_name=os.path.basename(obj.object_name),
+                        image_url=img_url,
+                        file_size=obj.size,
+                        status="DISCOVERED",
+                        is_approved=False,
+                        boxes_count=0,
+                    )
+                    db.add(new_record)
+                    discovered_count += 1
+                    if limit and discovered_count >= limit:
                         break
 
-                img_url = f"http://{LOCAL_MINIO_HOST}:{LOCAL_MINIO_PORT}/{bucket}/{obj.object_name}"
-                new_record = AutoLabelImageModel(
-                    camera_id=camera,
-                    s3_bucket=bucket,
-                    s3_key=obj.object_name,
-                    file_name=os.path.basename(obj.object_name),
-                    image_url=img_url,
-                    file_size=obj.size,
-                    status="DISCOVERED",
-                    is_approved=False,
-                    boxes_count=0,
-                )
-                db.add(new_record)
-                discovered_count += 1
                 if limit and discovered_count >= limit:
                     break
 
             if discovered_count > 0:
                 db.commit()
-                logger.info(f"[AutoLabelStreamer] Discovered and indexed {discovered_count} new images from {bucket}.")
+                logger.info(f"[AutoLabelStreamer] Discovered and indexed {discovered_count} fresh images from {bucket} ({today_str}).")
             return discovered_count
         except Exception as exc:
             db.rollback()
@@ -185,11 +189,11 @@ class AutoLabelStreamManager:
         return ai_predictions_map
 
     async def _dispatch_next_batch(self, db: Session, project_id: int = 1) -> int:
-        """Fetch next batch of DISCOVERED images, predict on CPU, and upload to Label Studio asynchronously."""
+        """Fetch next batch of DISCOVERED images (Newest Live Snapshots First), predict on GPU/CPU, and upload to Label Studio."""
         images = (
             db.query(AutoLabelImageModel)
             .filter(AutoLabelImageModel.status == "DISCOVERED")
-            .order_by(AutoLabelImageModel.id.asc())
+            .order_by(AutoLabelImageModel.created_at.desc(), AutoLabelImageModel.id.desc())
             .limit(self.batch_size)
             .all()
         )
@@ -267,7 +271,7 @@ class AutoLabelStreamManager:
         )
 
         self._status_message = (
-            f"Streaming active: Dispatched batch of {success_count} images. "
+            f"Streaming active: Dispatched batch of {success_count} fresh images. "
             f"({total_pending} remaining in queue, {total_in_review} in review in Label Studio)"
         )
         logger.info(f"[AutoLabelStreamer] {self._status_message}")
@@ -290,9 +294,8 @@ class AutoLabelStreamManager:
                     await asyncio.sleep(self.batch_interval_sec)
                     continue
 
-                # 2. If no DISCOVERED images, check MinIO for any newly arrived snapshots
-                self.scan_minio_unlabeled(db, bucket="parking-label-queue", limit=200)
-                self.scan_minio_unlabeled(db, bucket="raw-datasets", limit=200)
+                # 2. If no DISCOVERED images, scan MinIO raw-datasets for newly arrived live camera snapshots
+                self.scan_minio_unlabeled(db, bucket="raw-datasets", limit=300)
 
                 # Check queue again
                 remaining = (
@@ -302,7 +305,7 @@ class AutoLabelStreamManager:
                 )
 
                 if remaining == 0:
-                    self._status_message = "All indexed images processed. Polling MinIO for new camera frames..."
+                    self._status_message = "All live camera frames processed. Polling MinIO for new snapshots..."
                     await asyncio.sleep(self.idle_interval_sec)
                 else:
                     await asyncio.sleep(self.batch_interval_sec)

@@ -95,6 +95,14 @@ class ExportTrainingRequest(BaseModel):
     batch_size: int = 16
 
 
+class IngestLowConfidenceRequest(BaseModel):
+    min_conf: float = Field(0.05, ge=0.01, le=1.0, description="Minimum confidence threshold to consider")
+    max_conf: float = Field(0.55, ge=0.01, le=1.0, description="Upper threshold for uncertainty sampling")
+    limit: int = Field(20, ge=1, le=100, description="Number of low-confidence frames to ingest")
+    camera_id: Optional[str] = None
+    project_id: int = 1
+
+
 # -------------------------------------------------------------------------
 # 1. Scan MinIO Storage for Discovered Snapshots
 # -------------------------------------------------------------------------
@@ -194,7 +202,7 @@ async def dispatch_micro_batch(payload: DispatchBatchRequest, db: Session = Depe
     if payload.camera_id:
         query = query.filter(AutoLabelImageModel.camera_id == payload.camera_id)
 
-    images = query.order_by(AutoLabelImageModel.id.asc()).limit(payload.batch_size).all()
+    images = query.order_by(AutoLabelImageModel.created_at.desc(), AutoLabelImageModel.id.desc()).limit(payload.batch_size).all()
     if not images:
         return {
             "status": "idle",
@@ -281,6 +289,212 @@ async def dispatch_micro_batch(payload: DispatchBatchRequest, db: Session = Depe
         "dispatched_count": len(dispatched_items),
         "items": dispatched_items,
         "message": f"Dispatched {len(dispatched_items)} images with YOLO26x predictions to Label Studio project #{payload.project_id}.",
+    }
+
+
+# -------------------------------------------------------------------------
+# 2.1 Ingest Low-Confidence / Uncertain Detections (Active Learning)
+# -------------------------------------------------------------------------
+
+@router.post("/ingest-low-confidence", summary="Ingest Low-Confidence & Uncertain Detections for Active Learning")
+async def ingest_low_confidence_batch(payload: IngestLowConfidenceRequest, db: Session = Depends(get_db)):
+    """Active Learning Ingestion: Filters candidate frames with low detection confidence
+
+    (e.g., 0.05 <= conf <= 0.55) and dispatches them with high priority to Label Studio for human annotation.
+    """
+    # 1. Fetch candidate DISCOVERED images
+    query = db.query(AutoLabelImageModel).filter(AutoLabelImageModel.status == "DISCOVERED")
+    if payload.camera_id:
+        query = query.filter(AutoLabelImageModel.camera_id == payload.camera_id)
+
+    candidates = query.order_by(AutoLabelImageModel.id.asc()).limit(max(payload.limit * 3, 50)).all()
+
+    # If few candidates in DB, try discovering new snapshots from MinIO first
+    if len(candidates) < payload.limit:
+        try:
+            minio_client = _get_minio_client()
+            discovered_count = 0
+            for bucket in ["parking-label-queue", "raw-datasets"]:
+                if minio_client.bucket_exists(bucket):
+                    objs = minio_client.list_objects(bucket, recursive=True)
+                    for obj in objs:
+                        if obj.is_dir or not obj.object_name:
+                            continue
+                        name_lower = obj.object_name.lower()
+                        if not (name_lower.endswith(".jpg") or name_lower.endswith(".jpeg") or name_lower.endswith(".png")):
+                            continue
+                        existing = db.query(AutoLabelImageModel.id).filter(AutoLabelImageModel.s3_key == obj.object_name).first()
+                        if not existing:
+                            camera = payload.camera_id or "cam1"
+                            for p in obj.object_name.split("/"):
+                                if p.startswith("cam") or p.startswith("camera"):
+                                    camera = p
+                                    break
+                            img_rec = AutoLabelImageModel(
+                                camera_id=camera,
+                                s3_bucket=bucket,
+                                s3_key=obj.object_name,
+                                file_name=os.path.basename(obj.object_name),
+                                image_url=f"http://{LOCAL_MINIO_HOST}:{LOCAL_MINIO_PORT}/{bucket}/{obj.object_name}",
+                                file_size=obj.size,
+                                status="DISCOVERED",
+                                is_approved=False,
+                                boxes_count=0,
+                            )
+                            db.add(img_rec)
+                            discovered_count += 1
+                            if discovered_count >= max(payload.limit * 3, 50):
+                                break
+                    db.commit()
+            candidates = query.order_by(AutoLabelImageModel.id.asc()).limit(max(payload.limit * 3, 50)).all()
+        except Exception as exc:
+            logger.warning(f"Storage scan during active learning ingestion: {exc}")
+
+    # Fallback: If still no DISCOVERED images, sample from latest images to re-evaluate edge cases
+    if not candidates:
+        fallback_query = db.query(AutoLabelImageModel)
+        if payload.camera_id:
+            fallback_query = fallback_query.filter(AutoLabelImageModel.camera_id == payload.camera_id)
+        candidates = fallback_query.order_by(AutoLabelImageModel.id.desc()).limit(max(payload.limit * 2, 20)).all()
+
+    if not candidates:
+        return {
+            "status": "idle",
+            "message": "No candidate images found in queue to evaluate for active learning.",
+            "dispatched_count": 0,
+            "items": [],
+        }
+
+    # 2. Run inference with low confidence threshold to capture ambiguous boxes
+    predict_payload = {
+        "tasks": [{"id": img.id, "data": {"image": img.image_url}} for img in candidates]
+    }
+    ai_predictions_map = {}
+    uncertain_candidates = []
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.post(
+                f"{GPU_NODE_URL}/predict?conf={payload.min_conf}",
+                json=predict_payload,
+            )
+            if resp.status_code == 200:
+                results = resp.json().get("results", [])
+                target_classes = {"car", "motorcycle"}
+                for idx, r in enumerate(results):
+                    img_id = candidates[idx].id if idx < len(candidates) else None
+                    if not img_id:
+                        continue
+                    boxes = r.get("result", [])
+                    filtered_boxes = [
+                        b for b in boxes
+                        if any(lbl in target_classes for lbl in b.get("value", {}).get("rectanglelabels", []))
+                    ]
+                    actual_boxes = filtered_boxes if filtered_boxes else boxes
+                    ai_predictions_map[img_id] = actual_boxes
+
+                    # Calculate uncertainty score based on bounding box confidence values
+                    conf_scores = []
+                    for b in actual_boxes:
+                        score = b.get("score") or b.get("value", {}).get("score")
+                        if score is not None:
+                            try:
+                                conf_scores.append(float(score))
+                            except Exception:
+                                pass
+
+                    # Determine if image contains low-confidence detections in range [min_conf, max_conf]
+                    has_low_conf = any(payload.min_conf <= c <= payload.max_conf for c in conf_scores)
+                    min_score = min(conf_scores) if conf_scores else 1.0
+                    avg_score = sum(conf_scores) / len(conf_scores) if conf_scores else 1.0
+
+                    if has_low_conf or (actual_boxes and min_score <= payload.max_conf):
+                        uncertain_candidates.append({
+                            "img": candidates[idx],
+                            "boxes": actual_boxes,
+                            "min_score": min_score,
+                            "avg_score": avg_score,
+                            "boxes_count": len(actual_boxes),
+                        })
+    except Exception as exc:
+        logger.warning(f"Could not perform uncertainty inference on GPU node: {exc}")
+
+    # If no low-confidence specifically found, take candidates with fewest/lowest scores or fallback to first candidates
+    if not uncertain_candidates:
+        for img in candidates[:payload.limit]:
+            boxes = ai_predictions_map.get(img.id, [])
+            uncertain_candidates.append({
+                "img": img,
+                "boxes": boxes,
+                "min_score": payload.max_conf,
+                "avg_score": payload.max_conf,
+                "boxes_count": len(boxes),
+            })
+
+    # Sort so most uncertain (lowest min_score) are dispatched first
+    uncertain_candidates.sort(key=lambda x: x["min_score"])
+    selected_batch = uncertain_candidates[:payload.limit]
+
+    batch_id = f"active_learning_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
+    ls_session = _get_label_studio_session()
+    csrf = ls_session.cookies.get("csrftoken")
+    headers = {"X-CSRFToken": csrf, "Referer": f"{LABEL_STUDIO_URL}/projects/{payload.project_id}/data"}
+
+    dispatched_items = []
+    for item in selected_batch:
+        img = item["img"]
+        boxes = item["boxes"]
+        task_data = {
+            "project": payload.project_id,
+            "data": {
+                "image": img.image_url,
+                "active_learning_reason": f"Low Confidence Detection (min_conf: {item['min_score']:.2f})",
+            },
+        }
+
+        try:
+            r_task = ls_session.post(f"{LABEL_STUDIO_URL}/api/tasks", json=task_data, headers=headers, timeout=10)
+            if r_task.status_code == 201:
+                task_resp = r_task.json()
+                task_id = task_resp.get("id")
+
+                if boxes and task_id:
+                    pred_data = {
+                        "task": task_id,
+                        "model_version": "yolo26x_active_learning.pt",
+                        "result": boxes,
+                    }
+                    ls_session.post(f"{LABEL_STUDIO_URL}/api/predictions", json=pred_data, headers=headers, timeout=10)
+
+                img.status = "IN_REVIEW"
+                img.batch_id = batch_id
+                img.label_studio_task_id = task_id
+                img.prediction_results = boxes
+                img.boxes_count = len(boxes)
+                img.is_approved = False
+
+                dispatched_items.append({
+                    "id": img.id,
+                    "task_id": task_id,
+                    "s3_key": img.s3_key,
+                    "camera_id": img.camera_id,
+                    "boxes": len(boxes),
+                    "min_confidence": round(item["min_score"], 3),
+                    "avg_confidence": round(item["avg_score"], 3),
+                })
+        except Exception as exc:
+            logger.error(f"Active Learning task creation error for {img.s3_key}: {exc}")
+
+    db.commit()
+
+    return {
+        "status": "success",
+        "batch_id": batch_id,
+        "mode": "ACTIVE_LEARNING_UNCERTAINTY_SAMPLING",
+        "confidence_range": f"[{payload.min_conf}, {payload.max_conf}]",
+        "dispatched_count": len(dispatched_items),
+        "items": dispatched_items,
+        "message": f"Dispatched {len(dispatched_items)} low-confidence / uncertain frames into Label Studio (Project #{payload.project_id}) for human review.",
     }
 
 

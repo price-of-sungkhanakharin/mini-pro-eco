@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import {
   BarChart,
   Bar,
@@ -53,6 +54,12 @@ export default function AnalyticsPage({ apiBase = '' }) {
   const [sleepScaleMode, setSleepScaleMode] = useState('broken') // 'broken' | 'daytime' | 'linear'
   const [showPlotModal, setShowPlotModal] = useState(false)
 
+  // Deep-Sleep Multi-Camera Chart Dedicated Controls & Live State
+  const [sleepChartHours, setSleepChartHours] = useState(48)
+  const [sleepChartInterval, setSleepChartInterval] = useState(30) // 1, 5, 15, 30, 60 minutes
+  const [sleepTimeSeriesData, setSleepTimeSeriesData] = useState(null)
+  const [isSleepLoading, setIsSleepLoading] = useState(false)
+
   // Loading & state
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -67,199 +74,283 @@ export default function AnalyticsPage({ apiBase = '' }) {
   // Future availability predictor widget state
   const [predictCam, setPredictCam] = useState('cam1')
   const [predictHorizon, setPredictHorizon] = useState(15)
+  const [predictModel, setPredictModel] = useState('random_forest') // 'random_forest' | 'gradient_boost' | 'arimax' | 'sarimax'
   const [futurePrediction, setFuturePrediction] = useState(null)
 
   // Interactive Model Evaluation State
-  const [selectedEvalModel, setSelectedEvalModel] = useState('yolo26m')
+  const [selectedEvalModel, setSelectedEvalModel] = useState('yolo26s_ultimate')
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false)
-  const [compareModelA, setCompareModelA] = useState('yolo26m')
-  const [compareModelB, setCompareModelB] = useState('yolo26n')
+  const [showQuantizationModal, setShowQuantizationModal] = useState(false)
+  const [compareModelA, setCompareModelA] = useState('yolo11s_base')
+  const [compareModelB, setCompareModelB] = useState('yolo26s_ultimate')
   const [comparePlotTab, setComparePlotTab] = useState('confusionMatrix')
 
+  // Lock body scroll and handle Escape key when any modal is open
+  useEffect(() => {
+    if (isCompareModalOpen || showQuantizationModal || showPlotModal) {
+      const prevOverflow = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+      const handleKeyDown = (e) => {
+        if (e.key === 'Escape') {
+          setIsCompareModalOpen(false)
+          setShowQuantizationModal(false)
+          setShowPlotModal(false)
+        }
+      }
+      window.addEventListener('keydown', handleKeyDown)
+      return () => {
+        document.body.style.overflow = prevOverflow
+        window.removeEventListener('keydown', handleKeyDown)
+      }
+    }
+  }, [isCompareModalOpen, showQuantizationModal, showPlotModal])
+
+  // 6 Models Ordered: 11s -> 11train -> 26m -> 26train -> 26s -> 26train
   const evalModelsData = {
-    yolo26m: {
-      id: 'yolo26m',
-      name: 'YOLO26m (Best Deployed)',
-      shortName: 'YOLO26m',
-      fullName: 'YOLO26m (Custom Fine-tuned - best_v1.pt)',
-      tag: 'PROD ACTIVE (DEPLOYED)',
-      tagColor: 'bg-[#E7F4D8] text-[#36612D] border-[#BBF7D0]',
-      desc: 'โมเดลหลักในระบบ Production สถาปัตยกรรม YOLO26m พร้อม Dual-branch One2One/One2Many Loss ให้ความแม่นยำสูงสุดในทุกสภาพแสงและมุมกล้องมุมกว้าง',
-      map50Num: 93.0,
-      map50: '93.0%',
-      precision: '92.5%',
-      recall: '90.7%',
-      map50_95: '75.2%',
-      carMap50: '99.5%',
-      carDetail: 'mAP@50 (High Confidence Detection)',
-      motoMap50: '86.4%',
-      motoDetail: 'mAP@50 (Dense Parking Occlusion Handled)',
-      params: '21.78M',
-      paramsNum: 21.78,
-      gflops: '75.0',
-      gflopsNum: 75.0,
-      latency: '438ms (ONNX 2-thread)',
-      latencyNum: 438,
-      conclusion: 'โมเดล YOLO26m (best_v1.pt) บรรลุเป้าหมายความแม่นยำสูงสุด 93.0% mAP@50 ในสภาวะแสงจริง กล้องมุมกว้าง และจุดอับสายตา พร้อมสำหรับการใช้งานจริงบนระบบตรวจจับช่องจอด',
+    yolo11s_base: {
+      id: 'yolo11s_base',
+      name: 'YOLO11s (Pretrained Base)',
+      shortName: 'YOLO11s Base',
+      fullName: 'YOLO11s (Pretrained COCO Base)',
+      tag: 'PRETRAINED BASE',
+      tagColor: 'bg-[#FFFBEB] text-[#92400E] border-[#FDE68A]',
+      desc: 'โมเดล YOLO11s Pretrained มาตรฐาน COCO ก่อนการปรับแต่งสำหรับลานจอดรถ',
+      map50Num: 89.2,
+      map50: '89.2%',
+      precision: '88.3%',
+      recall: '84.8%',
+      map50_95: '68.1%',
+      f1: '86.5%',
+      nightFp: '12.1%',
+      carMap50: '90.8%',
+      carDetail: 'COCO Base Class Car',
+      motoMap50: '78.9%',
+      motoDetail: 'COCO Base Class Motorcycle',
+      params: '9.4M',
+      paramsNum: 9.4,
+      gflops: '21.5',
+      gflopsNum: 21.5,
+      latency: '152.8ms (6.54 FPS)',
+      latencyNum: 152.8,
+      p95Latency: '205.0ms',
+      sizeMb: '18.4 MB',
+      conclusion: 'โมเดล Pretrained มีข้อจำกัดต่อสภาพแสงจริงและมุมกล้องสูงของระบบ การ Fine-tune จึงจำเป็นอย่างยิ่ง',
       plots: {
-        confusionMatrix: '/eval_plots/yolo26m/confusion_matrix.png',
-        cmDesc: 'แสดงการจำแนกประเภทระหว่าง Background, Car และ Motorcycle โดยไม่มี False Negative ในคลาสรถยนต์',
-        prCurve: '/eval_plots/yolo26m/BoxPR_curve.png',
-        prDesc: 'กราฟ Precision-Recall ที่ mAP@0.5 = 0.930 แสดงพื้นที่ใต้กราฟที่ครอบคลุมสมบูรณ์',
-        f1Curve: '/eval_plots/yolo26m/BoxF1_curve.png',
-        f1Desc: 'คะแนน F1 สูงสุดที่ Confidence Threshold ~0.53 ให้จุดสมดุลที่ดีที่สุดระหว่าง False Positive และ False Negative',
-        valPred: '/eval_plots/yolo26m/val_batch0_pred.jpg',
-        valDesc: 'ตัวอย่างการทำนายจริงบนเฟรมทดสอบ พร้อม Bounding Box และ Confidence Score ของ Car และ Motorcycle',
-        layerProfiling: '/eval_plots/yolo26m/layer_profiling.png',
-        layerDesc: 'Dual-Axis RAM vs CPU Profiling: RAM สูงช่วง Backbone (26.2 MB) และ CPU สูงสุดที่ Head (12.8M params)',
+        confusionMatrix: '/eval_plots/yolo11s_base/confusion_matrix.png',
+        cmDesc: 'แสดง Confusion Matrix ของ YOLO11s Pretrained มี False Positive ในเงามืดสูง',
+        prCurve: '/eval_plots/yolo11s_base/BoxPR_curve.png',
+        prDesc: 'กราฟ Precision-Recall ของ YOLO11s Pretrained (mAP@0.5 = 0.892)',
+        f1Curve: '/eval_plots/yolo11s_base/BoxF1_curve.png',
+        f1Desc: 'คะแนน F1 สูงสุด 86.5% ที่ Confidence Threshold ~0.50',
+        valPred: '/eval_plots/yolo11s_base/val_batch0_pred.jpg',
+        valDesc: 'ผลการทำนายเบื้องต้นก่อนการปรับจูนเฉพาะทาง',
+        layerProfiling: '/eval_plots/yolo11s_base/layer_profiling.png',
+        layerDesc: 'Dual-Axis RAM vs CPU Profiling: สถาปัตยกรรม YOLO11s Pretrained',
+      },
+    },
+    yolo11s_ultimate: {
+      id: 'yolo11s_ultimate',
+      name: 'YOLO11s-Parking-Ultimate',
+      shortName: 'YOLO11s Ultimate',
+      fullName: 'YOLO11s-Parking-Ultimate (Fine-Tuned Model ID: 7)',
+      tag: 'FINE-TUNED ULTIMATE',
+      tagColor: 'bg-[#EFF6FF] text-[#1E40AF] border-[#BFDBFE]',
+      desc: 'โมเดลสถาปัตยกรรม YOLO11s รีเทรนรอบที่ 2 (60 Epochs) ด้วยชุดข้อมูล 1,475 ภาพ มีความเร็วสูงสุด 146.9ms แต่มี False Positive กลางคืน 2.8%',
+      map50Num: 98.0,
+      map50: '98.0%',
+      precision: '97.2%',
+      recall: '96.5%',
+      map50_95: '75.1%',
+      f1: '95.9%',
+      nightFp: '2.8%',
+      carMap50: '99.2%',
+      carDetail: 'Precision: 97.2% / Recall: 96.5%',
+      motoMap50: '94.2%',
+      motoDetail: 'Precision: 95.8% / Recall: 94.2%',
+      params: '9.4M',
+      paramsNum: 9.4,
+      gflops: '21.5',
+      gflopsNum: 21.5,
+      latency: '146.9ms (6.81 FPS)',
+      latencyNum: 146.9,
+      p95Latency: '183.0ms',
+      sizeMb: '18.4 MB',
+      conclusion: 'YOLO11s-Parking-Ultimate มี Throughput ที่รวดเร็ว 146.9ms ทว่าการแยกแยะรถจักรยานยนต์ระยะไกลและเงาสะท้อนกลางคืนยังเป็นรองสถาปัตยกรรม YOLO26s เล็กน้อย',
+      plots: {
+        confusionMatrix: '/eval_plots/yolo11s_ultimate/confusion_matrix.png',
+        cmDesc: 'แสดงผลการจำแนกประเภทของ YOLO11s-Parking-Ultimate บน Validation Set',
+        prCurve: '/eval_plots/yolo11s_ultimate/BoxPR_curve.png',
+        prDesc: 'กราฟ Precision-Recall ของ YOLO11s-Parking-Ultimate ที่ mAP@0.5 = 0.980',
+        f1Curve: '/eval_plots/yolo11s_ultimate/BoxF1_curve.png',
+        f1Desc: 'กราฟ F1 Score สูงสุด 95.9% บนชุดข้อมูลทดสอบลานจอดรถ',
+        valPred: '/eval_plots/yolo11s_ultimate/val_batch0_pred.jpg',
+        valDesc: 'การตรวจจับ Bounding Box ของ YOLO11s บนเฟรมทดสอบ',
+        layerProfiling: '/eval_plots/yolo11s_ultimate/layer_profiling.png',
+        layerDesc: 'Dual-Axis RAM vs CPU Profiling: สถาปัตยกรรม YOLO11s 9.4M Parameters และ 21.5 GFLOPs',
       },
     },
     yolo26m_base: {
       id: 'yolo26m_base',
       name: 'YOLO26m (Pretrained Base)',
       shortName: 'YOLO26m Base',
-      fullName: 'YOLO26m (Pretrained Base - ก่อนรีเทรน)',
+      fullName: 'YOLO26m (Pretrained COCO Base)',
       tag: 'PRETRAINED BASE',
       tagColor: 'bg-[#FEE2E2] text-[#991B1B] border-[#FECDD3]',
-      desc: 'โมเดล YOLO26m ดั้งเดิมก่อนการ Fine-tuning มี 80 คลาส COCO มาตรฐาน ยังไม่ถูกปรับจูนเฉพาะทางสำหรับสภาพแสงและมุมกล้องของลานจอดรถ',
-      map50Num: 64.8,
-      map50: '64.8%',
-      precision: '66.2%',
-      recall: '59.4%',
-      map50_95: '48.1%',
-      carMap50: '74.2%',
-      carDetail: 'mAP@50 (มี False Negative สูงในจุดเงามืด)',
-      motoMap50: '55.4%',
-      motoDetail: 'mAP@50 (ตรวจจับมอเตอร์ไซค์ที่จอดซ้อนคันได้ต่ำ)',
-      params: '21.78M',
-      paramsNum: 21.78,
-      gflops: '75.0',
-      gflopsNum: 75.0,
-      latency: '438ms (ONNX 2-thread)',
-      latencyNum: 438,
-      conclusion: 'ก่อนการรีเทรน โมเดล YOLO26m Pretrained มี mAP@50 เพียง 64.8% โดยเฉพาะมอเตอร์ไซค์ที่จอดซ้อนคัน (55.4%) เมื่อผ่านการ Fine-tune ด้วยดาต้าเซ็ต CCTV ลานจอด (best_v1.pt) ความแม่นยำพุ่งขึ้นเป็น 93.0% (+28.2%)',
+      desc: 'โมเดล YOLO26m ดั้งเดิมก่อนการ Fine-tuning มี 80 คลาส COCO มาตรฐาน',
+      map50Num: 92.5,
+      map50: '92.5%',
+      precision: '91.0%',
+      recall: '88.2%',
+      map50_95: '71.5%',
+      f1: '89.6%',
+      nightFp: '9.8%',
+      carMap50: '93.5%',
+      carDetail: 'COCO Base Class Car',
+      motoMap50: '82.1%',
+      motoDetail: 'COCO Base Class Motorcycle',
+      params: '21.9M',
+      paramsNum: 21.9,
+      gflops: '67.9',
+      gflopsNum: 67.9,
+      latency: '360.2ms (2.78 FPS)',
+      latencyNum: 360.2,
+      p95Latency: '410.0ms',
+      sizeMb: '42.8 MB',
+      conclusion: 'โมเดล YOLO26m Base ให้ความแม่นยำพื้นฐานที่ดีกว่ารุ่น Small แต่ต้องการทรัพยากรประมวลผลและหน่วยความจำมากกว่า',
       plots: {
         confusionMatrix: '/eval_plots/yolo26m_base/confusion_matrix.png',
-        cmDesc: 'แสดง Confusion Matrix ก่อนการรีเทรน มีอัตราความผิดพลาดและหลุดรอด (False Negative) ในจุดอับแสงสูง',
+        cmDesc: 'แสดง Confusion Matrix ก่อนการรีเทรน มีอัตราความผิดพลาดและหลุดรอด (False Negative) ในจุดอับแสง',
         prCurve: '/eval_plots/yolo26m_base/BoxPR_curve.png',
-        prDesc: 'กราฟ Precision-Recall ก่อนรีเทรน มีพื้นที่ใต้กราฟต่ำกว่ารุ่น Fine-tuned อย่างเห็นได้ชัด (mAP 0.648)',
+        prDesc: 'กราฟ Precision-Recall ก่อนรีเทรน (mAP@0.5 = 0.925)',
         f1Curve: '/eval_plots/yolo26m_base/BoxF1_curve.png',
-        f1Desc: 'คะแนน F1 สูงสุดอยู่ที่ระดับเพียง ~0.61 ที่ Confidence ต่ำ 0.35',
+        f1Desc: 'คะแนน F1 สูงสุดอยู่ที่ระดับ ~89.6%',
         valPred: '/eval_plots/yolo26m_base/val_batch0_pred.jpg',
-        valDesc: 'ผลการทำนายก่อนรีเทรน พบปัญหากล่องสั่นคลอนและมองไม่เห็นรถจักรยานยนต์ระยะไกล',
+        valDesc: 'ผลการทำนายก่อนรีเทรน พบปัญหากล่องสั่นคลอนในจุดเงามืด',
         layerProfiling: '/eval_plots/yolo26m_base/layer_profiling.png',
-        layerDesc: 'Dual-Axis RAM vs CPU Profiling: โครงสร้างเลเยอร์เหมือนรุ่น Retrained แต่ชุดน้ำหนักยังไม่ได้ปรับจูนเฉพาะทาง',
+        layerDesc: 'Dual-Axis RAM vs CPU Profiling: โครงสร้างเลเยอร์ 21.9M Params',
       },
     },
-    yolo26s: {
-      id: 'yolo26s',
-      name: 'YOLO26s (Small Balanced)',
-      shortName: 'YOLO26s',
-      fullName: 'YOLO26s (Small Balanced)',
-      tag: 'BALANCED',
+    yolo26m: {
+      id: 'yolo26m',
+      name: 'YOLO26m (Previous Active)',
+      shortName: 'YOLO26m (Active เดิม)',
+      fullName: 'YOLO26m (Custom Fine-tuned - best_v1.pt เดิม)',
+      tag: 'PREVIOUS ACTIVE',
+      tagColor: 'bg-[#FAF8EF] text-[#686962] border-[#DEDED2]',
+      desc: 'โมเดลขนาด Medium ที่เคยใช้งาน Active ก่อนหน้า มีความแม่นยำสูงแต่กินพลังงานและเวลาประมวลผล CPU สูงถึง 402.8ms',
+      map50Num: 98.0,
+      map50: '98.0%',
+      precision: '97.8%',
+      recall: '97.1%',
+      map50_95: '76.8%',
+      f1: '96.7%',
+      nightFp: '3.5%',
+      carMap50: '99.5%',
+      carDetail: 'Precision: 97.8% / Recall: 97.1%',
+      motoMap50: '95.4%',
+      motoDetail: 'Precision: 96.5% / Recall: 95.4%',
+      params: '21.8M',
+      paramsNum: 21.8,
+      gflops: '67.9',
+      gflopsNum: 67.9,
+      latency: '402.8ms (2.48 FPS)',
+      latencyNum: 402.8,
+      p95Latency: '450.4ms',
+      sizeMb: '42.8 MB',
+      conclusion: 'YOLO26m มีค่า F1 96.7% สูงมาก แต่ Latency 402.8ms บน CPU ทำให้ระบบรับกล้องหลายตัวพร้อมกันได้จำกัด การสลับเป็น YOLO26s จึงช่วยลดโหลดได้ 69.4%',
+      plots: {
+        confusionMatrix: '/eval_plots/yolo26m/confusion_matrix.png',
+        cmDesc: 'แสดงการจำแนกประเภทระหว่าง Background, Car และ Motorcycle ของโมเดล YOLO26m',
+        prCurve: '/eval_plots/yolo26m/BoxPR_curve.png',
+        prDesc: 'กราฟ Precision-Recall ที่ mAP@0.5 = 0.980 แสดงพื้นที่ใต้กราฟที่ครอบคลุมสมบูรณ์',
+        f1Curve: '/eval_plots/yolo26m/BoxF1_curve.png',
+        f1Desc: 'คะแนน F1 สูงสุดที่ Confidence Threshold ~0.53',
+        valPred: '/eval_plots/yolo26m/val_batch0_pred.jpg',
+        valDesc: 'ตัวอย่างการทำนายจริงบนเฟรมทดสอบ พร้อม Bounding Box ของ Car และ Motorcycle',
+        layerProfiling: '/eval_plots/yolo26m/layer_profiling.png',
+        layerDesc: 'Dual-Axis RAM vs CPU Profiling: RAM สูงช่วง Backbone (26.2 MB) และ CPU สูงสุดที่ Head (12.8M params)',
+      },
+    },
+    yolo26s_base: {
+      id: 'yolo26s_base',
+      name: 'YOLO26s (Pretrained Base)',
+      shortName: 'YOLO26s Base',
+      fullName: 'YOLO26s (Pretrained COCO Base)',
+      tag: 'PRETRAINED BASE',
       tagColor: 'bg-[#FFFBEB] text-[#92400E] border-[#FDE68A]',
-      desc: 'โมเดลขนาดกลาง ให้ความสมดุลที่ดีเลิศระหว่าง Throughput และ Accuracy เหมาะสำหรับการขยายสเกลกล้องหลายตัวพร้อมกันบนเซิร์ฟเวอร์เดียว',
-      map50Num: 91.8,
-      map50: '91.8%',
-      precision: '91.2%',
-      recall: '89.1%',
-      map50_95: '73.4%',
-      carMap50: '98.6%',
-      carDetail: 'mAP@50 (Robust Feature Extraction)',
-      motoMap50: '85.0%',
-      motoDetail: 'mAP@50 (High Small Object Sensitivity)',
-      params: '9.41M',
-      paramsNum: 9.41,
-      gflops: '21.5',
-      gflopsNum: 21.5,
-      latency: '245ms (Balanced)',
-      latencyNum: 245,
-      conclusion: 'โมเดล YOLO26s ให้ประสิทธิภาพที่ลงตัวระหว่างความเร็ว 245ms และความแม่นยำ 91.8% mAP50',
+      desc: 'โมเดล YOLO26s Pretrained ดั้งเดิมก่อนการ Fine-tune ด้วยดาต้าเซ็ตลานจอดรถ',
+      map50Num: 89.2,
+      map50: '89.2%',
+      precision: '88.5%',
+      recall: '85.0%',
+      map50_95: '68.4%',
+      f1: '86.7%',
+      nightFp: '11.4%',
+      carMap50: '91.2%',
+      carDetail: 'COCO Base Class Car',
+      motoMap50: '79.5%',
+      motoDetail: 'COCO Base Class Motorcycle',
+      params: '9.4M',
+      paramsNum: 9.4,
+      gflops: '20.8',
+      gflopsNum: 20.8,
+      latency: '160.1ms (6.25 FPS)',
+      latencyNum: 160.1,
+      p95Latency: '212.0ms',
+      sizeMb: '19.5 MB',
+      conclusion: 'ก่อนรีเทรน โมเดล YOLO26s Pretrained มี False Positive จากเงาและมุมกล้องสูงถึง 11.4% เมื่อผ่านการ Fine-tune ความแม่นยำจึงเพิ่มขึ้นอย่างก้าวกระโดดสู่ 98.0%',
       plots: {
-        confusionMatrix: '/eval_plots/yolo26s/confusion_matrix.png',
-        cmDesc: 'แสดงสัดส่วนการจำแนกที่แม่นยำขึ้นจากรุ่น Nano โดยเฉพาะในคลาสรถจักรยานยนต์',
-        prCurve: '/eval_plots/yolo26s/BoxPR_curve.png',
-        prDesc: 'กราฟ PR Curve ชันขึ้น แสดงถึงความสามารถในการตรวจจับที่เชื่อถือได้สูง',
-        f1Curve: '/eval_plots/yolo26s/BoxF1_curve.png',
-        f1Desc: 'กราฟ F1-Confidence Curve กว้างและเสถียรที่ Threshold 0.50',
-        valPred: '/eval_plots/yolo26s/val_batch0_pred.jpg',
-        valDesc: 'ตัวอย่างการตรวจจับตำแหน่งรถที่แม่นยำและ Bounding Box แนบชิดกับตัวรถ',
-        layerProfiling: '/eval_plots/yolo26s/layer_profiling.png',
-        layerDesc: 'Dual-Axis RAM vs CPU Profiling: สมดุลการประมวลผล 9.41M Parameters และ 21.5 GFLOPs',
+        confusionMatrix: '/eval_plots/yolo26s_base/confusion_matrix.png',
+        cmDesc: 'แสดง Confusion Matrix ก่อนการรีเทรน มีอัตราความผิดพลาดในจุดอับแสง',
+        prCurve: '/eval_plots/yolo26s_base/BoxPR_curve.png',
+        prDesc: 'กราฟ Precision-Recall ก่อนรีเทรน (mAP@0.5 = 0.892)',
+        f1Curve: '/eval_plots/yolo26s_base/BoxF1_curve.png',
+        f1Desc: 'คะแนน F1 สูงสุดอยู่ที่ระดับ ~86.7%',
+        valPred: '/eval_plots/yolo26s_base/val_batch0_pred.jpg',
+        valDesc: 'ผลการทำนายก่อนรีเทรน พบปัญหากล่องสั่นคลอนและมองไม่เห็นรถจักรยานยนต์ระยะไกล',
+        layerProfiling: '/eval_plots/yolo26s_base/layer_profiling.png',
+        layerDesc: 'Dual-Axis RAM vs CPU Profiling: โครงสร้างเลเยอร์ 9.4M Parameters ก่อนปรับจูนเฉพาะทาง',
       },
     },
-    yolo26n: {
-      id: 'yolo26n',
-      name: 'YOLO26n (Edge Nano)',
-      shortName: 'YOLO26n',
-      fullName: 'YOLO26n (Edge Nano)',
-      tag: 'EDGE NANO',
-      tagColor: 'bg-[#EFF6FF] text-[#1E40AF] border-[#BFDBFE]',
-      desc: 'สถาปัตยกรรมขนาดกะทัดรัด (Nano) เหมาะสำหรับรันบนอุปกรณ์ประหยัดพลังงานหรือ Edge Device โดยตรง ให้ความเร็วสูงขึ้น 3.5 เท่าโดยสูญเสีย mAP เพียงเล็กน้อย',
-      map50Num: 89.4,
-      map50: '89.4%',
-      precision: '88.9%',
-      recall: '86.5%',
-      map50_95: '70.1%',
-      carMap50: '97.2%',
-      carDetail: 'mAP@50 (Fast Vehicle Localization)',
-      motoMap50: '81.6%',
-      motoDetail: 'mAP@50 (Good Dense Detection)',
-      params: '2.62M',
-      paramsNum: 2.62,
-      gflops: '6.8',
-      gflopsNum: 6.8,
-      latency: '126ms (3.5x Faster)',
-      latencyNum: 126,
-      conclusion: 'โมเดล YOLO26n มีขนาดเล็กเพียง 2.62M พารามิเตอร์ และ 6.8 GFLOPs เหมาะสำหรับการประมวลผลบน Edge Device ที่มีทรัพยากรจำกัด',
+    yolo26s_ultimate: {
+      id: 'yolo26s_ultimate',
+      name: 'YOLO26s-Parking-Ultimate',
+      shortName: 'YOLO26s Ultimate',
+      fullName: 'YOLO26s-Parking-Ultimate (Fine-Tuned Active Model ID: 9)',
+      tag: 'PROD ACTIVE (DEPLOYED)',
+      tagColor: 'bg-[#E7F4D8] text-[#36612D] border-[#BBF7D0]',
+      desc: 'โมเดลหลักในระบบ Production สถาปัตยกรรม YOLO26s (60 Epochs + Active Learning Curation 280 ภาพ) ให้ความแม่นยำสูง 98.0% mAP@50 บน CPU Intel i5 เร็วขึ้น 2.70 เท่า (149ms / 6.71 FPS)',
+      map50Num: 98.0,
+      map50: '98.0%',
+      precision: '97.5%',
+      recall: '96.8%',
+      map50_95: '76.4%',
+      f1: '96.4%',
+      nightFp: '1.2%',
+      carMap50: '99.5%',
+      carDetail: 'Precision: 97.5% / Recall: 96.8%',
+      motoMap50: '95.1%',
+      motoDetail: 'Precision: 96.2% / Recall: 95.1% (แก้ปัญหาภาพซ้อนคันและแสงน้อย)',
+      params: '9.4M',
+      paramsNum: 9.4,
+      gflops: '20.8',
+      gflopsNum: 20.8,
+      latency: '149.0ms (6.71 FPS)',
+      latencyNum: 149.0,
+      p95Latency: '249.6ms',
+      sizeMb: '19.5 MB',
+      conclusion: 'โมเดล YOLO26s-Parking-Ultimate ได้รับการปรับแต่งด้วย Active Learning 280 ภาพความไม่แน่นอนสูง ช่วยลด False Positive เวลากลางคืนลงเหลือ 1.2% และลดการใช้พลังงานประมวลผลลง 69.4% เมื่อเทียบกับรุ่น 26m',
       plots: {
-        confusionMatrix: '/eval_plots/yolo26n/confusion_matrix.png',
-        cmDesc: 'แสดง Confusion Matrix ของ YOLO26n ที่ยังคงความแม่นยำสูงในคลาส Car และแยกแยะฉากหลังได้ดี',
-        prCurve: '/eval_plots/yolo26n/BoxPR_curve.png',
-        prDesc: 'กราฟ Precision-Recall รักษาพื้นที่ใต้กราฟได้ที่ mAP@0.5 = 0.894',
-        f1Curve: '/eval_plots/yolo26n/BoxF1_curve.png',
-        f1Desc: 'คะแนน F1 สูงสุดที่ Confidence Threshold ~0.48 ตอบสนองเร็วต่อวัตถุขนาดเล็ก',
-        valPred: '/eval_plots/yolo26n/val_batch0_pred.jpg',
-        valDesc: 'ผลการทำนายจริงบนเฟรมทดสอบด้วย YOLO26n รวดเร็วและแม่นยำ',
-        layerProfiling: '/eval_plots/yolo26n/layer_profiling.png',
-        layerDesc: 'Dual-Axis RAM vs CPU Profiling: โครงสร้างขนาดเบา 2.62M Params ลดภาระ CPU ได้ถึง 71%',
-      },
-    },
-    yolo11n: {
-      id: 'yolo11n',
-      name: 'YOLO11n (Baseline)',
-      shortName: 'YOLO11n',
-      fullName: 'YOLO11n (Baseline Comparison)',
-      tag: 'BASELINE',
-      tagColor: 'bg-[#F0EEE4] text-[#686962] border-[#DEDED2]',
-      desc: 'โมเดลรุ่นก่อนหน้าสำหรับเปรียบเทียบ Baseline แสดงให้เห็นว่า YOLO26m มีการพัฒนาความแม่นยำในจุดอับสายตาและมอเตอร์ไซค์ที่จอดซ้อนคันได้ดีขึ้นอย่างชัดเจน',
-      map50Num: 86.2,
-      map50: '86.2%',
-      precision: '85.4%',
-      recall: '83.1%',
-      map50_95: '65.8%',
-      carMap50: '94.1%',
-      carDetail: 'mAP@50 (Predecessor Standard)',
-      motoMap50: '78.3%',
-      motoDetail: 'mAP@50 (Higher False Negatives in Shadows)',
-      params: '2.58M',
-      paramsNum: 2.58,
-      gflops: '6.5',
-      gflopsNum: 6.5,
-      latency: '134ms (Baseline)',
-      latencyNum: 134,
-      conclusion: 'YOLO11n แสดงให้เห็นวิวัฒนาการว่าสถาปัตยกรรม YOLO26 สามารถเพิ่ม mAP@50 ของคลาสมอเตอร์ไซค์ได้มากกว่า +8.1% ในสภาพแสงจริง',
-      plots: {
-        confusionMatrix: '/eval_plots/yolo11n/confusion_matrix.png',
-        cmDesc: 'แสดงผล Baseline เปรียบเทียบ มีอัตราความคลาดเคลื่อนในบริเวณเงาและจุดอับมากกว่า',
-        prCurve: '/eval_plots/yolo11n/BoxPR_curve.png',
-        prDesc: 'กราฟ PR Curve ของ Baseline สำหรับใช้เทียบเคียงประสิทธิภาพ',
-        f1Curve: '/eval_plots/yolo11n/BoxF1_curve.png',
-        f1Desc: 'กราฟ F1 Score ของ Baseline',
-        valPred: '/eval_plots/yolo11n/val_batch0_pred.jpg',
-        valDesc: 'การเปรียบเทียบ Bounding Box บนเฟรมทดสอบชุดเดียวกัน',
-        layerProfiling: '/eval_plots/yolo11n/layer_profiling.png',
-        layerDesc: 'Dual-Axis RAM vs CPU Profiling: สถาปัตยกรรมรุ่นก่อนหน้าแบบ Single-branch Standard',
+        confusionMatrix: '/eval_plots/yolo26s_ultimate/confusion_matrix.png',
+        cmDesc: 'แสดง Confusion Matrix หลังรีเทรนรอบ Ultimate แยกแยะคลาส Car และ Motorcycle ได้อย่างแม่นยำ ไร้ข้อผิดพลาด',
+        prCurve: '/eval_plots/yolo26s_ultimate/BoxPR_curve.png',
+        prDesc: 'กราฟ Precision-Recall ที่ mAP@0.5 = 0.980 พื้นที่ใต้กราฟครอบคลุมเกือบสมบูรณ์แบบ',
+        f1Curve: '/eval_plots/yolo26s_ultimate/BoxF1_curve.png',
+        f1Desc: 'คะแนน F1 สูงสุด 96.4% ที่ Confidence Threshold ~0.50 สมดุลระหว่าง Precision และ Recall',
+        valPred: '/eval_plots/yolo26s_ultimate/val_batch0_pred.jpg',
+        valDesc: 'ผลการทำนายจริงบนเฟรมทดสอบด้วย YOLO26s-Parking-Ultimate แม่นยำและกล่องแนบชิดตัวรถ',
+        layerProfiling: '/eval_plots/yolo26s_ultimate/layer_profiling.png',
+        layerDesc: 'Dual-Axis RAM vs CPU Profiling: โครงสร้าง 9.4M Parameters และ 20.8 GFLOPs ลดโหลด CPU ได้อย่างมีประสิทธิภาพ',
       },
     },
   }
@@ -272,6 +363,18 @@ export default function AnalyticsPage({ apiBase = '' }) {
       : 'http://localhost:8000')
 
   // Fetch all analytics data
+  const fetchCameraStatus = async (model = predictModel) => {
+    try {
+      const statusRes = await fetch(`${effectiveApiBase}/api/v1/timeseries/cameras/status?model_type=${model}`)
+      if (statusRes.ok) {
+        const statusJson = await statusRes.json()
+        setLiveCameras(statusJson.cameras || null)
+      }
+    } catch (err) {
+      console.error('Failed to fetch camera status:', err)
+    }
+  }
+
   const fetchAllData = async () => {
     setLoading(true)
     setError(null)
@@ -280,7 +383,7 @@ export default function AnalyticsPage({ apiBase = '' }) {
         fetch(`${effectiveApiBase}/api/v1/analytics/data?hours=${hoursFilter}`),
         fetch(`${effectiveApiBase}/api/v1/timeseries/graph-data?hours=${hoursFilter}&camera_id=${activeCamFilter}`),
         fetch(`${effectiveApiBase}/api/v1/timeseries/model-metrics`),
-        fetch(`${effectiveApiBase}/api/v1/timeseries/cameras/status`),
+        fetch(`${effectiveApiBase}/api/v1/timeseries/cameras/status?model_type=${predictModel}`),
       ])
 
       if (yoloRes.ok) {
@@ -310,9 +413,9 @@ export default function AnalyticsPage({ apiBase = '' }) {
   }
 
   // Fetch future occupancy prediction
-  const fetchFuturePrediction = async (camId = predictCam, horizon = predictHorizon) => {
+  const fetchFuturePrediction = async (camId = predictCam, horizon = predictHorizon, model = predictModel) => {
     try {
-      const res = await fetch(`${effectiveApiBase}/api/v1/timeseries/future-occupancy?camera_id=${camId}&minutes=${horizon}`)
+      const res = await fetch(`${effectiveApiBase}/api/v1/timeseries/future-occupancy?camera_id=${camId}&minutes=${horizon}&model_type=${model}`)
       if (res.ok) {
         const json = await res.json()
         setFuturePrediction(json.data || null)
@@ -322,15 +425,36 @@ export default function AnalyticsPage({ apiBase = '' }) {
     }
   }
 
+  const fetchSleepTimeSeries = async (hours = sleepChartHours, interval = sleepChartInterval, cam = activeCamFilter) => {
+    setIsSleepLoading(true)
+    try {
+      const res = await fetch(`${effectiveApiBase}/api/v1/timeseries/graph-data?hours=${hours}&camera_id=${cam}&interval_min=${interval}`)
+      if (res.ok) {
+        const json = await res.json()
+        setSleepTimeSeriesData(json)
+      }
+    } catch (err) {
+      console.error('Failed to fetch sleep time series:', err)
+    } finally {
+      setIsSleepLoading(false)
+    }
+  }
+
   useEffect(() => {
     fetchAllData()
   }, [hoursFilter, activeCamFilter])
 
   useEffect(() => {
-    fetchFuturePrediction(predictCam, predictHorizon)
-  }, [predictCam, predictHorizon])
+    fetchSleepTimeSeries(sleepChartHours, sleepChartInterval, activeCamFilter)
+  }, [sleepChartHours, sleepChartInterval, activeCamFilter])
+
+  useEffect(() => {
+    fetchFuturePrediction(predictCam, predictHorizon, predictModel)
+    fetchCameraStatus(predictModel)
+  }, [predictCam, predictHorizon, predictModel])
 
   const timeSeriesList = tsGraphData?.series || []
+  const sleepSeriesList = sleepTimeSeriesData?.series || timeSeriesList || []
 
   // Transform sleep value for Broken Axis representation
   // 0s - 100s -> mapped to 0 - 65 (takes 65% of vertical space so daytime fluctuations 10s-60s are prominent)
@@ -350,7 +474,7 @@ export default function AnalyticsPage({ apiBase = '' }) {
 
   // Preprocessed telemetry list supporting Broken Axis / Daytime Zoom / Full Linear modes
   const sleepChartData = useMemo(() => {
-    return timeSeriesList.map((item) => {
+    return sleepSeriesList.map((item) => {
       const isSec = sleepUnit === 'seconds'
       const rawC1 = isSec ? item.cam1_sleep_sec : item.cam1_sleep_min
       const rawC2 = isSec ? item.cam2_sleep_sec : item.cam2_sleep_min
@@ -387,7 +511,7 @@ export default function AnalyticsPage({ apiBase = '' }) {
         plot_rec: plotRec,
       }
     })
-  }, [timeSeriesList, sleepUnit, sleepScaleMode])
+  }, [sleepSeriesList, sleepUnit, sleepScaleMode])
 
   const renderBrokenYAxisTick = ({ x, y, payload }) => {
     const val = payload.value
@@ -454,7 +578,7 @@ export default function AnalyticsPage({ apiBase = '' }) {
                 : 'bg-[#E7F4D8] text-[#36612D] border border-[#BBF7D0]'
             }`}
           >
-            {isNight ? '🌙 Night Standby' : '☀️ Daytime Dynamic'}
+            {isNight ? 'Night Standby' : 'Daytime Dynamic'}
           </span>
         </div>
         {item.campus_phase_name && (
@@ -682,7 +806,7 @@ export default function AnalyticsPage({ apiBase = '' }) {
                   </h2>
                 </div>
                 <p className="font-sans text-xs text-[#85847E] mt-1 m-0">
-                  วิเคราะห์แนวโน้มล่วงหน้าตามตารางกิจกรรมมหาวิทยาลัย (Academic Campus Phases) และประวัติการจอดจริง
+                  วิเคราะห์แนวโน้มล่วงหน้าตามตารางกิจกรรมมหาวิทยาลัย (Academic Campus Phases) และเปรียบเทียบระหว่าง 4 สถาปัตยกรรมโมเดล
                 </p>
               </div>
 
@@ -730,77 +854,149 @@ export default function AnalyticsPage({ apiBase = '' }) {
               </div>
             </div>
 
+            {/* Model Selector Bar */}
+            <div className="p-3.5 rounded-[18px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-xs font-semibold text-[#30312F]">
+                <Sliders className="w-3.5 h-3.5 text-[#30312F]" />
+                <span>เลือกสถาปัตยกรรมโมเดลในการทำนาย (Forecasting Model):</span>
+              </div>
+              <div className="inline-flex p-1 bg-[#FFFDF7] border border-[#DEDED2] rounded-full flex-wrap gap-1">
+                {[
+                  { id: 'random_forest', label: 'Random Forest', tag: 'PROD BAGGING' },
+                  { id: 'gradient_boost', label: 'Gradient Boost', tag: 'BOOSTING' },
+                  { id: 'arimax', label: 'ARIMAX', tag: 'CLASSIC' },
+                  { id: 'sarimax', label: 'SARIMAX', tag: 'SEASONAL' },
+                ].map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setPredictModel(m.id)}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      predictModel === m.id
+                        ? 'bg-[#30312F] text-white shadow-xs'
+                        : 'text-[#686962] hover:text-[#30312F] hover:bg-[#FAF8EF]'
+                    }`}
+                  >
+                    <span>{m.label}</span>
+                    <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-mono ${
+                      predictModel === m.id ? 'bg-white/20 text-white' : 'bg-[#FAF8EF] text-[#85847E]'
+                    }`}>
+                      {m.tag}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Prediction Cards Display */}
             {futurePrediction ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Card 1: Target Forecast Time */}
-                <div className="p-5 rounded-[18px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col justify-between gap-2.5">
-                  <span className="text-[11px] font-semibold text-[#85847E] uppercase tracking-wider">
-                    เวลาเป้าหมายพยากรณ์
-                  </span>
-                  <div>
-                    <div className="text-3xl font-mono font-bold tracking-tight text-[#30312F]">
-                      {futurePrediction.target_time} น.
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Card 1: Target Forecast Time */}
+                  <div className="p-5 rounded-[18px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col justify-between gap-2.5">
+                    <span className="text-[11px] font-semibold text-[#85847E] uppercase tracking-wider">
+                      เวลาเป้าหมายพยากรณ์
+                    </span>
+                    <div>
+                      <div className="text-3xl font-mono font-bold tracking-tight text-[#30312F]">
+                        {futurePrediction.target_time} น.
+                      </div>
+                      <div className="text-xs text-[#85847E] font-medium mt-1">
+                        (อีก +{futurePrediction.horizon_minutes} นาทีข้างหน้า)
+                      </div>
                     </div>
-                    <div className="text-xs text-[#85847E] font-medium mt-1">
-                      (อีก +{futurePrediction.horizon_minutes} นาทีข้างหน้า)
+                    <div className="text-xs bg-[#FFFDF7] text-[#30312F] p-2.5 rounded-[12px] border border-[#DEDED2]">
+                      {futurePrediction.campus_phase_name}
                     </div>
                   </div>
-                  <div className="text-xs bg-[#FFFDF7] text-[#30312F] p-2.5 rounded-[12px] border border-[#DEDED2]">
-                    {futurePrediction.campus_phase_name}
+
+                  {/* Card 2: Predicted Free Slots */}
+                  <div className="p-5 rounded-[18px] bg-[#E7F4D8] border border-[#BBF7D0] flex flex-col justify-between gap-2.5">
+                    <span className="text-[11px] font-semibold text-[#36612D] uppercase tracking-wider">
+                      คาดว่าจะมีที่ว่าง (Free Slots)
+                    </span>
+                    <div>
+                      <div className="text-3xl font-mono font-bold tracking-tight text-[#36612D]">
+                        ~{futurePrediction.predicted_free_slots} ช่อง
+                      </div>
+                      <div className="text-xs text-[#36612D] mt-1">
+                        จากความจุทั้งหมด {futurePrediction.capacity} ช่องจอด
+                      </div>
+                    </div>
+                    <div className="text-xs bg-[#FFFDF7] text-[#36612D] p-2.5 rounded-[12px] border border-[#BBF7D0] font-medium">
+                      ความหนาแน่น: {futurePrediction.predicted_occupancy_pct}% ({futurePrediction.predicted_vehicles} คัน)
+                    </div>
+                  </div>
+
+                  {/* Card 3: Availability Level */}
+                  <div className="p-5 rounded-[18px] bg-[#FFFBEB] border border-[#FDE68A] flex flex-col justify-between gap-2.5">
+                    <span className="text-[11px] font-semibold text-[#92400E] uppercase tracking-wider">
+                      โอกาสที่จอดว่าง (Availability)
+                    </span>
+                    <div>
+                      <div className="text-lg font-bold text-[#92400E]">
+                        {futurePrediction.availability_chance === 'HIGH_CHANCE' && 'ว่างสะดวก (High)'}
+                        {futurePrediction.availability_chance === 'MODERATE' && 'พอมีที่ว่าง (Moderate)'}
+                        {futurePrediction.availability_chance === 'FULL_RISK' && 'เสี่ยงเต็ม (Full Risk)'}
+                      </div>
+                      <div className="text-xs text-[#92400E] mt-1 font-medium leading-relaxed">
+                        {futurePrediction.availability_desc}
+                      </div>
+                    </div>
+                    <div className="text-xs text-[#85847E]">
+                      สถิติปัจจุบัน: จอดอยู่ {futurePrediction.current_vehicles} คัน
+                    </div>
+                  </div>
+
+                  {/* Card 4: Behavioral Trend */}
+                  <div className="p-5 rounded-[18px] bg-[#F0EEE4] border border-[#DEDED2] flex flex-col justify-between gap-2.5">
+                    <span className="text-[11px] font-semibold text-[#85847E] uppercase tracking-wider">
+                      แนวโน้มพฤติกรรม (Campus Trend)
+                    </span>
+                    <p className="text-xs text-[#30312F] leading-relaxed font-normal m-0">
+                      {futurePrediction.campus_trend_desc}
+                    </p>
+                    <div className="text-[11px] text-[#85847E] bg-[#FFFDF7] p-2 rounded-[10px] border border-[#DEDED2] flex items-center justify-between">
+                      <span>โมเดล:</span>
+                      <span className="font-mono font-semibold text-[#30312F]">{futurePrediction.model_meta?.name || futurePrediction.model_type}</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Card 2: Predicted Free Slots */}
-                <div className="p-5 rounded-[18px] bg-[#E7F4D8] border border-[#BBF7D0] flex flex-col justify-between gap-2.5">
-                  <span className="text-[11px] font-semibold text-[#36612D] uppercase tracking-wider">
-                    คาดว่าจะมีที่ว่าง (Free Slots)
-                  </span>
-                  <div>
-                    <div className="text-3xl font-mono font-bold tracking-tight text-[#36612D]">
-                      ~{futurePrediction.predicted_free_slots} ช่อง
+                {/* Model Specification Card */}
+                {futurePrediction.model_meta && (
+                  <div className="p-4 rounded-[18px] bg-[#FFFDF7] border border-[#DEDED2] grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                    <div className="md:col-span-2 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-[#30312F]">{futurePrediction.model_meta.name}</span>
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#FAF8EF] text-[#686962] border border-[#DEDED2]">
+                          [{futurePrediction.model_meta.tag}]
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#85847E] m-0">{futurePrediction.model_meta.desc}</p>
+                      <div className="font-mono text-[10px] text-[#30312F] bg-[#FAF8EF] px-2.5 py-1 rounded-[8px] border border-[#EBE8DC] inline-block mt-1">
+                        สมการ: {futurePrediction.model_meta.formula}
+                      </div>
                     </div>
-                    <div className="text-xs text-[#36612D] mt-1">
-                      จากความจุทั้งหมด {futurePrediction.capacity} ช่องจอด
-                    </div>
-                  </div>
-                  <div className="text-xs bg-[#FFFDF7] text-[#36612D] p-2.5 rounded-[12px] border border-[#BBF7D0] font-medium">
-                    ความหนาแน่น: {futurePrediction.predicted_occupancy_pct}% ({futurePrediction.predicted_vehicles} คัน)
-                  </div>
-                </div>
 
-                {/* Card 3: Availability Level */}
-                <div className="p-5 rounded-[18px] bg-[#FFFBEB] border border-[#FDE68A] flex flex-col justify-between gap-2.5">
-                  <span className="text-[11px] font-semibold text-[#92400E] uppercase tracking-wider">
-                    โอกาสที่จอดว่าง (Availability)
-                  </span>
-                  <div>
-                    <div className="text-lg font-bold text-[#92400E]">
-                      {futurePrediction.availability_chance === 'HIGH_CHANCE' && 'ว่างสะดวก (High)'}
-                      {futurePrediction.availability_chance === 'MODERATE' && 'พอมีที่ว่าง (Moderate)'}
-                      {futurePrediction.availability_chance === 'FULL_RISK' && 'เสี่ยงเต็ม (Full Risk)'}
+                    <div className="flex items-center justify-around md:col-span-2 p-3 bg-[#FAF8EF] rounded-[14px] border border-[#DEDED2]">
+                      <div className="text-center">
+                        <span className="text-[10px] text-[#85847E] block">MAE (Error)</span>
+                        <span className="text-sm font-mono font-bold text-[#30312F]">{futurePrediction.model_meta.mae} คัน</span>
+                      </div>
+                      <div className="w-px h-8 bg-[#DEDED2]"></div>
+                      <div className="text-center">
+                        <span className="text-[10px] text-[#85847E] block">R² Score</span>
+                        <span className="text-sm font-mono font-bold text-emerald-700">{futurePrediction.model_meta.r2}</span>
+                      </div>
+                      <div className="w-px h-8 bg-[#DEDED2]"></div>
+                      <div className="text-center">
+                        <span className="text-[10px] text-[#85847E] block">Inference Latency</span>
+                        <span className="text-sm font-mono font-bold text-blue-700">{futurePrediction.model_meta.latency_ms} ms</span>
+                      </div>
                     </div>
-                    <div className="text-xs text-[#92400E] mt-1 font-medium leading-relaxed">
-                      {futurePrediction.availability_desc}
-                    </div>
                   </div>
-                  <div className="text-xs text-[#85847E]">
-                    สถิติปัจจุบัน: จอดอยู่ {futurePrediction.current_vehicles} คัน
-                  </div>
-                </div>
-
-                {/* Card 4: Behavioral Trend */}
-                <div className="p-5 rounded-[18px] bg-[#F0EEE4] border border-[#DEDED2] flex flex-col justify-between gap-2.5">
-                  <span className="text-[11px] font-semibold text-[#85847E] uppercase tracking-wider">
-                    แนวโน้มพฤติกรรม (Campus Trend)
-                  </span>
-                  <p className="text-xs text-[#30312F] leading-relaxed font-normal m-0">
-                    {futurePrediction.campus_trend_desc}
-                  </p>
-                  <div className="text-[11px] text-[#85847E] bg-[#FFFDF7] p-2 rounded-[10px] border border-[#DEDED2]">
-                    โมเดล: <span className="font-mono text-[#30312F]">{futurePrediction.model_used}</span>
-                  </div>
-                </div>
+                )}
               </div>
             ) : (
               <div className="py-8 text-center text-xs text-[#85847E]">
@@ -927,13 +1123,20 @@ export default function AnalyticsPage({ apiBase = '' }) {
           {/* SECTION B2: 3-CAMERA ADAPTIVE DEEP-SLEEP TREND (LINE CHART & LOGS)    */}
           {/* --------------------------------------------------------------------- */}
           <div className="box-border flex flex-col p-6 lg:p-8 gap-5 w-full bg-[#FFFDF7] border border-[#DEDED2] rounded-[24px] shadow-xs">
-            <div className="flex flex-col md:flex-row md:items-center justify-between pb-3 border-b border-[#F0EEE4] gap-3 mb-2">
+            {/* Header & Main Title */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between pb-3 border-b border-[#F0EEE4] gap-3 mb-1">
               <div>
                 <div className="flex items-center gap-2">
                   <Moon className="w-4 h-4 text-[#30312F]" strokeWidth={1.8} />
                   <h3 className="font-sans font-semibold text-[18px] text-[#30312F] m-0">
                     กราฟเปรียบเทียบระยะเวลา Deep-Sleep ทั้ง 3 กล้อง (Multi-Camera Measured Telemetry Logs)
                   </h3>
+                  {isSleepLoading && (
+                    <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full animate-pulse">
+                      <RefreshCw className="w-3 h-3 animate-spin text-emerald-600" />
+                      กำลังโหลดข้อมูล...
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-[#85847E] mt-1 m-0">
                   คำนวณจากบันทึก Telemetry จริง (Real Hardware Logs) ของกล้อง ESP32 ทั้ง 3 ตัว: กลางวันแสดงการผันแปรจริง (10s–60s) | กลางคืน Standby (~1,780s / ~30 นาที)
@@ -950,9 +1153,77 @@ export default function AnalyticsPage({ apiBase = '' }) {
                   <Maximize2 className="w-3.5 h-3.5 text-[#686962]" />
                   <span>ดูรายงาน 4-Panel Verification Plot</span>
                 </button>
+              </div>
+            </div>
 
+            {/* Dedicated Interactive Toolbar: Time Horizon & X-Axis Frequency Selectors */}
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-[18px] bg-[#FAF8EF]/90 border border-[#E8E6DB]">
+              {/* Group 1: Time Horizon Range (ช่วงเวลาย้อนหลัง) */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-[#52524C] flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-[#30312F]" />
+                  ช่วงเวลาย้อนหลัง:
+                </span>
+                <div className="inline-flex p-1 bg-[#FFFDF7] border border-[#DEDED2] rounded-full shadow-2xs">
+                  {[
+                    { label: '1 ชม.', val: 1 },
+                    { label: '3 ชม.', val: 3 },
+                    { label: '6 ชม.', val: 6 },
+                    { label: '12 ชม.', val: 12 },
+                    { label: '24 ชม.', val: 24 },
+                    { label: '48 ชม.', val: 48 },
+                    { label: '7 วัน', val: 168 },
+                  ].map((btn) => (
+                    <button
+                      key={btn.val}
+                      type="button"
+                      onClick={() => setSleepChartHours(btn.val)}
+                      className={`px-2.5 sm:px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                        sleepChartHours === btn.val
+                          ? 'bg-[#30312F] text-white shadow-xs'
+                          : 'text-[#686962] hover:text-[#30312F] hover:bg-[#F0EEE4]'
+                      }`}
+                    >
+                      {btn.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Group 2: X-Axis Frequency / Sampling Interval (ความถี่แกน X) */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-[#52524C] flex items-center gap-1.5">
+                  <Activity className="w-3.5 h-3.5 text-[#10B981]" />
+                  ความถี่แกน X:
+                </span>
+                <div className="inline-flex p-1 bg-[#FFFDF7] border border-[#DEDED2] rounded-full shadow-2xs">
+                  {[
+                    { label: '1 นาที', val: 1 },
+                    { label: '5 นาที', val: 5 },
+                    { label: '15 นาที', val: 15 },
+                    { label: '30 นาที', val: 30 },
+                    { label: '1 ชม.', val: 60 },
+                  ].map((btn) => (
+                    <button
+                      key={btn.val}
+                      type="button"
+                      onClick={() => setSleepChartInterval(btn.val)}
+                      className={`px-2.5 sm:px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                        sleepChartInterval === btn.val
+                          ? 'bg-[#10B981] text-white shadow-xs'
+                          : 'text-[#686962] hover:text-[#30312F] hover:bg-[#F0EEE4]'
+                      }`}
+                    >
+                      {btn.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Group 3: Scale & Unit Selectors */}
+              <div className="flex items-center gap-2 flex-wrap ml-auto">
                 {/* Scale Mode Switcher */}
-                <div className="inline-flex p-1 bg-[#FAF8EF] border border-[#DEDED2] rounded-full">
+                <div className="inline-flex p-1 bg-[#FFFDF7] border border-[#DEDED2] rounded-full shadow-2xs">
                   <button
                     type="button"
                     onClick={() => setSleepScaleMode('broken')}
@@ -992,7 +1263,7 @@ export default function AnalyticsPage({ apiBase = '' }) {
                 </div>
 
                 {/* Unit Toggle */}
-                <div className="inline-flex p-1 bg-[#FAF8EF] border border-[#DEDED2] rounded-full">
+                <div className="inline-flex p-1 bg-[#FFFDF7] border border-[#DEDED2] rounded-full shadow-2xs">
                   <button
                     type="button"
                     onClick={() => setSleepUnit('seconds')}
@@ -1002,7 +1273,7 @@ export default function AnalyticsPage({ apiBase = '' }) {
                         : 'text-[#686962] hover:text-[#30312F]'
                     }`}
                   >
-                    วินาที (Seconds)
+                    วินาที
                   </button>
                   <button
                     type="button"
@@ -1013,7 +1284,7 @@ export default function AnalyticsPage({ apiBase = '' }) {
                         : 'text-[#686962] hover:text-[#30312F]'
                     }`}
                   >
-                    นาที (Minutes)
+                    นาที
                   </button>
                 </div>
               </div>
@@ -1085,7 +1356,7 @@ export default function AnalyticsPage({ apiBase = '' }) {
                         stroke="#94A3B8"
                         strokeDasharray="4 4"
                         label={{
-                          value: '✂️ แกนย่นระยะ (ข้ามช่วงว่าง 100s - 1,700s)',
+                          value: 'แกนย่นระยะ (ข้ามช่วงว่าง 100s - 1,700s)',
                           fill: '#64748B',
                           fontSize: 10,
                           position: 'insideTopLeft',
@@ -1272,9 +1543,15 @@ export default function AnalyticsPage({ apiBase = '' }) {
           </div>
 
           {/* Modal for Full-Resolution Deep Sleep Report */}
-          {showPlotModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs">
-              <div className="relative max-w-6xl w-full bg-[#FFFDF7] rounded-[24px] border border-[#DEDED2] shadow-2xl p-6 flex flex-col gap-4 max-h-[95vh] overflow-y-auto">
+          {showPlotModal && typeof document !== 'undefined' && createPortal(
+            <div
+              className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs"
+              onClick={() => setShowPlotModal(false)}
+            >
+              <div
+                className="relative max-w-6xl w-full bg-[#FFFDF7] rounded-[24px] border border-[#DEDED2] shadow-2xl p-6 flex flex-col gap-4 max-h-[95vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className="flex items-center justify-between border-b border-[#F0EEE4] pb-3">
                   <div>
                     <h3 className="text-base font-bold text-[#30312F] m-0">
@@ -1316,7 +1593,8 @@ export default function AnalyticsPage({ apiBase = '' }) {
                   </button>
                 </div>
               </div>
-            </div>
+            </div>,
+            document.body
           )}
 
           {/* --------------------------------------------------------------------- */}
@@ -1591,7 +1869,7 @@ export default function AnalyticsPage({ apiBase = '' }) {
 
             <div className="p-3.5 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] text-xs text-[#686962]">
               <span className="font-semibold text-[#30312F]">ข้อสรุป: </span>
-              YOLO26m ให้ความแม่นยำสูงสุด (mAP50 98.5%) และ YOLO26n ให้ผลลัพธ์ใกล้เคียง (98.0%)
+              YOLO26s-Parking-Ultimate บรรลุ 98.0% mAP@50 เทียบเท่า YOLO26m แต่เร็วกว่า 2.70 เท่า (149.0ms vs 402.8ms)
             </div>
           </div>
 
@@ -1606,7 +1884,7 @@ export default function AnalyticsPage({ apiBase = '' }) {
                   </h3>
                 </div>
                 <span className="text-[11px] font-mono font-semibold px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
-                  INTEL N100 CPU
+                  INTEL CORE i5-6600T CPU
                 </span>
               </div>
               <p className="text-xs text-[#85847E] mb-3">
@@ -1630,7 +1908,7 @@ export default function AnalyticsPage({ apiBase = '' }) {
 
             <div className="p-3.5 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] text-xs text-[#686962]">
               <span className="font-semibold text-[#30312F]">ข้อสรุป: </span>
-              YOLO26n ประมวลผลได้เร็วกว่า 3.47 เท่า (327.8ms) เหมาะสำหรับการรันบน Edge Device
+              YOLO26s-Parking-Ultimate และ YOLO11s-Ultimate ทำ Throughput ได้ ~6.7-6.8 FPS บน CPU Intel i5-6600T ลด Latency ลง 63% เมื่อเทียบกับ YOLO26m
             </div>
           </div>
 
@@ -1677,16 +1955,26 @@ export default function AnalyticsPage({ apiBase = '' }) {
           {/* Card 1D: Quantization Benchmark */}
           <div className="box-border flex flex-col justify-between p-6 gap-4 bg-[#FFFDF7] border border-[#DEDED2] rounded-[24px] shadow-xs">
             <div>
-              <div className="flex items-center justify-between pb-3 border-b border-[#F0EEE4] mb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#F0EEE4] mb-3 gap-2">
                 <div className="flex items-center gap-2">
-                  <Gauge className="w-4 h-4 text-amber-500" />
+                  <Gauge className="w-4 h-4 text-amber-500 shrink-0" />
                   <h3 className="font-sans font-semibold text-[17px] text-[#30312F] m-0">
                     1D. Quantization Benchmark (FP32 vs INT8)
                   </h3>
                 </div>
-                <span className="text-[11px] font-mono font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                  OPENVINO
-                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setShowQuantizationModal(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#284E1A] text-white hover:bg-[#36612D] shadow-xs transition-all cursor-pointer"
+                  >
+                    <Scale className="w-3.5 h-3.5" />
+                    <span>ดูความแม่นยำเทียบก่อน-หลัง (Accuracy Drop)</span>
+                  </button>
+                  <span className="text-[11px] font-mono font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                    OPENVINO
+                  </span>
+                </div>
               </div>
               <p className="text-xs text-[#85847E] mb-3">
                 ผลการแปลงโมเดลด้วย OpenVINO INT8 ช่วยลดขนาดไฟล์และเพิ่มความเร็วในการรัน
@@ -1719,54 +2007,73 @@ export default function AnalyticsPage({ apiBase = '' }) {
             const currentModel = evalModelsData[selectedEvalModel] || evalModelsData.yolo26m
             return (
               <div className="col-span-1 lg:col-span-2 box-border flex flex-col p-6 lg:p-8 gap-5 bg-[#FFFDF7] border border-[#DEDED2] rounded-[24px] shadow-xs">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between pb-4 border-b border-[#F0EEE4] gap-4">
-                  <div>
+                {/* Header with Title and Action Buttons */}
+                <div className="flex flex-col gap-3.5 pb-4 border-b border-[#F0EEE4]">
+                  {/* Row 1: Title & Compare Button & Badges */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                      <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
                       <h3 className="font-sans font-semibold text-[18px] text-[#30312F] m-0">
-                        1E. Model Evaluation ({currentModel.name})
+                        1E. Model Evaluation ({currentModel.shortName || currentModel.name})
                       </h3>
                     </div>
-                    <p className="text-xs text-[#85847E] mt-1 m-0">
-                      {currentModel.desc}
-                    </p>
-                  </div>
 
-                  {/* Model Selector Bar & Compare Action */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() => setIsCompareModalOpen(true)}
-                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#284E1A] text-white hover:bg-[#36612D] shadow-xs transition-all cursor-pointer mr-1"
-                    >
-                      <Scale className="w-3.5 h-3.5" />
-                      <span>เปรียบเทียบ 2 โมเดล (Compare Models)</span>
-                    </button>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <a
+                        href="http://localhost:5001/#/experiments/6"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#FAF8EF] text-[#30312F] border border-[#DEDED2] hover:bg-[#F0EEE4] shadow-xs transition-all"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
+                        <span>MLflow (Exp #6)</span>
+                      </a>
 
-                    <div className="inline-flex p-1 bg-[#FAF8EF] border border-[#DEDED2] rounded-full">
-                      {Object.values(evalModelsData).map((m) => (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => setSelectedEvalModel(m.id)}
-                          className={`px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
-                            selectedEvalModel === m.id
-                              ? 'bg-[#30312F] text-white shadow-xs font-semibold'
-                              : 'text-[#686962] hover:text-[#30312F]'
-                          }`}
-                        >
-                          {m.shortName || m.name}
-                        </button>
-                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setIsCompareModalOpen(true)}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#284E1A] text-white hover:bg-[#36612D] shadow-xs transition-all cursor-pointer"
+                      >
+                        <Scale className="w-3.5 h-3.5" />
+                        <span>เปรียบเทียบ 2 โมเดล (Compare Models)</span>
+                      </button>
+
+                      <span className="text-[11px] font-mono font-semibold px-2.5 py-1 rounded-full bg-[#E7F4D8] text-[#36612D] border border-[#BBF7D0]">
+                        mAP@50: {currentModel.map50}
+                      </span>
+                      <span className={`text-[11px] font-mono font-semibold px-2.5 py-1 rounded-full border ${currentModel.tagColor}`}>
+                        {currentModel.tag}
+                      </span>
                     </div>
-
-                    <span className="text-[11px] font-mono font-semibold px-2.5 py-1 rounded-full bg-[#E7F4D8] text-[#36612D] border border-[#BBF7D0]">
-                      mAP@50: {currentModel.map50}
-                    </span>
-                    <span className={`text-[11px] font-mono font-semibold px-2.5 py-1 rounded-full border ${currentModel.tagColor}`}>
-                      {currentModel.tag}
-                    </span>
                   </div>
+
+                  {/* Row 2: 6 Model Buttons in a dedicated responsive pill group */}
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                    <div className="inline-flex p-1 bg-[#FAF8EF] border border-[#DEDED2] rounded-full gap-1 shrink-0">
+                      {Object.values(evalModelsData).map((m) => {
+                        const isSelected = selectedEvalModel === m.id
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => setSelectedEvalModel(m.id)}
+                            className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
+                              isSelected
+                                ? 'bg-[#30312F] text-white shadow-xs font-semibold'
+                                : 'text-[#686962] hover:text-[#30312F] hover:bg-[#E5E3D8]/50'
+                            }`}
+                          >
+                            {m.shortName || m.name}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Row 3: Model Description with minimum height to avoid vertical jumping */}
+                  <p className="text-xs text-[#85847E] m-0 min-h-[36px] flex items-center leading-relaxed">
+                    {currentModel.desc}
+                  </p>
                 </div>
 
                 {/* Specs Info Strip */}
@@ -1837,16 +2144,16 @@ export default function AnalyticsPage({ apiBase = '' }) {
                       <span className="text-xs font-semibold text-[#30312F]">1. Confusion Matrix</span>
                       <span className="text-[10px] font-mono text-[#85847E]">Normalized</span>
                     </div>
-                    <div className="bg-[#FFFDF7] border border-[#E5E3D8] rounded-[12px] p-2 overflow-hidden flex items-center justify-center">
+                    <div className="bg-[#FFFDF7] border border-[#E5E3D8] rounded-[12px] p-2 overflow-hidden flex items-center justify-center h-[280px]">
                       <img
                         key={`${currentModel.id}-cm`}
                         src={currentModel.plots.confusionMatrix}
                         alt={`Confusion Matrix - ${currentModel.name}`}
-                        className="w-full h-auto max-h-[320px] object-contain rounded-[8px] hover:scale-105 transition-transform duration-200"
+                        className="w-full h-full object-contain rounded-[8px] hover:scale-105 transition-transform duration-200"
                         loading="lazy"
                       />
                     </div>
-                    <span className="text-[11px] text-[#686962]">
+                    <span className="text-[11px] text-[#686962] min-h-[32px] flex items-center">
                       {currentModel.plots.cmDesc}
                     </span>
                   </div>
@@ -1856,16 +2163,16 @@ export default function AnalyticsPage({ apiBase = '' }) {
                       <span className="text-xs font-semibold text-[#30312F]">2. Precision-Recall Curve</span>
                       <span className="text-[10px] font-mono text-[#85847E]">BoxPR_curve.png</span>
                     </div>
-                    <div className="bg-[#FFFDF7] border border-[#E5E3D8] rounded-[12px] p-2 overflow-hidden flex items-center justify-center">
+                    <div className="bg-[#FFFDF7] border border-[#E5E3D8] rounded-[12px] p-2 overflow-hidden flex items-center justify-center h-[280px]">
                       <img
                         key={`${currentModel.id}-pr`}
                         src={currentModel.plots.prCurve}
                         alt={`Precision-Recall Curve - ${currentModel.name}`}
-                        className="w-full h-auto max-h-[320px] object-contain rounded-[8px] hover:scale-105 transition-transform duration-200"
+                        className="w-full h-full object-contain rounded-[8px] hover:scale-105 transition-transform duration-200"
                         loading="lazy"
                       />
                     </div>
-                    <span className="text-[11px] text-[#686962]">
+                    <span className="text-[11px] text-[#686962] min-h-[32px] flex items-center">
                       {currentModel.plots.prDesc}
                     </span>
                   </div>
@@ -1875,16 +2182,16 @@ export default function AnalyticsPage({ apiBase = '' }) {
                       <span className="text-xs font-semibold text-[#30312F]">3. F1-Confidence Curve</span>
                       <span className="text-[10px] font-mono text-[#85847E]">BoxF1_curve.png</span>
                     </div>
-                    <div className="bg-[#FFFDF7] border border-[#E5E3D8] rounded-[12px] p-2 overflow-hidden flex items-center justify-center">
+                    <div className="bg-[#FFFDF7] border border-[#E5E3D8] rounded-[12px] p-2 overflow-hidden flex items-center justify-center h-[280px]">
                       <img
                         key={`${currentModel.id}-f1`}
                         src={currentModel.plots.f1Curve}
                         alt={`F1-Confidence Curve - ${currentModel.name}`}
-                        className="w-full h-auto max-h-[320px] object-contain rounded-[8px] hover:scale-105 transition-transform duration-200"
+                        className="w-full h-full object-contain rounded-[8px] hover:scale-105 transition-transform duration-200"
                         loading="lazy"
                       />
                     </div>
-                    <span className="text-[11px] text-[#686962]">
+                    <span className="text-[11px] text-[#686962] min-h-[32px] flex items-center">
                       {currentModel.plots.f1Desc}
                     </span>
                   </div>
@@ -1894,16 +2201,16 @@ export default function AnalyticsPage({ apiBase = '' }) {
                       <span className="text-xs font-semibold text-[#30312F]">4. Validation Batch Predictions</span>
                       <span className="text-[10px] font-mono text-[#85847E]">val_batch0_pred.jpg</span>
                     </div>
-                    <div className="bg-[#FFFDF7] border border-[#E5E3D8] rounded-[12px] p-2 overflow-hidden flex items-center justify-center">
+                    <div className="bg-[#FFFDF7] border border-[#E5E3D8] rounded-[12px] p-2 overflow-hidden flex items-center justify-center h-[280px]">
                       <img
                         key={`${currentModel.id}-val`}
                         src={currentModel.plots.valPred}
                         alt={`Validation Batch Predictions - ${currentModel.name}`}
-                        className="w-full h-auto max-h-[320px] object-contain rounded-[8px] hover:scale-105 transition-transform duration-200"
+                        className="w-full h-full object-contain rounded-[8px] hover:scale-105 transition-transform duration-200"
                         loading="lazy"
                       />
                     </div>
-                    <span className="text-[11px] text-[#686962]">
+                    <span className="text-[11px] text-[#686962] min-h-[32px] flex items-center">
                       {currentModel.plots.valDesc}
                     </span>
                   </div>
@@ -1916,6 +2223,218 @@ export default function AnalyticsPage({ apiBase = '' }) {
               </div>
             )
           })()}
+
+          {/* Section: In-Depth Multi-Model Benchmark Matrix & 3 Key Insights */}
+          <div className="col-span-1 lg:col-span-2 box-border flex flex-col p-6 lg:p-8 gap-6 bg-[#FFFDF7] border border-[#DEDED2] rounded-[24px] shadow-xs">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between pb-4 border-b border-[#F0EEE4] gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Scale className="w-5 h-5 text-[#284E1A]" />
+                  <h3 className="font-sans font-semibold text-[18px] text-[#30312F] m-0">
+                    ตารางเปรียบเทียบตัวชี้วัดเชิงลึก (In-Depth Multi-Model Benchmark Matrix)
+                  </h3>
+                </div>
+                <p className="text-xs text-[#85847E] mt-1 m-0">
+                  เปรียบเทียบผลการทดสอบเชิงประจักษ์บน CPU Intel Core i5-6600T @ 2.70GHz (Dataset: 1,475 Frames, 640x640)
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-mono font-semibold px-2.5 py-1 rounded-full bg-[#E7F4D8] text-[#36612D] border border-[#BBF7D0]">
+                  ACTIVE: YOLO26s-Parking-Ultimate
+                </span>
+                <span className="text-[11px] font-mono font-semibold px-2.5 py-1 rounded-full bg-[#EFF6FF] text-[#1E40AF] border border-[#BFDBFE]">
+                  6 Models (11s &rarr; 11train &rarr; 26m &rarr; 26train &rarr; 26s &rarr; 26train)
+                </span>
+              </div>
+            </div>
+
+            {/* In-Depth Multi-Model Table */}
+            <div className="overflow-x-auto rounded-[16px] border border-[#DEDED2] bg-[#FAF8EF]">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-[#DEDED2] bg-[#F0EEE4] text-[11px] font-semibold text-[#686962] uppercase tracking-wider">
+                    <th className="py-3 px-4">สถาปัตยกรรมโมเดล (Model)</th>
+                    <th className="py-3 px-3 text-center">ขนาดไฟล์ / Params</th>
+                    <th className="py-3 px-3 text-center">GFLOPs</th>
+                    <th className="py-3 px-3 text-center">CPU Latency (FPS)</th>
+                    <th className="py-3 px-3 text-center">mAP@50</th>
+                    <th className="py-3 px-3 text-center">mAP@50-95</th>
+                    <th className="py-3 px-3 text-center">F1 Score</th>
+                    <th className="py-3 px-3 text-center">Car P / R</th>
+                    <th className="py-3 px-3 text-center">Moto P / R</th>
+                    <th className="py-3 px-3 text-center">Night FP Rate</th>
+                  </tr>
+                </thead>
+                <tbody className="text-xs divide-y divide-[#E5E3D8]">
+                  {/* Row 1: YOLO11s (Pretrained Base) */}
+                  <tr className="bg-white hover:bg-[#FAF8EF] transition-colors">
+                    <td className="py-3 px-4 text-[#85847E]">
+                      <div>YOLO11s (Pretrained Base)</div>
+                      <span className="text-[10px] text-[#A8A29E]">ก่อน Fine-tuning</span>
+                    </td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">18.4 MB / 9.4M</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">21.5 G</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">152.8 ms (6.54 FPS)</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">89.2%</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">68.1%</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">86.5%</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">88.3% / 84.8%</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">84.6% / 78.9%</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">12.1%</td>
+                  </tr>
+
+                  {/* Row 2: YOLO11s-Parking-Ultimate */}
+                  <tr className="bg-white hover:bg-[#FAF8EF] transition-colors">
+                    <td className="py-3 px-4 font-semibold text-[#1E40AF]">
+                      <div>YOLO11s-Parking-Ultimate</div>
+                      <span className="text-[10px] font-normal text-[#686962]">Fine-Tuned (ID: 7)</span>
+                    </td>
+                    <td className="py-3 px-3 text-center font-mono text-[#30312F]">18.4 MB / 9.4M</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#30312F]">21.5 G</td>
+                    <td className="py-3 px-3 text-center font-mono font-semibold text-[#1E40AF]">146.9 ms (6.81 FPS)</td>
+                    <td className="py-3 px-3 text-center font-mono font-bold text-[#1E40AF]">98.0%</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#30312F]">75.1%</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#30312F]">95.9%</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#30312F]">97.2% / 96.5%</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#30312F]">95.8% / 94.2%</td>
+                    <td className="py-3 px-3 text-center font-mono text-amber-700 bg-amber-50">2.8%</td>
+                  </tr>
+
+                  {/* Row 3: YOLO26m (Pretrained Base) */}
+                  <tr className="bg-white hover:bg-[#FAF8EF] transition-colors">
+                    <td className="py-3 px-4 text-[#85847E]">
+                      <div>YOLO26m (Pretrained Base)</div>
+                      <span className="text-[10px] text-[#A8A29E]">ก่อน Fine-tuning</span>
+                    </td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">42.8 MB / 21.9M</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">67.9 G</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">360.2 ms (2.78 FPS)</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">92.5%</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">71.5%</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">89.6%</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">91.0% / 88.2%</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">87.4% / 82.1%</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">9.8%</td>
+                  </tr>
+
+                  {/* Row 4: YOLO26m (Previous Active) */}
+                  <tr className="bg-white hover:bg-[#FAF8EF] transition-colors">
+                    <td className="py-3 px-4 font-semibold text-[#686962]">
+                      <div>YOLO26m (Previous Active)</div>
+                      <span className="text-[10px] font-normal text-[#85847E]">Active Model เดิม</span>
+                    </td>
+                    <td className="py-3 px-3 text-center font-mono text-[#30312F]">42.8 MB / 21.8M</td>
+                    <td className="py-3 px-3 text-center font-mono text-rose-600">67.9 G</td>
+                    <td className="py-3 px-3 text-center font-mono text-rose-600">402.8 ms (2.48 FPS)</td>
+                    <td className="py-3 px-3 text-center font-mono font-bold text-[#30312F]">98.0%</td>
+                    <td className="py-3 px-3 text-center font-mono font-semibold text-[#30312F]">76.8%</td>
+                    <td className="py-3 px-3 text-center font-mono font-semibold text-[#30312F]">96.7%</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#30312F]">97.8% / 97.1%</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#30312F]">96.5% / 95.4%</td>
+                    <td className="py-3 px-3 text-center font-mono text-rose-700 bg-rose-50">3.5%</td>
+                  </tr>
+
+                  {/* Row 5: YOLO26s (Pretrained Base) */}
+                  <tr className="bg-white hover:bg-[#FAF8EF] transition-colors">
+                    <td className="py-3 px-4 text-[#85847E]">
+                      <div>YOLO26s (Pretrained Base)</div>
+                      <span className="text-[10px] text-[#A8A29E]">ก่อน Fine-tuning</span>
+                    </td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">19.5 MB / 9.4M</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">20.8 G</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">160.1 ms (6.25 FPS)</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">89.2%</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">68.4%</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">86.7%</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">88.5% / 85.0%</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">85.2% / 79.5%</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#85847E]">11.4%</td>
+                  </tr>
+
+                  {/* Row 6: YOLO26s-Parking-Ultimate (Active) */}
+                  <tr className="bg-[#E7F4D8]/40 hover:bg-[#E7F4D8]/60 transition-colors">
+                    <td className="py-3 px-4 font-semibold text-[#284E1A] flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-[#284E1A] inline-block"></span>
+                      <div>
+                        <div>YOLO26s-Parking-Ultimate</div>
+                        <span className="text-[10px] font-normal text-[#36612D]">Active Model (ID: 9)</span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-3 text-center font-mono text-[#30312F]">19.5 MB / 9.4M</td>
+                    <td className="py-3 px-3 text-center font-mono font-semibold text-[#284E1A]">20.8 G</td>
+                    <td className="py-3 px-3 text-center font-mono font-bold text-[#284E1A]">149.0 ms (6.71 FPS)</td>
+                    <td className="py-3 px-3 text-center font-mono font-bold text-[#284E1A]">98.0%</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#30312F]">76.4%</td>
+                    <td className="py-3 px-3 text-center font-mono font-semibold text-[#284E1A]">96.4%</td>
+                    <td className="py-3 px-3 text-center font-mono text-[#30312F]">97.5% / 96.8%</td>
+                    <td className="py-3 px-3 text-center font-mono font-semibold text-[#284E1A]">96.2% / 95.1%</td>
+                    <td className="py-3 px-3 text-center font-mono font-bold text-emerald-700 bg-emerald-100/60 rounded">1.2%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* 3 Key Insights Cards */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles className="w-4 h-4 text-[#284E1A]" />
+                <h4 className="text-sm font-bold text-[#30312F] uppercase tracking-wider m-0">
+                  3 ข้อสรุปสำคัญจากข้อมูลเชิงลึก (Key Insights & Architectural Comparison)
+                </h4>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Insight 1 */}
+                <div className="p-4 rounded-[18px] bg-[#E7F4D8] border border-[#BBF7D0] flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#BBF7D0]/60">
+                      <span className="text-xs font-bold text-[#284E1A]">1. Night False Positive ต่ำสุด (1.2%)</span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white text-[#284E1A] font-semibold">Active Learning</span>
+                    </div>
+                    <p className="text-xs text-[#36612D] leading-relaxed m-0">
+                      การคัดเลือกภาพ Hard Negatives (280 ภาพ) ที่โมเดลลังเลในช่วงความมั่นใจ 0.30 - 0.50 ส่งผลให้ False Positive เวลากลางคืนลดฮวบลงเหลือเพียง 1.2% (เทียบกับ 3.5% ใน 26m เดิม และ 2.8% ใน 11s)
+                    </p>
+                  </div>
+                  <div className="mt-3 pt-2 border-t border-[#BBF7D0]/40 text-[11px] font-semibold text-[#284E1A]">
+                    ผลลัพธ์: แก้ปัญหาแจ้งเตือนรถจอดทิพย์จากเงาสะท้อนไฟ
+                  </div>
+                </div>
+
+                {/* Insight 2 */}
+                <div className="p-4 rounded-[18px] bg-[#EFF6FF] border border-[#BFDBFE] flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#BFDBFE]/60">
+                      <span className="text-xs font-bold text-[#1E40AF]">2. Motorcycle Recall เสถียรสูง (95.1%)</span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white text-[#1E40AF] font-semibold">Small Objects</span>
+                    </div>
+                    <p className="text-xs text-[#1E40AF] leading-relaxed m-0">
+                      สถาปัตยกรรม YOLO26s รักษาอัตรา Recall มอเตอร์ไซค์ที่จอดซ้อนคันและระยะไกลได้ถึง 95.1% เหนือกว่า YOLO11s (94.2%) อย่างมีนัยสำคัญ โดยไม่สูญเสียความแม่นยำของคลาสรถยนต์ (Car P/R 97.5%/96.8%)
+                    </p>
+                  </div>
+                  <div className="mt-3 pt-2 border-t border-[#BFDBFE]/40 text-[11px] font-semibold text-[#1E40AF]">
+                    ผลลัพธ์: ตรวจจับมอเตอร์ไซค์ในโซนหนาแน่นได้ครบถ้วน
+                  </div>
+                </div>
+
+                {/* Insight 3 */}
+                <div className="p-4 rounded-[18px] bg-[#FFFBEB] border border-[#FDE68A] flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#FDE68A]/60">
+                      <span className="text-xs font-bold text-[#92400E]">3. ลดภาระ Compute ลง 69.4%</span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white text-[#92400E] font-semibold">CPU Efficiency</span>
+                    </div>
+                    <p className="text-xs text-[#92400E] leading-relaxed m-0">
+                      GFLOPs ลดลงจาก 67.9 G เหลือเพียง 20.8 G ทำให้ Inference Latency ลดเหลือ 149.0ms (6.71 FPS) บน Intel i5-6600T ปลดล็อกการประมวลผลกล้อง 3 ตัวพร้อมกันโดยไม่เกิด CPU Saturation หรือ Frame Drop
+                    </p>
+                  </div>
+                  <div className="mt-3 pt-2 border-t border-[#FDE68A]/40 text-[11px] font-semibold text-[#92400E]">
+                    ผลลัพธ์: ประหยัดพลังงานและขยายสเกลกล้องได้ลื่นไหล
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* Section 1F: Active Learning & Dataset Curation Strategy */}
           <div className="col-span-1 lg:col-span-2 box-border flex flex-col p-6 lg:p-8 gap-5 bg-[#FFFDF7] border border-[#DEDED2] rounded-[24px] shadow-xs">
@@ -2025,259 +2544,512 @@ export default function AnalyticsPage({ apiBase = '' }) {
       )}
 
       {/* Side-by-Side Model Comparison Modal */}
-      {isCompareModalOpen && (() => {
-        const modelA = evalModelsData[compareModelA] || evalModelsData.yolo26m
-        const modelB = evalModelsData[compareModelB] || evalModelsData.yolo26n
+      {isCompareModalOpen && typeof document !== 'undefined' && createPortal(
+        (() => {
+          const modelA = evalModelsData[compareModelA] || evalModelsData.yolo26m
+          const modelB = evalModelsData[compareModelB] || evalModelsData.yolo26n
 
-        const plotTabs = [
-          { id: 'confusionMatrix', label: '1. Confusion Matrix', key: 'confusionMatrix', descKey: 'cmDesc' },
-          { id: 'prCurve', label: '2. PR Curve', key: 'prCurve', descKey: 'prDesc' },
-          { id: 'f1Curve', label: '3. F1 Curve', key: 'f1Curve', descKey: 'f1Desc' },
-          { id: 'valPred', label: '4. Val Predictions', key: 'valPred', descKey: 'valDesc' },
-          { id: 'layerProfiling', label: '5. Memory Profiling', key: 'layerProfiling', descKey: 'layerDesc' },
-        ]
+          const plotTabs = [
+            { id: 'confusionMatrix', label: '1. Confusion Matrix', key: 'confusionMatrix', descKey: 'cmDesc' },
+            { id: 'prCurve', label: '2. PR Curve', key: 'prCurve', descKey: 'prDesc' },
+            { id: 'f1Curve', label: '3. F1 Curve', key: 'f1Curve', descKey: 'f1Desc' },
+            { id: 'valPred', label: '4. Val Predictions', key: 'valPred', descKey: 'valDesc' },
+            { id: 'layerProfiling', label: '5. Memory Profiling', key: 'layerProfiling', descKey: 'layerDesc' },
+          ]
 
-        const currentTab = plotTabs.find((t) => t.id === comparePlotTab) || plotTabs[0]
-        const mapDiff = (modelA.map50Num - modelB.map50Num).toFixed(1)
-        const speedDiff = (modelA.latencyNum / modelB.latencyNum).toFixed(1)
-        const paramRatio = (modelA.paramsNum / modelB.paramsNum).toFixed(1)
+          const currentTab = plotTabs.find((t) => t.id === comparePlotTab) || plotTabs[0]
+          const mapDiffNum = modelA.map50Num - modelB.map50Num
+          const mapDiffAbs = Math.abs(mapDiffNum).toFixed(1)
+          const motoDiffNum = parseFloat(modelA.motoMap50) - parseFloat(modelB.motoMap50)
+          const motoDiffAbs = Math.abs(motoDiffNum).toFixed(1)
 
-        return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
-            <div className="bg-[#FFFDF7] border border-[#DEDED2] rounded-[24px] shadow-2xl w-full max-w-5xl my-8 overflow-hidden flex flex-col max-h-[90vh]">
-              {/* Modal Header */}
-              <div className="flex items-center justify-between p-5 md:p-6 border-b border-[#E5E3D8] bg-[#FAF8EF] shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#E7F4D8] border border-[#BBF7D0] flex items-center justify-center text-[#284E1A]">
-                    <Scale className="w-5 h-5" />
+          let speedText = 'ความเร็วใกล้เคียงกัน'
+          if (modelA.latencyNum < modelB.latencyNum) {
+            const ratio = (modelB.latencyNum / modelA.latencyNum).toFixed(1)
+            speedText = `A เร็วกว่า ~${ratio}x เท่า`
+          } else if (modelB.latencyNum < modelA.latencyNum) {
+            const ratio = (modelA.latencyNum / modelB.latencyNum).toFixed(1)
+            speedText = `B เร็วกว่า ~${ratio}x เท่า`
+          }
+
+          return (
+            <div
+              className="fixed inset-0 z-[99999] flex items-center justify-center p-3 md:p-6 bg-black/60 backdrop-blur-xs"
+              onClick={() => setIsCompareModalOpen(false)}
+            >
+              <div
+                className="bg-[#FFFDF7] border border-[#DEDED2] rounded-[24px] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[92vh]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Modal Header */}
+                <div className="flex items-center justify-between p-5 md:p-6 border-b border-[#E5E3D8] bg-[#FAF8EF] shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#E7F4D8] border border-[#BBF7D0] flex items-center justify-center text-[#284E1A]">
+                      <Scale className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg md:text-xl font-bold text-[#30312F] m-0 flex items-center gap-2">
+                        เปรียบเทียบโมเดลคู่ขนาน (Side-by-Side Model Comparison)
+                      </h2>
+                      <p className="text-xs text-[#85847E] mt-0.5 m-0">
+                        เปรียบเทียบประสิทธิภาพ ความแม่นยำ และภาระทรัพยากรระหว่าง 2 สถาปัตยกรรม
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-lg md:text-xl font-bold text-[#30312F] m-0 flex items-center gap-2">
-                      เปรียบเทียบโมเดลคู่ขนาน (Side-by-Side Model Comparison)
-                    </h2>
-                    <p className="text-xs text-[#85847E] mt-0.5 m-0">
-                      เปรียบเทียบประสิทธิภาพ ความแม่นยำ และภาระทรัพยากรระหว่าง 2 สถาปัตยกรรม
-                    </p>
+                  <button
+                    type="button"
+                    onClick={() => setIsCompareModalOpen(false)}
+                    className="p-2 rounded-full hover:bg-[#E5E3D8] text-[#686962] hover:text-[#30312F] transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Modal Scrollable Content */}
+                <div className="p-5 md:p-6 overflow-y-auto space-y-6">
+                  {/* Selectors Bar */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center bg-[#FAF8EF] p-4 rounded-[20px] border border-[#DEDED2]">
+                    {/* Model A Selector */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-[#1E40AF] uppercase tracking-wider">
+                          โมเดลหลัก (Model A)
+                        </span>
+                        <span className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full border ${modelA.tagColor}`}>
+                          {modelA.tag}
+                        </span>
+                      </div>
+                      <select
+                        value={compareModelA}
+                        onChange={(e) => setCompareModelA(e.target.value)}
+                        className="w-full bg-[#FFFDF7] border border-[#DEDED2] rounded-[12px] px-3.5 py-2 text-sm font-semibold text-[#30312F] focus:outline-none focus:border-[#284E1A] cursor-pointer"
+                      >
+                        {Object.values(evalModelsData).map((m) => (
+                          <option key={`a-${m.id}`} value={m.id}>
+                            {m.name} ({m.map50})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Model B Selector */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-[#92400E] uppercase tracking-wider">
+                          โมเดลเปรียบเทียบ (Model B)
+                        </span>
+                        <span className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full border ${modelB.tagColor}`}>
+                          {modelB.tag}
+                        </span>
+                      </div>
+                      <select
+                        value={compareModelB}
+                        onChange={(e) => setCompareModelB(e.target.value)}
+                        className="w-full bg-[#FFFDF7] border border-[#DEDED2] rounded-[12px] px-3.5 py-2 text-sm font-semibold text-[#30312F] focus:outline-none focus:border-[#284E1A] cursor-pointer"
+                      >
+                        {Object.values(evalModelsData).map((m) => (
+                          <option key={`b-${m.id}`} value={m.id}>
+                            {m.name} ({m.map50})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Key Metrics Comparison Table / Cards */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="p-3.5 rounded-[16px] bg-[#FFFDF7] border border-[#DEDED2] flex flex-col justify-between">
+                      <span className="text-[11px] text-[#85847E]">Overall mAP@50</span>
+                      <div className="flex items-baseline justify-between mt-1">
+                        <span className="font-mono font-bold text-base text-[#1E40AF]">{modelA.map50}</span>
+                        <span className="text-xs text-[#85847E]">vs</span>
+                        <span className="font-mono font-bold text-base text-[#92400E]">{modelB.map50}</span>
+                      </div>
+                      <span className={`text-[10px] font-semibold mt-1 px-1.5 py-0.5 rounded text-center ${
+                        mapDiffNum > 0 ? 'bg-[#E7F4D8] text-[#36612D]' : mapDiffNum < 0 ? 'bg-[#FEF3C7] text-[#92400E]' : 'bg-[#FAF8EF] text-[#686962]'
+                      }`}>
+                        {mapDiffNum > 0 ? `+${mapDiffAbs}% Model A เหนือกว่า` : mapDiffNum < 0 ? `+${mapDiffAbs}% Model B เหนือกว่า` : 'ความแม่นยำเท่ากัน'}
+                      </span>
+                    </div>
+
+                    <div className="p-3.5 rounded-[16px] bg-[#FFFDF7] border border-[#DEDED2] flex flex-col justify-between">
+                      <span className="text-[11px] text-[#85847E]">Motorcycle mAP@50</span>
+                      <div className="flex items-baseline justify-between mt-1">
+                        <span className="font-mono font-bold text-base text-[#1E40AF]">{modelA.motoMap50}</span>
+                        <span className="text-xs text-[#85847E]">vs</span>
+                        <span className="font-mono font-bold text-base text-[#92400E]">{modelB.motoMap50}</span>
+                      </div>
+                      <span className={`text-[10px] font-semibold mt-1 px-1.5 py-0.5 rounded text-center ${
+                        motoDiffNum > 0 ? 'bg-[#E7F4D8] text-[#36612D]' : motoDiffNum < 0 ? 'bg-[#FEF3C7] text-[#92400E]' : 'bg-[#FAF8EF] text-[#686962]'
+                      }`}>
+                        {motoDiffNum > 0 ? `+${motoDiffAbs}% Model A แม่นกว่า` : motoDiffNum < 0 ? `+${motoDiffAbs}% Model B แม่นกว่า` : 'แยกแยะมอเตอร์ไซค์เท่ากัน'}
+                      </span>
+                    </div>
+
+                    <div className="p-3.5 rounded-[16px] bg-[#FFFDF7] border border-[#DEDED2] flex flex-col justify-between">
+                      <span className="text-[11px] text-[#85847E]">Params / Compute</span>
+                      <div className="flex items-baseline justify-between mt-1">
+                        <span className="font-mono font-bold text-sm text-[#1E40AF]">{modelA.params}</span>
+                        <span className="text-xs text-[#85847E]">vs</span>
+                        <span className="font-mono font-bold text-sm text-[#92400E]">{modelB.params}</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-[#686962] text-center mt-1">
+                        {modelA.gflops}G vs {modelB.gflops}G FLOPs
+                      </span>
+                    </div>
+
+                    <div className="p-3.5 rounded-[16px] bg-[#FFFDF7] border border-[#DEDED2] flex flex-col justify-between">
+                      <span className="text-[11px] text-[#85847E]">CPU Latency</span>
+                      <div className="flex items-baseline justify-between mt-1">
+                        <span className="font-mono font-bold text-sm text-[#1E40AF]">{modelA.latency.split(' ')[0]}</span>
+                        <span className="text-xs text-[#85847E]">vs</span>
+                        <span className="font-mono font-bold text-sm text-[#92400E]">{modelB.latency.split(' ')[0]}</span>
+                      </div>
+                      <span className="text-[10px] text-[#2563EB] font-semibold text-center mt-1">
+                        {speedText}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Side-by-Side Artifacts Viewer */}
+                  <div className="space-y-3">
+                    {/* Artifact Tab Navigation */}
+                    <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-[#E5E3D8]">
+                      <span className="text-xs font-bold text-[#30312F]">
+                        เลือกผลการประเมินที่ต้องการเทียบ:
+                      </span>
+                      <div className="inline-flex p-1 bg-[#FAF8EF] border border-[#DEDED2] rounded-full overflow-x-auto">
+                        {plotTabs.map((t) => (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => setComparePlotTab(t.id)}
+                            className={`px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
+                              comparePlotTab === t.id
+                                ? 'bg-[#30312F] text-white font-semibold shadow-xs'
+                                : 'text-[#686962] hover:text-[#30312F]'
+                            }`}
+                          >
+                            {t.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Dual Image Containers */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Model A Plot */}
+                      <div className="p-4 rounded-[18px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col gap-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-[#1E40AF]">
+                            [Model A] {modelA.name}
+                          </span>
+                          <span className="text-[10px] font-mono text-[#85847E]">
+                            {modelA.map50} mAP
+                          </span>
+                        </div>
+                        <div className="bg-[#FFFDF7] border border-[#E5E3D8] rounded-[14px] p-2 flex items-center justify-center h-[260px] md:h-[280px] overflow-hidden">
+                          <img
+                            key={`cmp-a-${modelA.id}-${currentTab.key}`}
+                            src={modelA.plots[currentTab.key]}
+                            alt={`${modelA.name} - ${currentTab.label}`}
+                            className="w-full h-full object-contain rounded-[8px]"
+                            loading="lazy"
+                          />
+                        </div>
+                        <p className="text-[11px] text-[#686962] m-0 leading-relaxed min-h-[30px] flex items-center">
+                          {modelA.plots[currentTab.descKey]}
+                        </p>
+                      </div>
+
+                      {/* Model B Plot */}
+                      <div className="p-4 rounded-[18px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col gap-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-[#92400E]">
+                            [Model B] {modelB.name}
+                          </span>
+                          <span className="text-[10px] font-mono text-[#85847E]">
+                            {modelB.map50} mAP
+                          </span>
+                        </div>
+                        <div className="bg-[#FFFDF7] border border-[#E5E3D8] rounded-[14px] p-2 flex items-center justify-center h-[260px] md:h-[280px] overflow-hidden">
+                          <img
+                            key={`cmp-b-${modelB.id}-${currentTab.key}`}
+                            src={modelB.plots[currentTab.key]}
+                            alt={`${modelB.name} - ${currentTab.label}`}
+                            className="w-full h-full object-contain rounded-[8px]"
+                            loading="lazy"
+                          />
+                        </div>
+                        <p className="text-[11px] text-[#686962] m-0 leading-relaxed min-h-[30px] flex items-center">
+                          {modelB.plots[currentTab.descKey]}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tradeoff Conclusion Box */}
+                  <div className="p-4 rounded-[18px] bg-[#FAF8EF] border border-[#DEDED2] text-xs space-y-2">
+                    <div className="font-bold text-[#30312F] flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-[#284E1A]" />
+                      <span>บทสรุปการเปรียบเทียบเชิงวิศวกรรม (Engineering Trade-off):</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[#686962] leading-relaxed">
+                      <div className="p-2.5 rounded-[12px] bg-[#FFFDF7] border border-[#E5E3D8]">
+                        <strong className="text-[#1E40AF] block mb-0.5">[Model A] {modelA.name} ({modelA.map50}):</strong>
+                        <span>{modelA.desc}</span>
+                      </div>
+                      <div className="p-2.5 rounded-[12px] bg-[#FFFDF7] border border-[#E5E3D8]">
+                        <strong className="text-[#92400E] block mb-0.5">[Model B] {modelB.name} ({modelB.map50}):</strong>
+                        <span>{modelB.desc}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsCompareModalOpen(false)}
-                  className="p-2 rounded-full hover:bg-[#E5E3D8] text-[#686962] hover:text-[#30312F] transition-colors cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+
+                {/* Modal Footer */}
+                <div className="p-4 border-t border-[#E5E3D8] bg-[#FAF8EF] flex justify-end shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsCompareModalOpen(false)}
+                    className="px-5 py-2 rounded-full text-xs font-semibold bg-[#30312F] text-white hover:bg-[#1E1F1E] transition-colors cursor-pointer"
+                  >
+                    ปิดหน้าต่างเปรียบเทียบ (Close)
+                  </button>
+                </div>
               </div>
+            </div>
+          )
+        })(),
+        document.body
+      )}
 
-              {/* Modal Scrollable Content */}
-              <div className="p-5 md:p-6 overflow-y-auto space-y-6">
-                {/* Selectors Bar */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center bg-[#FAF8EF] p-4 rounded-[20px] border border-[#DEDED2]">
-                  {/* Model A Selector */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-[#1E40AF] uppercase tracking-wider">
-                        โมเดลหลัก (Model A)
-                      </span>
-                      <span className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full border ${modelA.tagColor}`}>
-                        {modelA.tag}
-                      </span>
-                    </div>
-                    <select
-                      value={compareModelA}
-                      onChange={(e) => setCompareModelA(e.target.value)}
-                      className="w-full bg-[#FFFDF7] border border-[#DEDED2] rounded-[12px] px-3.5 py-2 text-sm font-semibold text-[#30312F] focus:outline-none focus:border-[#284E1A] cursor-pointer"
-                    >
-                      {Object.values(evalModelsData).map((m) => (
-                        <option key={`a-${m.id}`} value={m.id}>
-                          {m.name} ({m.map50})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Model B Selector */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-[#92400E] uppercase tracking-wider">
-                        โมเดลเปรียบเทียบ (Model B)
-                      </span>
-                      <span className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full border ${modelB.tagColor}`}>
-                        {modelB.tag}
-                      </span>
-                    </div>
-                    <select
-                      value={compareModelB}
-                      onChange={(e) => setCompareModelB(e.target.value)}
-                      className="w-full bg-[#FFFDF7] border border-[#DEDED2] rounded-[12px] px-3.5 py-2 text-sm font-semibold text-[#30312F] focus:outline-none focus:border-[#284E1A] cursor-pointer"
-                    >
-                      {Object.values(evalModelsData).map((m) => (
-                        <option key={`b-${m.id}`} value={m.id}>
-                          {m.name} ({m.map50})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+      {/* Quantization Accuracy Drop & Trade-off Modal */}
+      {showQuantizationModal && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-3 md:p-6 bg-black/60 backdrop-blur-xs"
+          onClick={() => setShowQuantizationModal(false)}
+        >
+          <div
+            className="bg-[#FFFDF7] border border-[#DEDED2] rounded-[24px] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[92vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 md:p-6 border-b border-[#E5E3D8] bg-[#FAF8EF] shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-800">
+                  <Gauge className="w-5 h-5" />
                 </div>
-
-                {/* Key Metrics Comparison Table / Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div className="p-3.5 rounded-[16px] bg-[#FFFDF7] border border-[#DEDED2] flex flex-col justify-between">
-                    <span className="text-[11px] text-[#85847E]">Overall mAP@50</span>
-                    <div className="flex items-baseline justify-between mt-1">
-                      <span className="font-mono font-bold text-base text-[#1E40AF]">{modelA.map50}</span>
-                      <span className="text-xs text-[#85847E]">vs</span>
-                      <span className="font-mono font-bold text-base text-[#92400E]">{modelB.map50}</span>
-                    </div>
-                    <span className={`text-[10px] font-semibold mt-1 px-1.5 py-0.5 rounded text-center ${
-                      Number(mapDiff) >= 0 ? 'bg-[#E7F4D8] text-[#36612D]' : 'bg-[#FEE2E2] text-[#991B1B]'
-                    }`}>
-                      {Number(mapDiff) >= 0 ? `+${mapDiff}% A เหนือกว่า` : `${mapDiff}% B เหนือกว่า`}
-                    </span>
-                  </div>
-
-                  <div className="p-3.5 rounded-[16px] bg-[#FFFDF7] border border-[#DEDED2] flex flex-col justify-between">
-                    <span className="text-[11px] text-[#85847E]">Motorcycle mAP@50</span>
-                    <div className="flex items-baseline justify-between mt-1">
-                      <span className="font-mono font-bold text-base text-[#1E40AF]">{modelA.motoMap50}</span>
-                      <span className="text-xs text-[#85847E]">vs</span>
-                      <span className="font-mono font-bold text-base text-[#92400E]">{modelB.motoMap50}</span>
-                    </div>
-                    <span className="text-[10px] text-[#686962] text-center mt-1">
-                      แยกแยะรถซ้อนคัน / ระยะไกล
-                    </span>
-                  </div>
-
-                  <div className="p-3.5 rounded-[16px] bg-[#FFFDF7] border border-[#DEDED2] flex flex-col justify-between">
-                    <span className="text-[11px] text-[#85847E]">Params / Compute</span>
-                    <div className="flex items-baseline justify-between mt-1">
-                      <span className="font-mono font-bold text-sm text-[#1E40AF]">{modelA.params}</span>
-                      <span className="text-xs text-[#85847E]">vs</span>
-                      <span className="font-mono font-bold text-sm text-[#92400E]">{modelB.params}</span>
-                    </div>
-                    <span className="text-[10px] font-mono text-[#686962] text-center mt-1">
-                      {modelA.gflops}G vs {modelB.gflops}G FLOPs
-                    </span>
-                  </div>
-
-                  <div className="p-3.5 rounded-[16px] bg-[#FFFDF7] border border-[#DEDED2] flex flex-col justify-between">
-                    <span className="text-[11px] text-[#85847E]">CPU Latency</span>
-                    <div className="flex items-baseline justify-between mt-1">
-                      <span className="font-mono font-bold text-sm text-[#1E40AF]">{modelA.latency.split(' ')[0]}</span>
-                      <span className="text-xs text-[#85847E]">vs</span>
-                      <span className="font-mono font-bold text-sm text-[#92400E]">{modelB.latency.split(' ')[0]}</span>
-                    </div>
-                    <span className="text-[10px] text-[#2563EB] font-semibold text-center mt-1">
-                      {Number(speedDiff) > 1 ? `B เร็วกว่า ~${speedDiff}x เท่า` : 'ความเร็วใกล้เคียงกัน'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Side-by-Side Artifacts Viewer */}
-                <div className="space-y-3">
-                  {/* Artifact Tab Navigation */}
-                  <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-[#E5E3D8]">
-                    <span className="text-xs font-bold text-[#30312F]">
-                      เลือกผลการประเมินที่ต้องการเทียบ:
-                    </span>
-                    <div className="inline-flex p-1 bg-[#FAF8EF] border border-[#DEDED2] rounded-full overflow-x-auto">
-                      {plotTabs.map((t) => (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => setComparePlotTab(t.id)}
-                          className={`px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
-                            comparePlotTab === t.id
-                              ? 'bg-[#30312F] text-white font-semibold shadow-xs'
-                              : 'text-[#686962] hover:text-[#30312F]'
-                          }`}
-                        >
-                          {t.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Dual Image Containers */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Model A Plot */}
-                    <div className="p-4 rounded-[18px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col gap-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-[#1E40AF]">
-                          [Model A] {modelA.name}
-                        </span>
-                        <span className="text-[10px] font-mono text-[#85847E]">
-                          {modelA.map50} mAP
-                        </span>
-                      </div>
-                      <div className="bg-[#FFFDF7] border border-[#E5E3D8] rounded-[14px] p-2 flex items-center justify-center min-h-[260px] overflow-hidden">
-                        <img
-                          key={`cmp-a-${modelA.id}-${currentTab.key}`}
-                          src={modelA.plots[currentTab.key]}
-                          alt={`${modelA.name} - ${currentTab.label}`}
-                          className="w-full h-auto max-h-[340px] object-contain rounded-[8px]"
-                          loading="lazy"
-                        />
-                      </div>
-                      <p className="text-[11px] text-[#686962] m-0 leading-relaxed">
-                        {modelA.plots[currentTab.descKey]}
-                      </p>
-                    </div>
-
-                    {/* Model B Plot */}
-                    <div className="p-4 rounded-[18px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col gap-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-[#92400E]">
-                          [Model B] {modelB.name}
-                        </span>
-                        <span className="text-[10px] font-mono text-[#85847E]">
-                          {modelB.map50} mAP
-                        </span>
-                      </div>
-                      <div className="bg-[#FFFDF7] border border-[#E5E3D8] rounded-[14px] p-2 flex items-center justify-center min-h-[260px] overflow-hidden">
-                        <img
-                          key={`cmp-b-${modelB.id}-${currentTab.key}`}
-                          src={modelB.plots[currentTab.key]}
-                          alt={`${modelB.name} - ${currentTab.label}`}
-                          className="w-full h-auto max-h-[340px] object-contain rounded-[8px]"
-                          loading="lazy"
-                        />
-                      </div>
-                      <p className="text-[11px] text-[#686962] m-0 leading-relaxed">
-                        {modelB.plots[currentTab.descKey]}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Tradeoff Conclusion Box */}
-                <div className="p-4 rounded-[18px] bg-[#FAF8EF] border border-[#DEDED2] text-xs space-y-1.5">
-                  <div className="font-bold text-[#30312F] flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-[#284E1A]" />
-                    <span>บทสรุปการเปรียบเทียบเชิงวิศวกรรม (Engineering Trade-off):</span>
-                  </div>
-                  <p className="text-[#686962] leading-relaxed m-0">
-                    • <strong>{modelA.name}:</strong> เหมาะสำหรับระบบ Server-side ที่ต้องการความแม่นยำสูงสุด (93.0% mAP@50) โดยเฉพาะการจำแนกรถจักรยานยนต์ที่จอดซ้อนคันในมุมกล้องกว้าง
-                    <br />
-                    • <strong>{modelB.name}:</strong> เหมาะสำหรับกรณีขยายระบบไปรันบน Edge Device ขนาดเล็ก หรือเมื่อต้องการประหยัด CPU Core สำหรับงาน Stream หลายกล้องพร้อมกัน
+                <div>
+                  <h2 className="text-lg md:text-xl font-bold text-[#30312F] m-0 flex items-center gap-2">
+                    การวิเคราะห์ผลกระทบการทำ Quantization (FP32 vs INT8 Accuracy Drop)
+                  </h2>
+                  <p className="text-xs text-[#85847E] mt-0.5 m-0">
+                    เปรียบเทียบความแม่นยำ (Accuracy Retention), Throughput (FPS), Latency และ Memory Footprint
                   </p>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setShowQuantizationModal(false)}
+                className="p-2 rounded-full hover:bg-[#E5E3D8] text-[#686962] hover:text-[#30312F] transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-              {/* Modal Footer */}
-              <div className="p-4 border-t border-[#E5E3D8] bg-[#FAF8EF] flex justify-end shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setIsCompareModalOpen(false)}
-                  className="px-5 py-2 rounded-full text-xs font-semibold bg-[#30312F] text-white hover:bg-[#1E1F1E] transition-colors cursor-pointer"
-                >
-                  ปิดหน้าต่างเปรียบเทียบ (Close)
-                </button>
+            {/* Scrollable Content */}
+            <div className="p-5 md:p-6 overflow-y-auto space-y-6">
+              {/* Top 4 KPI Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="p-3.5 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col justify-between">
+                  <span className="text-[11px] text-[#85847E] font-medium">Overall mAP@50 Loss</span>
+                  <div className="flex items-baseline justify-between mt-1">
+                    <span className="font-mono font-bold text-base text-[#1E40AF]">98.5%</span>
+                    <span className="text-xs text-[#85847E]">&rarr;</span>
+                    <span className="font-mono font-bold text-base text-[#10B981]">98.3%</span>
+                  </div>
+                  <span className="text-[10px] font-semibold mt-1 px-1.5 py-0.5 rounded text-center bg-[#E7F4D8] text-[#36612D]">
+                    -0.2% (รักษาได้ 99.8%)
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col justify-between">
+                  <span className="text-[11px] text-[#85847E] font-medium">CPU Latency & Speed</span>
+                  <div className="flex items-baseline justify-between mt-1">
+                    <span className="font-mono font-bold text-sm text-[#991B1B]">595.9ms</span>
+                    <span className="text-xs text-[#85847E]">&rarr;</span>
+                    <span className="font-mono font-bold text-sm text-[#2563EB]">320.5ms</span>
+                  </div>
+                  <span className="text-[10px] font-semibold mt-1 px-1.5 py-0.5 rounded text-center bg-[#EFF6FF] text-[#1E40AF]">
+                    เร็วขึ้น +1.86x (+86% FPS)
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col justify-between">
+                  <span className="text-[11px] text-[#85847E] font-medium">Model File Size</span>
+                  <div className="flex items-baseline justify-between mt-1">
+                    <span className="font-mono font-bold text-sm text-[#92400E]">42.2 MB</span>
+                    <span className="text-xs text-[#85847E]">&rarr;</span>
+                    <span className="font-mono font-bold text-sm text-[#10B981]">22.4 MB</span>
+                  </div>
+                  <span className="text-[10px] font-semibold mt-1 px-1.5 py-0.5 rounded text-center bg-[#E7F4D8] text-[#36612D]">
+                    ลดขนาดลง -46.9%
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] flex flex-col justify-between">
+                  <span className="text-[11px] text-[#85847E] font-medium">RAM Allocation</span>
+                  <div className="flex items-baseline justify-between mt-1">
+                    <span className="font-mono font-bold text-sm text-[#85847E]">285 MB</span>
+                    <span className="text-xs text-[#85847E]">&rarr;</span>
+                    <span className="font-mono font-bold text-sm text-[#10B981]">165 MB</span>
+                  </div>
+                  <span className="text-[10px] font-semibold mt-1 px-1.5 py-0.5 rounded text-center bg-[#E7F4D8] text-[#36612D]">
+                    ประหยัดแรม -42.1%
+                  </span>
+                </div>
+              </div>
+
+              {/* In-Depth Quantization Matrix Table */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[#30312F]">
+                    ตารางเปรียบเทียบตัวชี้วัดเชิงลึก (FP32 vs OpenVINO INT8 Matrix)
+                  </span>
+                  <span className="text-[10px] font-mono text-[#85847E]">
+                    N = 1,475 Frames &bull; Intel Core i5-6600T
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto rounded-[16px] border border-[#DEDED2] bg-[#FAF8EF]">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-[#DEDED2] bg-[#F0EEE4] text-[11px] font-semibold text-[#686962] uppercase tracking-wider">
+                        <th className="py-2.5 px-3.5">ตัวชี้วัด (Metric)</th>
+                        <th className="py-2.5 px-3 text-center">PyTorch FP32 (Baseline)</th>
+                        <th className="py-2.5 px-3 text-center">OpenVINO FP32</th>
+                        <th className="py-2.5 px-3 text-center text-[#1E40AF] bg-[#EFF6FF]/60 font-bold">OpenVINO INT8 (Quantized)</th>
+                        <th className="py-2.5 px-3 text-center">ผลต่าง (Delta vs Baseline)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#E5E3D8] text-xs">
+                      <tr className="bg-white hover:bg-[#FAF8EF] transition-colors">
+                        <td className="py-2 px-3.5 font-semibold text-[#30312F]">Overall mAP@50</td>
+                        <td className="py-2 px-3 text-center font-mono">98.5%</td>
+                        <td className="py-2 px-3 text-center font-mono">98.5%</td>
+                        <td className="py-2 px-3 text-center font-mono font-bold text-[#1E40AF] bg-[#EFF6FF]/30">98.3%</td>
+                        <td className="py-2 px-3 text-center font-mono font-semibold text-[#16A34A]">-0.2% (แทบไม่ลดลง)</td>
+                      </tr>
+                      <tr className="bg-white hover:bg-[#FAF8EF] transition-colors">
+                        <td className="py-2 px-3.5 font-semibold text-[#30312F]">mAP@50-95 (Strict IoU)</td>
+                        <td className="py-2 px-3 text-center font-mono">78.4%</td>
+                        <td className="py-2 px-3 text-center font-mono">78.4%</td>
+                        <td className="py-2 px-3 text-center font-mono font-bold text-[#1E40AF] bg-[#EFF6FF]/30">77.9%</td>
+                        <td className="py-2 px-3 text-center font-mono font-semibold text-[#16A34A]">-0.5% (รักษาความแม่นยำสูง)</td>
+                      </tr>
+                      <tr className="bg-white hover:bg-[#FAF8EF] transition-colors">
+                        <td className="py-2 px-3.5 text-[#686962]">Car Detection mAP@50</td>
+                        <td className="py-2 px-3 text-center font-mono">99.7%</td>
+                        <td className="py-2 px-3 text-center font-mono">99.7%</td>
+                        <td className="py-2 px-3 text-center font-mono font-bold text-[#1E40AF] bg-[#EFF6FF]/30">99.6%</td>
+                        <td className="py-2 px-3 text-center font-mono text-[#16A34A]">-0.1% (แม่นยำสมบูรณ์)</td>
+                      </tr>
+                      <tr className="bg-white hover:bg-[#FAF8EF] transition-colors">
+                        <td className="py-2 px-3.5 text-[#686962]">Motorcycle Detection mAP@50</td>
+                        <td className="py-2 px-3 text-center font-mono">96.1%</td>
+                        <td className="py-2 px-3 text-center font-mono">96.1%</td>
+                        <td className="py-2 px-3 text-center font-mono font-bold text-[#1E40AF] bg-[#EFF6FF]/30">95.7%</td>
+                        <td className="py-2 px-3 text-center font-mono text-[#16A34A]">-0.4% (แยกแยะรถซ้อนคันได้ดี)</td>
+                      </tr>
+                      <tr className="bg-white hover:bg-[#FAF8EF] transition-colors">
+                        <td className="py-2 px-3.5 text-[#686962]">Precision / Recall</td>
+                        <td className="py-2 px-3 text-center font-mono">98.2% / 97.6%</td>
+                        <td className="py-2 px-3 text-center font-mono">98.2% / 97.6%</td>
+                        <td className="py-2 px-3 text-center font-mono font-bold text-[#1E40AF] bg-[#EFF6FF]/30">98.0% / 97.4%</td>
+                        <td className="py-2 px-3 text-center font-mono text-[#16A34A]">-0.2% / -0.2%</td>
+                      </tr>
+                      <tr className="bg-[#FAF8EF] font-medium">
+                        <td className="py-2 px-3.5 text-[#30312F]">Inference Latency</td>
+                        <td className="py-2 px-3 text-center font-mono text-[#991B1B]">595.9 ms</td>
+                        <td className="py-2 px-3 text-center font-mono text-[#991B1B]">660.1 ms</td>
+                        <td className="py-2 px-3 text-center font-mono font-bold text-[#2563EB] bg-[#EFF6FF]/40">320.5 ms</td>
+                        <td className="py-2 px-3 text-center font-mono font-bold text-[#2563EB]">-275.4 ms (เร็วขึ้น 1.86 เท่า)</td>
+                      </tr>
+                      <tr className="bg-white hover:bg-[#FAF8EF] transition-colors">
+                        <td className="py-2 px-3.5 text-[#30312F]">Throughput (FPS)</td>
+                        <td className="py-2 px-3 text-center font-mono">1.68 FPS</td>
+                        <td className="py-2 px-3 text-center font-mono">1.51 FPS</td>
+                        <td className="py-2 px-3 text-center font-mono font-bold text-[#2563EB] bg-[#EFF6FF]/30">3.12 FPS</td>
+                        <td className="py-2 px-3 text-center font-mono font-bold text-[#2563EB]">+1.44 FPS (+86%)</td>
+                      </tr>
+                      <tr className="bg-white hover:bg-[#FAF8EF] transition-colors">
+                        <td className="py-2 px-3.5 text-[#30312F]">Weights File Size</td>
+                        <td className="py-2 px-3 text-center font-mono">42.2 MB</td>
+                        <td className="py-2 px-3 text-center font-mono">78.3 MB</td>
+                        <td className="py-2 px-3 text-center font-mono font-bold text-[#16A34A] bg-[#EFF6FF]/30">22.4 MB</td>
+                        <td className="py-2 px-3 text-center font-mono font-bold text-[#16A34A]">-19.8 MB (-46.9%)</td>
+                      </tr>
+                      <tr className="bg-white hover:bg-[#FAF8EF] transition-colors">
+                        <td className="py-2 px-3.5 text-[#30312F]">RAM Memory Footprint</td>
+                        <td className="py-2 px-3 text-center font-mono">285 MB</td>
+                        <td className="py-2 px-3 text-center font-mono">340 MB</td>
+                        <td className="py-2 px-3 text-center font-mono font-bold text-[#16A34A] bg-[#EFF6FF]/30">165 MB</td>
+                        <td className="py-2 px-3 text-center font-mono font-bold text-[#16A34A]">-120 MB (ประหยัดแรม 42.1%)</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* 3 Engineering Insight Cards (For Advisor / Professor) */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="p-3.5 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] space-y-1">
+                  <div className="font-bold text-xs text-[#1E40AF] flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>1. ทำไม mAP@50 ลดลงเพียง 0.2%?</span>
+                  </div>
+                  <p className="text-[11px] text-[#686962] leading-relaxed m-0">
+                    เพราะใช้ Post-Training Quantization (PTQ) แบบมี Calibration Set 1,475 เฟรมจริง ทำให้โมเดลรักษารูปทรงการกระจายของค่าน้ำหนักในชั้นตรวจจับสำคัญไว้ได้เกือบ 100%
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] space-y-1">
+                  <div className="font-bold text-xs text-[#284E1A] flex items-center gap-1.5">
+                    <Cpu className="w-3.5 h-3.5" />
+                    <span>2. ทำไม INT8 ถึงเร็วขึ้นเกือบ 2 เท่า?</span>
+                  </div>
+                  <p className="text-[11px] text-[#686962] leading-relaxed m-0">
+                    CPU Intel รองรับคำสั่ง Vector Instructions (VNNI) ช่วยให้ประมวลผลเลขจำนวนเต็ม 8-bit พร้อมกันได้ 4 ค่าใน 1 รอบสัญญาณนาฬิกา และลด Bandwidth คอขวดของแรม
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-[16px] bg-[#FAF8EF] border border-[#DEDED2] space-y-1">
+                  <div className="font-bold text-xs text-[#92400E] flex items-center gap-1.5">
+                    <Scale className="w-3.5 h-3.5" />
+                    <span>3. สรุปความคุ้มค่าทางวิศวกรรม:</span>
+                  </div>
+                  <p className="text-[11px] text-[#686962] leading-relaxed m-0">
+                    การยอมแลกความแม่นยำเพียง 0.2% เพื่อแลกกับความเร็วที่เพิ่มขึ้น 86% และลดขนาดโมเดลลงครึ่งหนึ่ง ถือเป็นจุดคุ้มค่าสูงสุดสำหรับการ Deploy บนอุปกรณ์ Edge
+                  </p>
+                </div>
               </div>
             </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-[#E5E3D8] bg-[#FAF8EF] flex justify-end shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowQuantizationModal(false)}
+                className="px-5 py-2 rounded-full text-xs font-semibold bg-[#30312F] text-white hover:bg-[#1E1F1E] transition-colors cursor-pointer"
+              >
+                ปิดหน้าต่างวิเคราะห์ (Close)
+              </button>
+            </div>
           </div>
-        )
-      })()}
+        </div>,
+        document.body
+      )}
     </div>
   )
 }

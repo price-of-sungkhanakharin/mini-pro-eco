@@ -39,6 +39,7 @@ def recommend_sleep(
     chip_temp_c: Optional[float] = Query(None, description="Current chip temperature in Celsius (optional override)"),
     delta_vehicles: Optional[float] = Query(None, description="Vehicle rate of change (+ arrival, - departure)"),
     light_aec: Optional[float] = Query(None, description="Light exposure value AEC"),
+    model_type: str = Query("random_forest", description="Model: random_forest, gradient_boost, arimax, sarimax"),
 ):
     """
     Computes optimal deep sleep interval for ESP32 camera hardware.
@@ -58,6 +59,7 @@ def recommend_sleep(
         camera_id=camera_id,
         current_telemetry=telemetry,
         occupancy_info=occupancy_info,
+        model_type=model_type,
     )
     return {
         "status": "success",
@@ -102,7 +104,9 @@ def get_model_metrics():
 
 
 @router.get("/cameras/status", summary="Real-time Thermal & Sleep Status Across All Cameras")
-def get_all_cameras_status():
+def get_all_cameras_status(
+    model_type: str = Query("random_forest", description="Model: random_forest, gradient_boost, arimax, sarimax"),
+):
     """
     Polls real-time telemetry from Redis RAM for cam1, cam2, cam3 and returns
     thermal risk status and adaptive sleep interval for each camera.
@@ -111,7 +115,7 @@ def get_all_cameras_status():
     status_map = {}
     for cam in cameras:
         telemetry = _get_live_telemetry(cam)
-        rec = timeseries_service.compute_optimal_sleep(cam, current_telemetry=telemetry)
+        rec = timeseries_service.compute_optimal_sleep(cam, current_telemetry=telemetry, model_type=model_type)
         status_map[cam] = rec
 
     return {
@@ -124,6 +128,7 @@ def get_all_cameras_status():
 def predict_future_occupancy(
     camera_id: str = Query("cam1", description="Camera ID (cam1, cam2, cam3)"),
     minutes: int = Query(15, ge=5, le=60, description="Forecast horizon in minutes (e.g. 15 or 30)"),
+    model_type: str = Query("random_forest", description="Model: random_forest, gradient_boost, arimax, sarimax"),
 ):
     """
     Predicts parking occupancy and free slot probability in the next 15 or 30 minutes,
@@ -144,6 +149,7 @@ def predict_future_occupancy(
         camera_id=camera_id,
         horizon_minutes=minutes,
         current_vehicles=current_vehicles,
+        model_type=model_type,
     )
     return {
         "status": "success",
@@ -155,6 +161,7 @@ def predict_future_occupancy(
 def get_timeseries_graph_data(
     hours: int = Query(48, ge=1, le=168, description="Hours of historical data to retrieve"),
     camera_id: str = Query("all", description="Camera ID filter or 'all'"),
+    interval_min: int = Query(30, ge=1, le=120, description="Sampling bucket interval in minutes (e.g. 1, 5, 10, 15, 30, 60)"),
 ):
     """
     Returns time-aligned series from REAL camera_telemetry and detections logs:
@@ -226,9 +233,12 @@ def get_timeseries_graph_data(
         # Filter outliers > 3600s
         df_clean = df_tel[(df_tel["gap_sec"].isna()) | ((df_tel["gap_sec"] >= 5) & (df_tel["gap_sec"] <= 3600))].copy()
 
-        # 30-minute buckets for rich curve resolution
-        df_clean["bucket"] = df_clean["ts"].dt.floor("30min")
-        df_det["bucket"] = df_det["ts"].dt.floor("30min")
+        # Dynamic frequency bucket based on requested interval_min (1m, 5m, 15m, 30m, 60m)
+        freq_min = max(1, min(120, int(interval_min)))
+        freq_str = f"{freq_min}min"
+
+        df_clean["bucket"] = df_clean["ts"].dt.floor(freq_str)
+        df_det["bucket"] = df_det["ts"].dt.floor(freq_str)
 
         tel_piv = df_clean.pivot_table(
             index="bucket",
@@ -249,9 +259,9 @@ def get_timeseries_graph_data(
             aggfunc="mean"
         )
 
-        now_bkk = pd.Timestamp(datetime.now(timezone(timedelta(hours=7)))).tz_localize(None).floor("30min")
+        now_bkk = pd.Timestamp(datetime.now(timezone(timedelta(hours=7)))).tz_localize(None).floor(freq_str)
         start_bkk = now_bkk - pd.Timedelta(hours=hours)
-        all_buckets = pd.date_range(start=start_bkk, end=now_bkk, freq="30min")
+        all_buckets = pd.date_range(start=start_bkk, end=now_bkk, freq=freq_str)
 
         tel_piv = tel_piv.reindex(all_buckets)
         det_piv = det_piv.reindex(all_buckets)
@@ -321,9 +331,10 @@ def get_timeseries_graph_data(
             else:
                 active_sleep = round((s1 + s2 + s3) / 3.0, 1)
 
+            display_time_str = b.strftime("%H:%M") if hours <= 12 else b.strftime("%m/%d %H:%M")
             series.append({
                 "time": b.strftime("%Y-%m-%d %H:%M"),
-                "display_time": b.strftime("%m/%d %H:%M"),
+                "display_time": display_time_str,
                 "hour": h,
                 "is_night": is_night,
                 "campus_phase_name": phase_name,
@@ -536,5 +547,64 @@ def simulate_linear_predict(
         },
         "latency_ms": inference_duration_ms
     }
+
+
+# ==============================================================================
+# PRODUCTION ML RETRAINING & DRIFT CONTROL ENDPOINTS
+# ==============================================================================
+
+@router.get("/retrain/status", summary="Get Production ML Retrain & Drift Status")
+def get_retrain_status():
+    """
+    Returns current retrain status, drift metrics, weekly schedule, and history.
+    """
+    from backend.app.services.timeseries_retrain_service import timeseries_retrain_service
+    return {
+        "status": "success",
+        "data": timeseries_retrain_service.get_status()
+    }
+
+
+@router.post("/retrain/trigger", summary="Trigger Production ML Retraining")
+def trigger_retrain(
+    mode: str = Query("manual", description="Retraining mode: manual | drift_triggered | scheduled"),
+    reason: Optional[str] = Query(None, description="Custom trigger reason")
+):
+    """
+    Triggers an instant background retraining of Random Forest & Gradient Boosting models.
+    """
+    from backend.app.services.timeseries_retrain_service import timeseries_retrain_service
+    res = timeseries_retrain_service.trigger_retrain(
+        mode=mode,
+        trigger_reason=reason or ("Manual Instant Retrain from Web UI" if mode == "manual" else "Drift Trigger")
+    )
+    return res
+
+
+@router.post("/retrain/schedule", summary="Update Scheduled Retrain Settings")
+def update_retrain_schedule(payload: Dict[str, Any]):
+    """
+    Updates weekly scheduled retrain day/time and auto-drift settings.
+    """
+    from backend.app.services.timeseries_retrain_service import timeseries_retrain_service
+    updated = timeseries_retrain_service.update_schedule(payload)
+    return {
+        "status": "success",
+        "data": updated
+    }
+
+
+@router.post("/retrain/simulate-drift", summary="Simulate Data/Prediction Drift")
+def simulate_drift(trigger: bool = Query(True, description="True to simulate drift, False to reset")):
+    """
+    Simulates data drift in telemetry to test automated or manual retrain triggers.
+    """
+    from backend.app.services.timeseries_retrain_service import timeseries_retrain_service
+    res = timeseries_retrain_service.simulate_drift(trigger_drift=trigger)
+    return {
+        "status": "success",
+        "data": res
+    }
+
 
 

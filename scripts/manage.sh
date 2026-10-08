@@ -58,6 +58,7 @@ show_help() {
     echo -e "${BOLD}Developer & Platform Tools:${RESET}"
     echo -e "  ${GREEN}test [args]${RESET}           Execute automated Pytest suite"
     echo -e "  ${GREEN}label-studio [status|scan]${RESET} Check Label Studio & Auto-Label pipeline"
+    echo -e "  ${GREEN}autolabel [start|stop|status|scan]${RESET} Manage Continuous YOLO Auto-Labeling Streamer"
     echo -e "  ${GREEN}export-openapi${RESET}        Export OpenAPI schemas to CSV, Excel, and JSON"
     echo -e "  ${GREEN}report${RESET}                Generate comprehensive Assignment Report DOCX"
     echo -e "  ${GREEN}help${RESET}                  Display this help reference"
@@ -253,6 +254,12 @@ cmd_status() {
         echo -e "  CCTV Detect Worker:${RED}○ STOPPED${RESET}"
     fi
 
+    if pgrep -f "autolabel_streamer.py" >/dev/null 2>&1 || (curl -s http://localhost:8000/api/v1/auto-label/streamer/status 2>/dev/null | grep -q '"is_running":true'); then
+        echo -e "  Auto-Label Stream: ${GREEN}● RUNNING (Continuous Auto-Labeling)${RESET}"
+    else
+        echo -e "  Auto-Label Stream: ${RED}○ STOPPED${RESET}"
+    fi
+
     echo ""
     echo -e "${BOLD}${CYAN}3. Docker Containers Overview:${RESET}"
     if command -v docker >/dev/null 2>&1; then
@@ -391,6 +398,48 @@ cmd_label_studio() {
     esac
 }
 
+# Command: Auto-Label Streamer Operations
+cmd_autolabel() {
+    ACTION="${1:-status}"
+    shift || true
+    case "$ACTION" in
+        start)
+            print_header
+            echo -e "${BLUE}▶ Starting Continuous Auto-Label Streamer Worker...${RESET}"
+            curl -s -X POST "http://localhost:8000/api/v1/auto-label/streamer/start?batch_size=20&interval_sec=2.0" || true
+            if [ -f "$WORKSPACE_DIR/.venv/bin/python" ]; then
+                nohup "$WORKSPACE_DIR/.venv/bin/python" "$WORKSPACE_DIR/services/autolabel_streamer.py" > "$WORKSPACE_DIR/autolabel_streamer.log" 2>&1 &
+            else
+                nohup python "$WORKSPACE_DIR/services/autolabel_streamer.py" > "$WORKSPACE_DIR/autolabel_streamer.log" 2>&1 &
+            fi
+            sleep 1
+            echo -e "${GREEN}✓ Auto-Label Streamer started successfully.${RESET}\n"
+            ;;
+        stop)
+            print_header
+            echo -e "${YELLOW}▶ Stopping Continuous Auto-Label Streamer Worker...${RESET}"
+            curl -s -X POST "http://localhost:8000/api/v1/auto-label/streamer/stop" || true
+            pkill -f "autolabel_streamer.py" || true
+            echo -e "${GREEN}✓ Auto-Label Streamer stopped.${RESET}\n"
+            ;;
+        status)
+            print_header
+            echo -e "${CYAN}▶ Auto-Label Streamer & Queue Status:${RESET}"
+            curl -s http://localhost:8000/api/v1/auto-label/streamer/status | jq . 2>/dev/null || curl -s http://localhost:8000/api/v1/auto-label/streamer/status
+            echo ""
+            ;;
+        scan)
+            print_header
+            echo -e "${BLUE}▶ Scanning MinIO for new CCTV snapshot frames...${RESET}"
+            curl -s -X POST http://localhost:8000/api/v1/auto-label/scan || true
+            echo ""
+            ;;
+        *)
+            echo "Usage: ./manage.sh autolabel [start|stop|status|scan]"
+            ;;
+    esac
+}
+
 # Main CLI Dispatcher
 case "$1" in
     start-all|up|all)
@@ -433,6 +482,10 @@ case "$1" in
     label-studio|labelstudio)
         shift
         cmd_label_studio "$@"
+        ;;
+    autolabel|streamer)
+        shift
+        cmd_autolabel "$@"
         ;;
     help|--help|-h|"")
         show_help
